@@ -135,6 +135,76 @@ function DetailRow({ label, children }) {
   );
 }
 
+function CopyableValue({ value, children }) {
+  const [copied, setCopied] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const handleCopy = async (e) => {
+    e.stopPropagation();
+    if (!value) return;
+    const textToCopy = String(value);
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(textToCopy);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = textToCopy;
+        textArea.style.position = "absolute";
+        textArea.style.left = "-999999px";
+        document.body.prepend(textArea);
+        textArea.select();
+        try {
+          document.execCommand('copy');
+        } catch (error) {
+          console.error('Fallback copy failed', error);
+        } finally {
+          textArea.remove();
+        }
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy', err);
+    }
+  };
+  return (
+    <div 
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', position: 'relative', minHeight: 22 }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div style={{
+        transition: 'transform 0.2s ease',
+        transform: (isHovered || copied) ? 'translateX(-28px)' : 'translateX(0)',
+        display: 'flex',
+        alignItems: 'center'
+      }}>
+        {children || <span>{value}</span>}
+      </div>
+      <button
+        title="Copiar"
+        onClick={handleCopy}
+        style={{
+          position: 'absolute', right: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22,
+          borderRadius: 4, cursor: 'pointer', border: 'none', background: 'transparent',
+          opacity: (isHovered || copied) ? 1 : 0,
+          pointerEvents: (isHovered || copied) ? 'auto' : 'none',
+          transition: 'opacity 0.2s ease, background 0.2s ease'
+        }}
+        onMouseEnter={e => e.currentTarget.style.background = '#efede8'}
+        onMouseLeave={e => e.currentTarget.style.background = 'none'}
+        aria-label="Copiar"
+      >
+        {copied ? (
+          <Svg paths={['M20 6L9 17l-5-5']} color="#15803d" size={12} />
+        ) : (
+          <Svg paths={['M8 4v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7.242a2 2 0 0 0-.602-1.43L16.083 2.57A2 2 0 0 0 14.685 2H10a2 2 0 0 0-2 2z', 'M16 18v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2']} color="#b0aaa3" size={12} />
+        )}
+      </button>
+    </div>
+  );
+}
+
 // ─── Confirm Modal ────────────────────────────────────────────────────────
 function ConfirmModal({ title, message, onConfirm, onCancel, loading, isDangerous }) {
   return (
@@ -463,10 +533,16 @@ function DetailPanel({ clientId, onClose }) {
                 Identificación Legal
               </p>
               <div className="cl-detail-rows">
-                <DetailRow label="Razón Social">{detail.razon_social}</DetailRow>
-                <DetailRow label="Nombre Comercial">{detail.nombre_comercial}</DetailRow>
+                <DetailRow label="Razón Social">
+                  {detail.razon_social ? <CopyableValue value={detail.razon_social} /> : '—'}
+                </DetailRow>
+                <DetailRow label="Nombre Comercial">
+                  {detail.nombre_comercial ? <CopyableValue value={detail.nombre_comercial} /> : '—'}
+                </DetailRow>
                 <DetailRow label={detail.tipo === 'juridica' ? 'RUT' : 'RUN'}>
-                  <span className="cl-rut-value">{detail.id_fiscal}</span>
+                  <CopyableValue value={detail.id_fiscal}>
+                    <span className="cl-rut-value">{detail.id_fiscal}</span>
+                  </CopyableValue>
                 </DetailRow>
                 <DetailRow label="Sector">{detail.sector}</DetailRow>
                 <DetailRow label="Registrado">
@@ -482,9 +558,15 @@ function DetailPanel({ clientId, onClose }) {
                 Contacto Principal
               </p>
               <div className="cl-detail-rows">
-                <DetailRow label="Nombre">{detail.contacto_principal || detail.razon_social}</DetailRow>
-                <DetailRow label="Correo">{detail.email}</DetailRow>
-                <DetailRow label="Teléfono">{detail.telefono || detail.contacto_tel || '—'}</DetailRow>
+                <DetailRow label="Nombre">
+                  {detail.contacto_principal || detail.razon_social ? <CopyableValue value={detail.contacto_principal || detail.razon_social} /> : '—'}
+                </DetailRow>
+                <DetailRow label="Correo">
+                  {detail.email ? <CopyableValue value={detail.email} /> : '—'}
+                </DetailRow>
+                <DetailRow label="Teléfono">
+                  {detail.telefono || detail.contacto_tel ? <CopyableValue value={detail.telefono || detail.contacto_tel} /> : '—'}
+                </DetailRow>
                 {detail.contactos?.length > 0 && (
                   <DetailRow label="Cargo">{detail.contactos[0].cargo}</DetailRow>
                 )}
@@ -679,28 +761,46 @@ function ActionDropdown({ anchorRef, items, onClose }) {
 }
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
-function Toast({ message, type = 'info' }) {
+function Toast({ message, type = 'info', onCancel }) {
   const CFG = {
-    info:    { bg: '#eff6ff', border: '#bfdbfe', color: '#1d4ed8' },
-    success: { bg: '#f0fdf4', border: '#bbf7d0', color: '#15803d' },
-    error:   { bg: '#fef2f2', border: '#fecaca', color: '#dc2626' },
+    info:      { bg: '#eff6ff', border: '#bfdbfe', color: '#1d4ed8' },
+    success:   { bg: '#f0fdf4', border: '#bbf7d0', color: '#15803d' },
+    error:     { bg: '#fef2f2', border: '#fecaca', color: '#dc2626' },
+    cancelled: { bg: '#f4f3ef', border: '#d8d4cc', color: '#5c574f' },
   };
   const c = CFG[type] || CFG.info;
+  const cancelable = type === 'info' && !!onCancel;
   return (
     <div
       role="status"
+      onClick={cancelable ? onCancel : undefined}
+      title={cancelable ? 'Clic para cancelar' : undefined}
       style={{
         position: 'fixed', bottom: 24, right: 24, zIndex: 1000,
         background: c.bg, border: `1px solid ${c.border}`, color: c.color,
         padding: '12px 16px', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.15)',
         display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, fontWeight: 500,
         animation: 'dropIn 0.15s ease-out', minWidth: 220,
+        cursor: cancelable ? 'pointer' : 'default',
       }}
     >
       {type === 'info' && <span className="cl-spinner" />}
       {type === 'success' && <Svg paths={['M22 11.08V12a10 10 0 1 1-5.93-9.14', 'M22 4 12 14.01l-3-3']} color={c.color} size={15} />}
       {type === 'error' && <Svg paths={['M12 9v4M12 17h.01', 'M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z']} color={c.color} size={15} />}
-      {message}
+      {type === 'cancelled' && <Svg paths={['M18 6 6 18', 'M6 6l12 12']} color={c.color} size={15} />}
+      <span style={{ flex: 1 }}>{message}</span>
+      {cancelable && (
+        <button
+          onClick={e => { e.stopPropagation(); onCancel(); }}
+          style={{
+            background: 'none', border: '1px solid currentColor', color: c.color,
+            borderRadius: 5, padding: '3px 10px', fontSize: 11, fontWeight: 600,
+            cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
+          }}
+        >
+          Cancelar
+        </button>
+      )}
     </div>
   );
 }
@@ -743,6 +843,7 @@ export default function Clientes() {
   const importBtnRef  = useRef(null);
   const importDropRef = useRef(null);
   const toastTimerRef = useRef(null);
+  const exportAbortRef = useRef(null);
 
   const showToast = useCallback((message, type = 'info', autoHideMs = 3000) => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -780,14 +881,24 @@ export default function Clientes() {
     return () => document.removeEventListener('mousedown', handle);
   }, [filterOpen, exportOpen, importOpen]);
 
-  // Limpiar timer del toast al desmontar
+  // Limpiar timer del toast y abortar export en curso al desmontar
   useEffect(() => () => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    exportAbortRef.current?.abort();
   }, []);
 
   const handleExport = async (format) => {
+    const ids = Array.from(selectedIds);
+    const controller = new AbortController();
+    exportAbortRef.current = controller;
+
     setExporting(true);
-    showToast('Generando archivo...', 'info', 0);
+    showToast(
+      ids.length > 0 ? `Generando archivo (${ids.length} seleccionados)...` : 'Generando archivo...',
+      'info',
+      0,
+    );
+
     try {
       await exportClientes(format, {
         search: filters.search,
@@ -795,13 +906,22 @@ export default function Clientes() {
         tipo: filters.tipo,
         fecha_desde: filters.fecha_desde,
         fecha_hasta: filters.fecha_hasta,
-      });
+      }, { ids, signal: controller.signal });
       showToast('Archivo descargado con éxito', 'success');
     } catch (err) {
-      showToast(`Error al exportar: ${err.message}`, 'error', 5000);
+      if (err.name === 'AbortError') {
+        showToast('Exportación cancelada', 'cancelled', 2500);
+      } else {
+        showToast(`Error al exportar: ${err.message}`, 'error', 5000);
+      }
     } finally {
       setExporting(false);
+      exportAbortRef.current = null;
     }
+  };
+
+  const handleCancelExport = () => {
+    exportAbortRef.current?.abort();
   };
 
   const handleImportSuccess = (resultado) => {
@@ -1371,7 +1491,13 @@ export default function Clientes() {
       )}
 
       {/* Toast */}
-      {toast && <Toast message={toast.message} type={toast.type} />}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onCancel={toast.type === 'info' ? handleCancelExport : undefined}
+        />
+      )}
     </div>
   );
 }

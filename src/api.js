@@ -173,17 +173,24 @@ function buildClientesFilterQs(filters = {}) {
 
 /**
  * Descarga el listado de clientes (respetando filtros activos) como Excel o CSV.
- * Dispara la descarga en el navegador. Lanza Error si falla.
+ * Dispara la descarga en el navegador. Lanza Error si falla (o DOMException 'AbortError' si se cancela).
  * @param {'excel'|'csv'} format
  * @param {Object} filters - mismos filtros que getClientes (search, estado, tipo, fecha_desde, fecha_hasta)
+ * @param {Object} options
+ * @param {number[]} [options.ids]   - si viene con elementos, exporta SOLO esos clientes (ignora filters)
+ * @param {AbortSignal} [options.signal] - para cancelar la descarga en curso
  */
-export async function exportClientes(format, filters = {}) {
+export async function exportClientes(format, filters = {}, options = {}) {
   const path = format === 'csv' ? 'csv' : 'excel';
   const qs = buildClientesFilterQs(filters);
+  if (options.ids && options.ids.length > 0) {
+    qs.set('ids', options.ids.join(','));
+  }
   const query = qs.toString() ? `?${qs.toString()}` : '';
 
   const res = await fetch(`${BASE}/documentos/exportar/clientes/${path}/${query}`, {
     credentials: 'include',
+    signal: options.signal,
   });
 
   if (!res.ok) {
@@ -196,7 +203,9 @@ export async function exportClientes(format, filters = {}) {
   }
 
   const blob = await res.blob();
-  const filename = format === 'csv' ? 'clientes.csv' : 'clientes.xlsx';
+  const disposition = res.headers.get('Content-Disposition') || '';
+  const match = disposition.match(/filename="?([^";]+)"?/);
+  const filename = match ? match[1] : (format === 'csv' ? 'clientes.csv' : 'clientes.xlsx');
 
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement('a');
