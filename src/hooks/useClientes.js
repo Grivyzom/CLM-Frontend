@@ -25,6 +25,9 @@ export function useClientes() {
   const [page, setPage]         = useState(1);
   const [filters, setFilters]   = useState(DEFAULT_FILTERS);
 
+  // Cache para los resultados ya visitados
+  const cache = useRef({});
+
   // Debounce para búsqueda de texto
   const searchTimerRef = useRef(null);
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -40,7 +43,24 @@ export function useClientes() {
   }, [filters.search]);
 
   // Fetch principal — se dispara cuando cambian filtros o página
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (options = { force: false }) => {
+    const isForceRefetch = options?.force === true;
+    const cacheKey = JSON.stringify({
+      search: debouncedSearch,
+      estado: filters.estado,
+      tipo: filters.tipo,
+      fecha_desde: filters.fecha_desde,
+      fecha_hasta: filters.fecha_hasta,
+      page
+    });
+
+    if (!isForceRefetch && cache.current[cacheKey]) {
+      setData(cache.current[cacheKey]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
@@ -53,6 +73,7 @@ export function useClientes() {
         page,
         page_size: PAGE_SIZE,
       });
+      cache.current[cacheKey] = result;
       setData(result);
     } catch (err) {
       setError(err.message || 'Error al cargar clientes');
@@ -94,6 +115,6 @@ export function useClientes() {
     updateFilter,
     resetFilters,
     // Refetch manual
-    refetch: fetchData,
+    refetch: () => fetchData({ force: true }),
   };
 }
