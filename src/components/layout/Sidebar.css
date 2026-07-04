@@ -1,0 +1,558 @@
+/* ── SIDEBAR (Technical / StatusBar Theme) ── */
+.sidebar-proto {
+  display: flex;
+  flex-direction: column;
+  background-color: #efede8;
+  border-right: 1px solid #d8d4cc;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+  height: 100vh;
+  z-index: 20;
+}
+
+.sidebar-proto.expanded {
+  width: 240px;
+  min-width: 240px;
+}
+
+.sidebar-proto.collapsed {
+  width: 72px;
+  min-width: 72px;
+}
+
+/* Header */
+.sb-header {
+  padding: 1.25rem 20px 0.75rem 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.sb-logo-section {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  height: 32px;
+  margin-bottom: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.sb-logo-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: #d8d4cc;
+  border: 1px solid #c9c4bc;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sb-logo-icon span {
+  color: #5c574f;
+  font-weight: 800;
+  font-size: 0.875rem;
+}
+
+.sb-logo-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  opacity: 1;
+  transition: opacity 0.2s;
+  overflow: hidden;
+}
+
+.sidebar-proto.collapsed .sb-logo-text {
+  opacity: 0;
+  width: 0;
+  margin: 0;
+  flex: 0;
+  pointer-events: none;
+}
+
+.sb-logo-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #3b3631;
+  line-height: 1.1;
+}
+
+.sb-logo-subtitle {
+  font-size: 8px;
+  color: #7c7670;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1.1;
+  margin-top: 2px;
+}
+
+/* Context Selector */
+.sb-context-wrapper {
+  position: relative;
+  height: 42px;
+  width: 100%;
+}
+
+.sb-context-btn {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 7px;
+  border-radius: 5px;
+  background-color: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.sb-context-btn:hover, .sb-context-btn.open {
+  background-color: #e5e2da;
+  border-color: #d8d4cc;
+}
+
+.sb-context-icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: #7c7670;
+  transition: color 0.2s;
+}
+
+.sb-context-btn:hover .sb-context-icon-container,
+.sb-context-btn.open .sb-context-icon-container {
+  color: #5c574f;
+}
+
+.sb-context-info {
+  margin-left: 0.75rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  opacity: 1;
+  transition: opacity 0.2s;
+  overflow: hidden;
+}
+
+.sidebar-proto.collapsed .sb-context-info {
+  opacity: 0;
+  width: 0;
+  margin: 0;
+  flex: 0;
+}
+
+.sb-context-label {
+  font-size: 8.5px;
+  font-weight: 600;
+  color: #b0aaa3;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 2px;
+}
+
+.sb-context-value {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #5c574f;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1;
+}
+
+.sb-chevron {
+  width: 14px;
+  height: 14px;
+  color: #7c7670;
+  flex-shrink: 0;
+  margin-left: 0.25rem;
+  opacity: 1;
+  transition: opacity 0.2s, width 0.2s, margin 0.2s;
+}
+
+.sidebar-proto.collapsed .sb-chevron {
+  opacity: 0;
+  width: 0;
+  margin: 0;
+}
+
+/* Dropdown */
+.sb-context-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 100%;
+  background-color: #efede8;
+  border: 1px solid #d8d4cc;
+  border-radius: 5px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  z-index: 50;
+  overflow: hidden;
+}
+
+.sb-context-dropdown.dropdown-collapsed {
+  width: 42px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.sb-dropdown-item {
+  width: 100%;
+  text-align: left;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.75rem;
+  border: none;
+  cursor: pointer;
+  display: block;
+  background: transparent;
+  color: #5c574f;
+  transition: all 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sb-context-dropdown.dropdown-collapsed .sb-dropdown-item {
+  text-align: center;
+  padding: 0.625rem 0;
+  font-weight: 700;
+}
+
+.sb-dropdown-item:hover {
+  background-color: #e5e2da;
+}
+
+.sb-dropdown-item.active {
+  background-color: #dfdcd3;
+  color: #3b3631;
+  font-weight: 600;
+}
+
+/* Section Title */
+.sb-section-title {
+  padding: 0 1.25rem 0.5rem;
+  height: 20px;
+  overflow: hidden;
+  white-space: nowrap;
+  opacity: 1;
+  transition: opacity 0.2s;
+}
+
+.sidebar-proto.collapsed .sb-section-title {
+  opacity: 0;
+}
+
+.sb-section-title span {
+  font-size: 8.5px;
+  font-weight: 600;
+  color: #b0aaa3;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Navigation */
+.sb-nav-container {
+  flex: 1;
+  padding: 0 0.75rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sb-nav-item {
+  width: 100%;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  padding: 0 15px;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  background-color: transparent;
+  color: #7c7670;
+  transition: all 0.2s ease;
+  overflow: hidden;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.sb-nav-item:hover {
+  background-color: #e5e2da;
+  color: #5c574f;
+}
+
+.sb-nav-item.active {
+  background-color: #dfdcd3;
+  color: #3b3631;
+}
+
+.sb-icon-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.sb-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  transition: color 0.2s;
+}
+
+.sb-nav-item.active .sb-icon {
+  color: #3b3631;
+}
+
+.sb-nav-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  margin-left: 0.75rem;
+  flex: 1;
+  opacity: 1;
+  transition: opacity 0.2s;
+  overflow: hidden;
+}
+
+.sidebar-proto.collapsed .sb-nav-label {
+  opacity: 0;
+  width: 0;
+  margin: 0;
+  flex: 0;
+}
+
+/* Badges */
+.sb-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8.5px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 3px;
+  margin-left: 0.5rem;
+  transition: opacity 0.2s;
+}
+
+.sidebar-proto.collapsed .sb-badge {
+  opacity: 0;
+  width: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.sb-badge-floating {
+  font-family: 'JetBrains Mono', monospace;
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  font-size: 0.55rem;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 99px;
+  border: 2px solid #efede8;
+  line-height: 1;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.2s;
+  z-index: 5;
+}
+
+.sb-nav-item:hover .sb-badge-floating {
+  border-color: #e5e2da;
+}
+
+.sb-nav-item.active .sb-badge-floating {
+  border-color: #dfdcd3;
+}
+
+.sidebar-proto.collapsed .sb-badge-floating {
+  opacity: 1;
+}
+
+.sb-badge-warning, .sb-badge-floating.sb-badge-warning {
+  background: rgba(217,119,6,.12);
+  color: #d97706;
+}
+
+.sb-badge-danger, .sb-badge-floating.sb-badge-danger {
+  background: rgba(220,38,38,.12);
+  color: #dc2626;
+}
+
+/* Footer / User */
+.sb-footer {
+  border-top: 1px solid #d8d4cc;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow: visible;
+  white-space: nowrap;
+}
+
+.sb-user-profile {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 0.5rem;
+  border-radius: 5px;
+  background-color: transparent;
+  transition: all 0.2s ease;
+}
+
+.sb-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: #d8d4cc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #5c574f;
+  flex-shrink: 0;
+}
+
+.sb-user-info {
+  margin-left: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  opacity: 1;
+  transition: opacity 0.2s;
+  overflow: hidden;
+}
+
+.sidebar-proto.collapsed .sb-user-info {
+  opacity: 0;
+  width: 0;
+  margin: 0;
+  flex: 0;
+}
+
+.sb-user-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #5c574f;
+  line-height: 1.2;
+}
+
+.sb-user-role {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #7c7670;
+  line-height: 1.2;
+  margin-top: 2px;
+}
+
+/* Login Button */
+.sb-login-btn {
+  width: 100%;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 15px;
+  border-radius: 5px;
+  border: 1px solid #d8d4cc;
+  background-color: #efede8;
+  cursor: pointer;
+  color: #5c574f;
+  transition: all 0.2s ease;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* User Dropdown */
+.sb-user-dropdown {
+  top: auto;
+  bottom: 100%;
+  margin-top: 0;
+  margin-bottom: 8px;
+  min-width: 180px;
+}
+
+.sb-login-btn:hover {
+  background-color: #e5e2da;
+}
+
+.sb-login-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-left: 0.75rem;
+  opacity: 1;
+  transition: opacity 0.2s;
+  overflow: hidden;
+}
+
+.sidebar-proto.collapsed .sb-login-label {
+  opacity: 0;
+  width: 0;
+  margin: 0;
+  flex: 0;
+}
+
+.sb-collapse-btn {
+  width: 100%;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  border-radius: 5px;
+  border: none;
+  background-color: transparent;
+  cursor: pointer;
+  color: #7c7670;
+  transition: all 0.2s ease;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.sb-collapse-btn:hover {
+  background-color: #e5e2da;
+  color: #5c574f;
+}
+
+.sb-collapse-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+}
+
+.sb-collapse-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-left: 0.75rem;
+  opacity: 1;
+  transition: opacity 0.2s;
+  overflow: hidden;
+}
+
+.sidebar-proto.collapsed .sb-collapse-label {
+  opacity: 0;
+  width: 0;
+  margin: 0;
+  flex: 0;
+}
