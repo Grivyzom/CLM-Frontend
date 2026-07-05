@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import './Catalogo.css';
 
 const CONTEXTS = ['Administración Global', 'SoftTrack Pro v3', 'ContaLite v2.1'];
@@ -99,11 +99,270 @@ function RiskBadge({ risk }) {
   return <span style={{ fontSize: 9, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', color: c.color, background: c.bg, borderRadius: 4, padding: '1px 6px' }}>{risk}</span>;
 }
 
+// ─── Componentes del Menú Contextual y Dropdowns ────────────────────────────
+
+function ActionDropdown({ anchorRef, items, onClose }) {
+  const dropdownRef = useRef(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+
+  useEffect(() => {
+    if (!anchorRef.current) return;
+    const anchorRect = anchorRef.current.getBoundingClientRect();
+    const margin = 4;
+    const top = anchorRect.bottom + margin;
+    const left = anchorRect.left;
+
+    requestAnimationFrame(() => {
+      if (!dropdownRef.current) return;
+      const rect = dropdownRef.current.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      let adjLeft = left;
+      if (adjLeft + rect.width + margin > viewportWidth) {
+        adjLeft = Math.max(margin, anchorRect.right - rect.width);
+      }
+      setPos({ top, left: adjLeft });
+    });
+
+    setPos({ top, left });
+  }, [anchorRef]);
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 998 }} />
+      <div
+        ref={dropdownRef}
+        role="menu"
+        style={{
+          position: 'fixed', top: pos.top, left: pos.left,
+          background: '#fff', border: '1px solid #d8d4cc', borderRadius: 6,
+          boxShadow: '0 8px 24px rgba(0,0,0,.12)', zIndex: 999, padding: 4, minWidth: 220,
+          animation: 'dropIn 0.15s ease-out'
+        }}
+      >
+        {items.map((item, i) => (
+          <button
+            key={i}
+            role="menuitem"
+            disabled={item.disabled}
+            onClick={() => { item.onClick(); onClose(); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 10px',
+              border: 'none', background: 'none', cursor: item.disabled ? 'not-allowed' : 'pointer',
+              fontSize: 12, color: '#3b3631', textAlign: 'left', fontFamily: 'inherit',
+              borderRadius: 4, opacity: item.disabled ? 0.5 : 1, transition: 'background 0.12s'
+            }}
+            onMouseEnter={e => !item.disabled && (e.currentTarget.style.background = '#efede8')}
+            onMouseLeave={e => !item.disabled && (e.currentTarget.style.background = 'none')}
+          >
+            {item.icon}
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function ContextMenu({ pos, onClose }) {
+  const [menuPos, setMenuPos] = useState({ top: pos.y, left: pos.x });
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!menuRef.current) return;
+    const rect = menuRef.current.getBoundingClientRect();
+    const menuWidth = rect.width || 180;
+    const menuHeight = rect.height || 120;
+    const margin = 8;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    let top = pos.y;
+    let left = pos.x;
+
+    if (left + menuWidth + margin > viewportWidth) left = Math.max(margin, pos.x - menuWidth - margin);
+    if (top + menuHeight + margin > viewportHeight) top = Math.max(margin, pos.y - menuHeight - margin);
+
+    setMenuPos({ top, left });
+  }, [pos]);
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 998 }} />
+      <div
+        ref={menuRef}
+        style={{
+          position: 'fixed', top: menuPos.top, left: menuPos.left,
+          background: '#fff', border: '1px solid #d8d4cc', borderRadius: 6,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 999, minWidth: 160,
+          animation: 'dropIn 0.15s ease-out'
+        }}
+      >
+        <button
+          onClick={onClose}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 12px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 12, color: '#5c574f', textAlign: 'left', fontFamily: 'inherit', borderBottom: '1px solid #e5e2da', transition: 'background 0.12s' }}
+          onMouseEnter={e => e.currentTarget.style.background = '#efede8'} onMouseLeave={e => e.currentTarget.style.background = 'none'}
+        >
+          <Icon d={['M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7','M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z']} w={14} />
+          Editar
+        </button>
+        <button
+          onClick={onClose}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 12px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 12, color: '#5c574f', textAlign: 'left', fontFamily: 'inherit', borderBottom: '1px solid #e5e2da', transition: 'background 0.12s' }}
+          onMouseEnter={e => e.currentTarget.style.background = '#efede8'} onMouseLeave={e => e.currentTarget.style.background = 'none'}
+        >
+          <Icon d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" w={14} />
+          Duplicar
+        </button>
+        <button
+          onClick={onClose}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 12px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 12, color: '#dc2626', textAlign: 'left', fontFamily: 'inherit', transition: 'background 0.12s' }}
+          onMouseEnter={e => e.currentTarget.style.background = '#fee2e2'} onMouseLeave={e => e.currentTarget.style.background = 'none'}
+        >
+          <Icon d={['M19 7l-1 12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 7m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3','M10 11v6','M14 11v6']} color="#dc2626" w={14} />
+          Eliminar
+        </button>
+      </div>
+    </>
+  );
+}
+
+function FilterDropdown({ onClose, filters, updateFilter, anchorRef }) {
+  const dropdownRef = useRef(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+
+  useEffect(() => {
+    if (!anchorRef.current) return;
+    const anchorRect = anchorRef.current.getBoundingClientRect();
+    const margin = 4;
+    let top = anchorRect.bottom + margin;
+    let left = anchorRect.left;
+
+    requestAnimationFrame(() => {
+      if (!dropdownRef.current) return;
+      const rect = dropdownRef.current.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      let adjLeft = left;
+      let adjTop = top;
+
+      if (adjLeft + rect.width + margin > viewportWidth) {
+        adjLeft = Math.max(margin, viewportWidth - rect.width - margin);
+      }
+      if (adjTop + rect.height + margin > viewportHeight) {
+        adjTop = Math.max(margin, anchorRect.top - rect.height - margin);
+      }
+
+      setPos({ top: adjTop, left: adjLeft });
+    });
+
+    setPos({ top, left });
+  }, [anchorRef]);
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 998 }} />
+      <div
+        ref={dropdownRef}
+        role="dialog"
+        style={{
+          position: 'fixed', top: pos.top, left: pos.left,
+          background: '#fff', border: '1px solid #d8d4cc', borderRadius: 6,
+          boxShadow: '0 8px 24px rgba(0,0,0,.12)', zIndex: 999, padding: 16, minWidth: 260,
+          animation: 'dropIn 0.15s ease-out', display: 'flex', flexDirection: 'column', gap: 16
+        }}
+      >
+        <div>
+          <p style={{ margin: '0 0 8px 0', fontSize: 11, fontWeight: 700, color: '#7c7670', textTransform: 'uppercase', letterSpacing: 0.5 }}>Estado</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {['Todos', 'Aprobado', 'Borrador', 'En revisión'].map(op => (
+              <button
+                key={op}
+                onClick={() => updateFilter('estado', op)}
+                style={{
+                  padding: '4px 10px', borderRadius: 12, border: '1px solid',
+                  fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                  transition: 'all 0.15s',
+                  ...(filters.estado === op 
+                    ? { background: '#2563eb', color: '#fff', borderColor: '#2563eb' }
+                    : { background: '#fff', color: '#5c574f', borderColor: '#d8d4cc' })
+                }}
+              >
+                {op}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <p style={{ margin: '0 0 8px 0', fontSize: 11, fontWeight: 700, color: '#7c7670', textTransform: 'uppercase', letterSpacing: 0.5 }}>Categoría</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {['Todos', 'Legal', 'Operaciones', 'Comercial', 'Tecnología'].map(op => (
+              <button
+                key={op}
+                onClick={() => updateFilter('categoria', op)}
+                style={{
+                  padding: '4px 10px', borderRadius: 12, border: '1px solid',
+                  fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                  transition: 'all 0.15s',
+                  ...(filters.categoria === op 
+                    ? { background: '#2563eb', color: '#fff', borderColor: '#2563eb' }
+                    : { background: '#fff', color: '#5c574f', borderColor: '#d8d4cc' })
+                }}
+              >
+                {op}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
+          <button
+            onClick={onClose}
+            style={{ padding: '6px 12px', borderRadius: 4, border: '1px solid #d8d4cc', background: '#efede8', color: '#3b3631', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+            onMouseEnter={e => e.currentTarget.style.background = '#e5e2da'}
+            onMouseLeave={e => e.currentTarget.style.background = '#efede8'}
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function Catalogo() {
   const [ctx, setCtx] = useState(0);
   const [tab, setTab] = useState('plantillas');
   const [selectedClause, setSelectedClause] = useState(0);
   const [clauseAlt, setClauseAlt] = useState(0);
+
+  const [importOpen, setImportOpen] = useState(false);
+  const [newTemplateOpen, setNewTemplateOpen] = useState(false);
+  const [contextMenuTarget, setContextMenuTarget] = useState(null);
+  const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filters, setFilters] = useState({ estado: 'Todos', categoria: 'Todos', search: '' });
+
+  const updateFilter = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  const activeFilterCount = [
+    filters.estado !== 'Todos',
+    filters.categoria !== 'Todos'
+  ].filter(Boolean).length;
+
+  const importBtnRef = useRef(null);
+  const newTemplateBtnRef = useRef(null);
+  const filterBtnRef = useRef(null);
+
+  const handleOpenContextMenu = (e, item) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setContextMenuTarget(item);
+    setContextMenuPos({ x: e.clientX, y: e.clientY });
+  };
 
   const selectedClauseData = CLAUSES[selectedClause];
   const selectedAlt = selectedClauseData.versions[clauseAlt] || selectedClauseData.versions[0];
@@ -151,24 +410,115 @@ export default function Catalogo() {
             <div className="catalogo-toolbar">
               <div className="catalogo-search">
                 <Icon d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" color="#b0aaa3" w={13} />
-                <input type="text" placeholder="Buscar plantilla…" />
+                <input 
+                  type="text" 
+                  placeholder="Buscar plantilla…" 
+                  value={filters.search}
+                  onChange={e => updateFilter('search', e.target.value)}
+                />
               </div>
-              <button className="catalogo-btn-secondary">
-                <Icon d="M4 6h16M7 12h10M10 18h4" color="#7c7670" w={13} />
-                Filtrar
-              </button>
-              <button className="catalogo-btn-secondary">
-                <Icon d={['M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4', 'M17 8l-5-5-5 5', 'M12 3v12']} color="#7c7670" w={13} />
-                Importar
-              </button>
-              <button className="catalogo-btn-primary">
-                <Icon d={['M12 5v14', 'M5 12h14']} color="#fff" w={13} />
-                Nueva Plantilla
-              </button>
+              
+              <div style={{ position: 'relative' }}>
+                <button 
+                  ref={filterBtnRef}
+                  className="catalogo-btn-secondary"
+                  onClick={() => setFilterOpen(!filterOpen)}
+                  style={{ color: filterOpen ? '#2563eb' : undefined, borderColor: filterOpen ? '#bfdbfe' : undefined, background: filterOpen ? '#eff6ff' : undefined }}
+                >
+                  <Icon d="M4 6h16M7 12h10M10 18h4" color={filterOpen ? '#2563eb' : '#7c7670'} w={13} />
+                  Filtrar
+                  {activeFilterCount > 0 && (
+                    <span style={{ background: '#2563eb', color: '#fff', borderRadius: '50%', width: 16, height: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, marginLeft: 4 }}>
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </button>
+                {filterOpen && (
+                  <FilterDropdown
+                    onClose={() => setFilterOpen(false)}
+                    filters={filters}
+                    updateFilter={updateFilter}
+                    anchorRef={filterBtnRef}
+                  />
+                )}
+              </div>
+              
+              <div style={{ position: 'relative' }}>
+                <button
+                  ref={importBtnRef}
+                  className="catalogo-btn-secondary"
+                  onClick={() => setImportOpen(o => !o)}
+                >
+                  <Icon d={['M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4', 'M17 8l-5-5-5 5', 'M12 3v12']} color="#7c7670" w={13} />
+                  Importar
+                </button>
+                {importOpen && (
+                  <ActionDropdown
+                    anchorRef={importBtnRef}
+                    onClose={() => setImportOpen(false)}
+                    items={[
+                      {
+                        label: 'Importar desde Word/PDF',
+                        icon: <Icon d={['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z','M14 2v6h6']} color="#7c7670" w={14} />,
+                        onClick: () => console.log('Import from Word/PDF'),
+                      },
+                      {
+                        label: 'Importar desde Excel',
+                        icon: <Icon d={['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z','M14 2v6h6']} color="#15803d" w={14} />,
+                        onClick: () => console.log('Import from Excel'),
+                      }
+                    ]}
+                  />
+                )}
+              </div>
+
+              <div style={{ position: 'relative' }}>
+                <button
+                  ref={newTemplateBtnRef}
+                  className="catalogo-btn-primary"
+                  onClick={() => setNewTemplateOpen(o => !o)}
+                >
+                  <Icon d={['M12 5v14', 'M5 12h14']} color="#fff" w={13} />
+                  Nueva Plantilla
+                </button>
+                {newTemplateOpen && (
+                  <ActionDropdown
+                    anchorRef={newTemplateBtnRef}
+                    onClose={() => setNewTemplateOpen(false)}
+                    items={[
+                      {
+                        label: 'Crear desde cero',
+                        icon: <Icon d={['M12 5v14', 'M5 12h14']} color="#7c7670" w={14} />,
+                        onClick: () => console.log('Crear desde cero'),
+                      },
+                      {
+                        label: 'Generar con IA (Enfoque AI)',
+                        icon: <Icon d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" color="#7c3aed" w={14} />,
+                        onClick: () => console.log('Generar con IA'),
+                      },
+                      {
+                        label: 'Importar documento (Word/PDF)',
+                        icon: <Icon d={['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z','M14 2v6h6']} color="#7c7670" w={14} />,
+                        onClick: () => console.log('Importar doc'),
+                      },
+                      {
+                        label: 'Clonar existente',
+                        icon: <Icon d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" color="#7c7670" w={14} />,
+                        onClick: () => console.log('Clonar existente'),
+                      }
+                    ]}
+                  />
+                )}
+              </div>
             </div>
 
             <div className="catalogo-grid">
-              {PLANTILLAS.map(p => (
+              {PLANTILLAS.filter(p => {
+                if (filters.estado !== 'Todos' && p.status !== filters.estado) return false;
+                if (filters.categoria !== 'Todos' && p.cat !== filters.categoria) return false;
+                if (filters.search && !p.name.toLowerCase().includes(filters.search.toLowerCase()) && !p.abbr.toLowerCase().includes(filters.search.toLowerCase())) return false;
+                return true;
+              }).map(p => (
                 <div key={p.id} className="catalogo-card">
                   <div className="catalogo-card-header">
                     <div className="catalogo-card-abbr" style={{ background: p.bg }}>
@@ -188,6 +538,15 @@ export default function Catalogo() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ fontSize: 10, color: '#7c7670', fontWeight: 600 }}>{p.uses} usos</span>
                       <button className="catalogo-btn-use">Usar →</button>
+                      <button
+                        title="Más opciones"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', borderRadius: '4px', color: '#b0aaa3', display: 'flex', alignItems: 'center', transition: 'background 0.15s' }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#efede8'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                        onClick={e => handleOpenContextMenu(e, p)}
+                      >
+                        <Icon d={['M12 5v.01','M12 12v.01','M12 19v.01','M12 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2z','M12 13a1 1 0 1 1 0-2 1 1 0 0 1 0 2z','M12 20a1 1 0 1 1 0-2 1 1 0 0 1 0 2z']} w={14} />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -379,6 +738,13 @@ export default function Catalogo() {
           </div>
         )}
       </div>
+
+      {contextMenuTarget && (
+        <ContextMenu
+          pos={contextMenuPos}
+          onClose={() => setContextMenuTarget(null)}
+        />
+      )}
     </div>
   );
 }

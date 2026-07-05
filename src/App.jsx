@@ -3,9 +3,9 @@ import Layout from './components/layout/Layout';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import Dashboard from './pages/Dashboard';
-import ContractList from './pages/ContractList';
 import ContractDetail from './pages/ContractDetail';
 import ContractEditor from './pages/ContractEditor';
+import Contratos from './pages/Contratos';
 import Clientes from './pages/Clientes';
 import Catalogo from './pages/Catalogo';
 import Ajustes from './pages/Ajustes';
@@ -25,9 +25,9 @@ function App() {
             <Route path="/catalogo" element={<ProtectedRoute><Catalogo /></ProtectedRoute>} />
             <Route path="/ajustes" element={<ProtectedRoute><Ajustes /></ProtectedRoute>} />
             <Route path="/faq" element={<ProtectedRoute><Faq /></ProtectedRoute>} />
-            <Route path="/contracts" element={<ProtectedRoute><ContractList /></ProtectedRoute>} />
-            <Route path="/contracts/new" element={<ProtectedRoute><ContractEditor /></ProtectedRoute>} />
-            <Route path="/contracts/:id" element={<ProtectedRoute><ContractDetail /></ProtectedRoute>} />
+            <Route path="/contratos" element={<ProtectedRoute><Contratos /></ProtectedRoute>} />
+            <Route path="/contratos/new" element={<ProtectedRoute><ContractEditor /></ProtectedRoute>} />
+            <Route path="/contratos/:id" element={<ProtectedRoute><ContractDetail /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Layout>

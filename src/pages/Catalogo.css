@@ -170,15 +170,12 @@
   max-width: 280px;
 }
 
-.catalogo-search::before {
-  content: '';
+.catalogo-search svg {
   position: absolute;
-  left: 9px;
+  left: 10px;
   top: 50%;
   transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  pointer-events: none;
 }
 
 .catalogo-search input {
@@ -365,6 +362,10 @@
 .catalogo-clausulas-sidebar .catalogo-search {
   padding: 10px 14px;
   border-bottom: 1px solid #efede8;
+}
+
+.catalogo-clausulas-sidebar .catalogo-search svg {
+  left: 24px;
 }
 
 .catalogo-clausulas-cat {

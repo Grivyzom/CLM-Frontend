@@ -10,7 +10,7 @@ const NAV = [
   { id: 'dashboard', path: '/', label: 'Dashboard', paths: ['M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z'] },
   { id: 'clientes', path: '/clientes', label: 'Clientes', paths: ['M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2','M23 21v-2a4 4 0 0 0-3-3.87','M16 3.13a4 4 0 0 1 0 7.75'], circles: [{ cx: 9, cy: 7, r: 4 }] },
   { id: 'catalogo', path: '/catalogo', label: 'Catálogo', paths: ['M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z','M3.27 6.96 12 12.01l8.73-5.05','M12 22.08V12'] },
-  { id: 'contratos', path: '/contracts', label: 'Contratos', paths: ['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z','M14 2v6h6','M8 13h8'], badge: { n: 3, type: 'warning' } },
+  { id: 'contratos', path: '/contratos', label: 'Contratos', paths: ['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z','M14 2v6h6','M8 13h8'], badge: { n: 3, type: 'warning' } },
   { id: 'auditoria', path: '/auditoria', label: 'Auditoría Legal', paths: ['M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z','M9 12l2 2 4-4'], badge: { n: 12, type: 'danger' } },
 ];
 
