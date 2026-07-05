@@ -231,6 +231,89 @@ export async function importClientesExcel(file) {
   });
 }
 
+// ─── Contratos ────────────────────────────────────────────────────────────────
+
+/**
+ * Lista paginada de contratos con datos reales.
+ * @param {Object} params
+ * @param {string} [params.search]   - Texto libre (ID, cliente, software)
+ * @param {string} [params.etapa]    - Valor de EtapaContrato o 'Todos'
+ * @param {number} [params.software] - ID del software
+ * @param {number} [params.page]
+ * @param {number} [params.page_size]
+ */
+export async function getContratos(params = {}) {
+  const qs = new URLSearchParams();
+  if (params.search)                            qs.set('search', params.search);
+  if (params.etapa && params.etapa !== 'Todos')  qs.set('etapa', params.etapa);
+  if (params.software)                           qs.set('software', params.software);
+  if (params.page)                               qs.set('page', params.page);
+  if (params.page_size)                          qs.set('page_size', params.page_size);
+  const query = qs.toString() ? `?${qs.toString()}` : '';
+  return request(`/contratos/${query}`);
+}
+
+/** KPIs para el StatsStrip de Contratos. */
+export async function getContratoStats() {
+  return request('/contratos/stats/');
+}
+
+/** Detalle completo de un contrato: historial, documentos, anexos, obligaciones SLA. */
+export async function getContratoDetail(id) {
+  return request(`/contratos/${id}/`);
+}
+
+/**
+ * Crea un nuevo contrato (etapa BORRADOR).
+ * @param {Object} data - { cliente_id, software_id, sla_id, tipo_contrato, monto,
+ *                           fecha_inicio, fecha_vencimiento?, frecuencia_facturacion?,
+ *                           dias_gracia_autorizados? }
+ */
+export async function createContrato(data) {
+  return request('/contratos/', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+/** Actualiza campos comerciales o transiciona de etapa (pasar `etapa` + `notas`). */
+export async function updateContrato(id, data) {
+  return request(`/contratos/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+/** Elimina un contrato (solo permitido en etapa Borrador). */
+export async function deleteContrato(id) {
+  return request(`/contratos/${id}/`, { method: 'DELETE' });
+}
+
+// ─── Catálogo: Software / SLA ─────────────────────────────────────────────────
+
+/** Lista de software del catálogo (para selects). */
+export async function getSoftwareList() {
+  return request('/catalogo/software/');
+}
+
+/** Lista de SLA del catálogo (para selects y obligaciones de contrato). */
+export async function getSLAs() {
+  return request('/slas/');
+}
+
+// ─── Generación de documentos ──────────────────────────────────────────────────
+
+/**
+ * Genera el documento base de un contrato desde su plantilla activa.
+ * @param {Object} data - { contrato_id, plantilla_id?, forzar? }
+ */
+export async function generarDocumentoContrato(data) {
+  return request('/plantillas/documentos/generar/', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
 /**
@@ -240,3 +323,105 @@ export async function importClientesExcel(file) {
 export async function getDashboard() {
   return request('/dashboard/');
 }
+
+// ─── Plantillas ───────────────────────────────────────────────────────────────
+
+/**
+ * Lista de plantillas de documentos registradas en el catálogo.
+ *
+ * @param {Object} params
+ * @param {string}  [params.tipo_contrato]  - 'RECURRENTE' | 'PERPETUO' | 'PRO_BONO' | 'INTERNO'
+ * @param {number}  [params.software]       - ID del software tenant (omitir = globales)
+ * @param {boolean} [params.activa]         - Filtrar por activa/inactiva
+ *
+ * @returns {Array<{id, nombre, tipo_contrato, software_id, version_codigo, activa, fecha_creacion}>}
+ */
+export async function getPlantillas(params = {}) {
+  const qs = new URLSearchParams();
+  if (params.tipo_contrato) qs.set('tipo_contrato', params.tipo_contrato);
+  if (params.software)      qs.set('software',      params.software);
+  if (params.activa !== undefined) qs.set('activa', params.activa ? 'true' : 'false');
+  const query = qs.toString() ? `?${qs.toString()}` : '';
+  return request(`/plantillas/plantillas/${query}`);
+}
+
+/**
+ * Detalle de una plantilla por ID.
+ * @param {number} id
+ * @returns {{ id, nombre, tipo_contrato, software_id, version_codigo, activa, fecha_creacion }}
+ */
+export async function getPlantillaDetail(id) {
+  return request(`/plantillas/plantillas/${id}/`);
+}
+
+/**
+ * Activa o desactiva una plantilla.
+ * @param {number}  id
+ * @param {boolean} activa
+ */
+export async function togglePlantillaActiva(id, activa) {
+  return request(`/plantillas/plantillas/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify({ activa }),
+  });
+}
+
+// ─── Cláusulas ───────────────────────────────────────────────────────────────
+
+/**
+ * Lista de cláusulas registradas en el catálogo.
+ *
+ * @returns {Array<{id, cat, name, risk, versions}>}
+ */
+export async function getClausulas() {
+  return request(`/plantillas/clausulas/`);
+}
+
+/**
+ * Crea una nueva cláusula y sus versiones.
+ */
+export async function createClausula(data) {
+  return request(`/plantillas/clausulas/`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Actualiza una cláusula existente.
+ */
+export async function updateClausula(id, data) {
+  return request(`/plantillas/clausulas/${id}/`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+// ─── Productos / Tarifas ──────────────────────────────────────────────────────
+
+/**
+ * Lista de productos del catálogo.
+ * @param {Object} params
+ * @param {string} params.search    - Texto libre (SKU o nombre)
+ * @param {string} params.categoria - 'Todos' | 'Software' | 'Servicio' | 'Soporte' | 'Formación'
+ * @returns {Array<{id, sku, name, desc, cat, price, currency, unit, status}>}
+ */
+export async function getProductos(params = {}) {
+  const qs = new URLSearchParams();
+  if (params.search)    qs.set('search',    params.search);
+  if (params.categoria && params.categoria !== 'Todos') qs.set('categoria', params.categoria);
+  const query = qs.toString() ? `?${qs.toString()}` : '';
+  return request(`/catalogo/productos/${query}`);
+}
+
+/**
+ * Crea un nuevo producto/tarifa en el catálogo.
+ * @param {Object} data - { sku, name, desc, cat, price, currency, unit, status }
+ */
+export async function createProducto(data) {
+  return request(`/catalogo/productos/`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+

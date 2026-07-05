@@ -165,29 +165,33 @@
 }
 
 .catalogo-search {
-  position: relative;
+  display: flex;
+  align-items: center;
   flex: 1;
   max-width: 280px;
+  background: #efede8;
+  border: 1px solid #d8d4cc;
+  border-radius: 5px;
+  padding: 0 9px;
+  box-sizing: border-box;
 }
 
 .catalogo-search svg {
-  position: absolute;
-  left: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  pointer-events: none;
+  flex-shrink: 0;
+  margin-right: 6px;
 }
 
 .catalogo-search input {
+  flex: 1;
   width: 100%;
-  padding: 6px 9px 6px 30px;
-  border: 1px solid #d8d4cc;
-  border-radius: 5px;
+  padding: 6px 0;
+  border: none;
+  background: transparent;
   font-size: 12px;
   color: #3b3631;
-  background: #efede8;
   font-family: 'Inter', system-ui, sans-serif;
   outline: none;
+  box-sizing: border-box;
 }
 
 .catalogo-search input::placeholder {
@@ -239,6 +243,7 @@
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 12px;
   flex: 1;
+  align-items: start;
 }
 
 .catalogo-card {
@@ -329,10 +334,32 @@
   font-weight: 600;
   cursor: pointer;
   font-family: 'Inter', system-ui, sans-serif;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
 }
 
 .catalogo-btn-use:hover {
-  background: rgba(37, 99, 235, 0.05);
+  background: rgba(37, 99, 235, 0.07);
+  border-color: rgba(37, 99, 235, 0.35);
+}
+
+.catalogo-icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 5px;
+  border-radius: 4px;
+  color: #b0aaa3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.catalogo-icon-btn:hover {
+  background: #efede8;
+  color: #5c574f;
 }
 
 /* CLÁUSULAS */
@@ -355,17 +382,13 @@
   overflow: hidden;
 }
 
-.catalogo-clausulas-sidebar .catalogo-search {
-  max-width: 100%;
-}
-
-.catalogo-clausulas-sidebar .catalogo-search {
+.catalogo-clausulas-sidebar-header {
   padding: 10px 14px;
   border-bottom: 1px solid #efede8;
 }
 
-.catalogo-clausulas-sidebar .catalogo-search svg {
-  left: 24px;
+.catalogo-clausulas-sidebar-header .catalogo-search {
+  max-width: 100%;
 }
 
 .catalogo-clausulas-cat {
@@ -820,3 +843,19 @@
     grid-template-columns: 80px 1fr 0.8fr;
   }
 }
+
+@keyframes dropIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
+@keyframes previewIn {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
