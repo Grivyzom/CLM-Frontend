@@ -76,12 +76,12 @@ function SelectField({ label, value, onChange, options, required }) {
   );
 }
 
-export default function EditClauseModal({ clause, onClose, onSuccess }) {
+export default function EditClauseModal({ clause, onClose, onSuccess, createForm, setCreateForm }) {
   const isEditing = !!clause;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const [formData, setFormData] = useState({
+  const [localFormData, setLocalFormData] = useState({
     name: '',
     cat: '',
     risk: 'Medio',
@@ -90,9 +90,12 @@ export default function EditClauseModal({ clause, onClose, onSuccess }) {
     ]
   });
 
+  const formData = isEditing ? localFormData : createForm;
+  const setFormData = isEditing ? setLocalFormData : setCreateForm;
+
   useEffect(() => {
     if (isEditing && clause) {
-      setFormData({
+      setLocalFormData({
         name: clause.name || '',
         cat: clause.cat || '',
         risk: clause.risk || 'Medio',
@@ -146,6 +149,16 @@ export default function EditClauseModal({ clause, onClose, onSuccess }) {
         await updateClausula(clause.id, formData);
       } else {
         await createClausula(formData);
+        if (setCreateForm) {
+          setCreateForm({
+            name: '',
+            cat: '',
+            risk: 'Medio',
+            versions: [
+              { label: 'Estándar', tag: 'Estándar', text: '' }
+            ]
+          });
+        }
       }
       onSuccess();
     } catch (err) {
