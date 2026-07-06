@@ -3,16 +3,18 @@ import { getDashboard } from '../api';
 
 const EMPTY = {
   kpis: {
+    mrr: { value: 0, variacion_pct: 0 },
     contratos_activos: { value: 0, nuevos_mes: 0 },
     clientes_activos: { value: 0, nuevos_mes: 0 },
-    ingresos_mes: { value: 0, variacion_pct: 0 },
-    tasa_retencion: { value: 0 },
-    por_vencer_7dias: { value: 0 },
-    servicios: { activos: 0, total: 0 },
+    renovaciones_30d: { value: 0, monto: 0 },
+    requieren_accion: { value: 0 },
+    sin_documento: { value: 0 },
   },
-  chart_area: { softwares: [], data: [] },
-  chart_bar: { softwares: [], data: [] },
+  mrr_series: { softwares: [], data: [] },
+  pipeline: [],
+  renovaciones: [],
   urgent_contracts: [],
+  actividad: [],
 };
 
 /**
@@ -28,7 +30,7 @@ export function useDashboard() {
     setError(null);
     try {
       const result = await getDashboard();
-      setData(result);
+      setData({ ...EMPTY, ...result, kpis: { ...EMPTY.kpis, ...(result.kpis || {}) } });
     } catch (err) {
       setError(err.message || 'Error al cargar el dashboard');
     } finally {
