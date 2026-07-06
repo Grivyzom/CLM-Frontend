@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect, useCallback, useId } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useId, useMemo } from 'react';
 import './Catalogo.css';
-import { getPlantillas, getClausulas, getProductos, createProducto, getClientes, getSLAs, createContrato, generarDocumentoContrato } from '../api';
+import { getPlantillas, getClausulas, getProductos, createProducto, getSoftwareList, updateProducto, deleteProducto, createPlantilla, getClientes, getSLAs, createContrato, generarDocumentoContrato } from '../api';
 import EditClauseModal from './EditClauseModal';
+import SortableHeader from '../components/ui/SortableHeader';
 
 const CONTEXTS = ['Administración Global', 'SoftTrack Pro v3', 'ContaLite v2.1'];
 
@@ -63,7 +64,7 @@ function getTagStyles(tipo) {
   return { tagColor: '#6d28d9', tagBg: '#f5f3ff' };
 }
 
-const PRODUCTO_CATEGORIAS = ['Software', 'Servicio', 'Soporte', 'Formación'];
+const PRODUCTO_CATEGORIAS = ['Bot', 'Agente', 'Script', 'Software', 'Auditoría', 'Consultoría'];
 
 function formatPrecio(price) {
   const n = Number(price);
@@ -530,20 +531,24 @@ Versión ${plantilla.version} · Categoría: ${plantilla.cat}
   );
 }
 
-// ─── Use Template Modal ──────────────────────────────────────────────────────
+
+// ─── Use Template Modal (wizard: cliente → configuración → creado) ──────────
 function UseTemplateModal({ plantilla, onClose }) {
   const [step, setStep] = useState(1);
-  const [selectedClient, setSelectedClient] = useState(null);
-  const [contractName, setContractName] = useState(`${plantilla.name} – `);
   const [clientSearch, setClientSearch] = useState('');
-  
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [contractName, setContractName] = useState(plantilla.name || '');
+  const [isCreating, setIsCreating] = useState(false);
   const [clientes, setClientes] = useState([]);
   const [slas, setSlas] = useState([]);
-  const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
-    getClientes({ page_size: 100 }).then(res => setClientes(res.results || []));
-    getSLAs().then(res => setSlas(res || []));
+    getClientes({ page_size: 200 })
+      .then((data) => setClientes(Array.isArray(data) ? data : data.results || []))
+      .catch(() => setClientes([]));
+    getSLAs()
+      .then((data) => setSlas(Array.isArray(data) ? data : []))
+      .catch(() => setSlas([]));
   }, []);
 
   useEffect(() => {
@@ -579,7 +584,7 @@ function UseTemplateModal({ plantilla, onClose }) {
 
       setStep(3);
     } catch (e) {
-      alert('Error creando contrato: ' + JSON.stringify(e));
+      alert('Error creando contrato: ' + (e.message || e));
     } finally {
       setIsCreating(false);
     }
@@ -809,10 +814,28 @@ function UseTemplateModal({ plantilla, onClose }) {
 }
 
 // ─── New Product Modal ───────────────────────────────────────────────────────
-const PRODUCTO_VACIO = { sku: '', name: '', desc: '', cat: 'Software', price: '', currency: 'USD', unit: '', status: 'Activo' };
+const PRODUCTO_VACIO = { name: '', desc: '', cat: 'Software', tipo_licencia: 'Comercial', price: '', currency: 'USD', unit: '', status: 'Activo', datos_adicionales: {} };
 
-function NewProductModal({ onClose, onCreated }) {
-  const [form, setForm] = useState(PRODUCTO_VACIO);
+function ProductModal({ onClose, onSaved, mode = 'create', product, createForm, setCreateForm }) {
+  const isView = mode === 'view';
+  const isEdit = mode === 'edit';
+  const isCreate = mode === 'create';
+
+  const [localForm, setLocalForm] = useState(() => {
+    if (product) {
+      return {
+        ...PRODUCTO_VACIO,
+        ...product,
+        tipo_licencia: product.tipo_licencia || 'Comercial',
+        datos_adicionales: product.datos_adicionales || {}
+      };
+    }
+    return PRODUCTO_VACIO;
+  });
+
+  const form = isCreate ? createForm : localForm;
+  const setForm = isCreate ? setCreateForm : setLocalForm;
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -824,18 +847,69 @@ function NewProductModal({ onClose, onCreated }) {
 
   const setField = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
 
-  const isValid = form.sku.trim() && form.name.trim() && form.price !== '' && Number(form.price) >= 0;
+  const setExtraField = (key, val) => {
+    setForm(prev => ({
+      ...prev,
+      datos_adicionales: {
+        ...(prev.datos_adicionales || {}),
+        [key]: val
+      }
+    }));
+  };
+
+  const validateDynamicFields = (cat, extra) => {
+    if (cat === 'Software') {
+      return !!extra.tipo_software;
+    }
+    if (cat === 'Agente') {
+      return !!extra.tipo_agente && !!extra.integracion_llm?.trim();
+    }
+    if (cat === 'Script') {
+      return !!extra.entorno_lenguaje && !!extra.proposito;
+    }
+    if (cat === 'Auditoría') {
+      return !!extra.enfoque;
+    }
+    if (cat === 'Consultoría') {
+      return !!extra.modalidad;
+    }
+    return true;
+  };
+
+  const isFreeLicense = form.tipo_licencia === 'Gratuito / OpenSource';
+
+  const isPriceValid = isFreeLicense || (
+    form.price !== '' && Number(form.price) >= 0 && form.currency.trim() && form.unit.trim()
+  );
+
+  const isDynamicValid = validateDynamicFields(form.cat, form.datos_adicionales || {});
+
+  const isValid = form.name.trim() && isPriceValid && isDynamicValid;
 
   const handleSubmit = async () => {
+    if (isView) return;
     if (!isValid || saving) return;
     setSaving(true);
     setError(null);
     try {
-      const producto = await createProducto(form);
-      onCreated(producto);
+      const payload = {
+        ...form,
+        price: isFreeLicense ? '0' : form.price,
+        currency: isFreeLicense ? 'N/A' : form.currency,
+        unit: isFreeLicense ? 'No aplica' : form.unit,
+      };
+
+      if (isCreate) {
+        const nuevo = await createProducto(payload);
+        onSaved(nuevo, 'create');
+        if (setCreateForm) setCreateForm(PRODUCTO_VACIO);
+      } else {
+        const editado = await updateProducto(product.id, payload);
+        onSaved(editado, 'edit');
+      }
       onClose();
     } catch (err) {
-      setError(err.message || 'Error al crear el producto');
+      setError(err.message || 'Error al guardar el producto');
     } finally {
       setSaving(false);
     }
@@ -846,8 +920,15 @@ function NewProductModal({ onClose, onCreated }) {
     padding: '8px 10px', border: '1px solid #d8d4cc',
     borderRadius: 5, fontSize: 12, fontFamily: 'inherit',
     outline: 'none', color: '#3b3631',
+    backgroundColor: isView ? '#f4f3ef' : '#fff',
   };
   const labelStyle = { display: 'block', margin: '0 0 4px', fontSize: 11, fontWeight: 700, color: '#7c7670', textTransform: 'uppercase', letterSpacing: 0.5 };
+
+  let modalTitle = 'Nuevo Ítem — Producto / Tarifa';
+  if (isEdit) modalTitle = 'Editar Ítem — Producto / Tarifa';
+  if (isView) modalTitle = 'Detalle de Producto / Tarifa';
+
+  const hasDynamicPanel = ['Software', 'Agente', 'Script', 'Auditoría', 'Consultoría'].includes(form.cat);
 
   return (
     <div
@@ -862,8 +943,8 @@ function NewProductModal({ onClose, onCreated }) {
         onClick={e => e.stopPropagation()}
         style={{
           background: '#fff', borderRadius: 10, boxShadow: '0 24px 80px rgba(0,0,0,.3)',
-          width: '100%', maxWidth: 520, display: 'flex', flexDirection: 'column',
-          overflow: 'hidden', animation: 'previewIn 0.2s ease-out'
+          width: '100%', maxWidth: hasDynamicPanel ? 860 : 520, display: 'flex', flexDirection: 'column',
+          overflow: 'hidden', transition: 'max-width 0.25s ease-in-out', animation: 'previewIn 0.2s ease-out'
         }}
       >
         {/* Header */}
@@ -872,7 +953,7 @@ function NewProductModal({ onClose, onCreated }) {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           background: '#efede8', flexShrink: 0
         }}>
-          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#3b3631' }}>Nuevo Ítem — Producto / Tarifa</p>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#3b3631' }}>{modalTitle}</p>
           <button
             onClick={onClose}
             style={{
@@ -886,58 +967,528 @@ function NewProductModal({ onClose, onCreated }) {
         </div>
 
         {/* Body */}
-        <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14, maxHeight: '70vh', overflowY: 'auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12 }}>
-            <div>
-              <label style={labelStyle}>SKU</label>
-              <input style={inputStyle} value={form.sku} onChange={e => setField('sku', e.target.value)} placeholder="ST-PRO-A" autoFocus />
+        <div style={{ display: 'flex', minHeight: 380, maxHeight: '70vh', overflow: 'hidden' }}>
+          {/* Left Column: General Data */}
+          <div style={{ flex: 1, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12 }}>
+              <div>
+                <label style={labelStyle}>SKU</label>
+                <input
+                  style={{ ...inputStyle, backgroundColor: '#f4f3ef', color: '#7c7670' }}
+                  value={isCreate ? 'Auto-generado' : form.sku}
+                  disabled={true}
+                  placeholder="Auto-generado"
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Nombre</label>
+                <input style={inputStyle} value={form.name} onChange={e => setField('name', e.target.value)} disabled={isView} placeholder="SoftTrack Pro v3 – Anual" autoFocus={isCreate} />
+              </div>
             </div>
+
             <div>
-              <label style={labelStyle}>Nombre</label>
-              <input style={inputStyle} value={form.name} onChange={e => setField('name', e.target.value)} placeholder="SoftTrack Pro v3 – Anual" />
+              <label style={labelStyle}>Descripción</label>
+              <textarea
+                style={{ ...inputStyle, resize: 'vertical', minHeight: 56, fontFamily: 'inherit' }}
+                value={form.desc}
+                onChange={e => setField('desc', e.target.value)}
+                disabled={isView}
+                placeholder="Licencia anual por usuario, incluye soporte 8×5"
+              />
             </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={labelStyle}>Categoría</label>
+                <select style={inputStyle} value={form.cat} onChange={e => setField('cat', e.target.value)} disabled={isView}>
+                  {PRODUCTO_CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Tipo de Licencia</label>
+                <select
+                  style={inputStyle}
+                  value={form.tipo_licencia || 'Comercial'}
+                  onChange={e => {
+                    const type = e.target.value;
+                    const isFree = type === 'Gratuito / OpenSource';
+                    setForm(prev => ({
+                      ...prev,
+                      tipo_licencia: type,
+                      price: isFree ? '0' : prev.price === '0' ? '' : prev.price,
+                      currency: isFree ? 'N/A' : prev.currency === 'N/A' ? 'USD' : prev.currency,
+                      unit: isFree ? 'No aplica' : prev.unit === 'No aplica' ? '' : prev.unit
+                    }));
+                  }}
+                  disabled={isView}
+                >
+                  <option value="Comercial">Comercial</option>
+                  <option value="Gratuito / OpenSource">Gratuito / OpenSource</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={labelStyle}>Precio</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  style={{ ...inputStyle, backgroundColor: (isView || isFreeLicense) ? '#f4f3ef' : '#fff' }}
+                  value={form.price}
+                  onChange={e => setField('price', e.target.value)}
+                  disabled={isView || isFreeLicense}
+                  placeholder={isFreeLicense ? '0' : '1200'}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Moneda</label>
+                <input
+                  style={{ ...inputStyle, backgroundColor: (isView || isFreeLicense) ? '#f4f3ef' : '#fff' }}
+                  value={form.currency}
+                  onChange={e => setField('currency', e.target.value.toUpperCase())}
+                  disabled={isView || isFreeLicense}
+                  placeholder={isFreeLicense ? 'N/A' : 'USD'}
+                  maxLength={8}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Unidad</label>
+                <input
+                  style={{ ...inputStyle, backgroundColor: (isView || isFreeLicense) ? '#f4f3ef' : '#fff' }}
+                  value={form.unit}
+                  onChange={e => setField('unit', e.target.value)}
+                  disabled={isView || isFreeLicense}
+                  placeholder={isFreeLicense ? 'No aplica' : '/usuario/año'}
+                />
+              </div>
+            </div>
+
+            {error && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#dc2626', fontSize: 12 }}>
+                <Icon d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01" color="#dc2626" w={14} />
+                {error}
+              </div>
+            )}
           </div>
 
+          {/* Right Column: Dynamic Side Panel "Más Información" */}
+          {hasDynamicPanel && (
+            <div style={{
+              width: 320, borderLeft: '1px solid #e5e2da', background: '#fafaf9',
+              padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto'
+            }}>
+              <div>
+                <h4 style={{ margin: '0 0 4px 0', fontSize: 13, fontWeight: 700, color: '#3b3631' }}>Más Información</h4>
+                <p style={{ margin: 0, fontSize: 11, color: '#7c7670' }}>Campos requeridos para la categoría <strong>{form.cat}</strong>.</p>
+              </div>
+
+              <div style={{ width: '100%', height: '1px', background: '#e5e2da', margin: '4px 0' }} />
+
+              {form.cat === 'Software' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div>
+                    <label style={labelStyle}>Tipo de Software *</label>
+                    <select
+                      style={inputStyle}
+                      value={form.datos_adicionales?.tipo_software || ''}
+                      onChange={e => setExtraField('tipo_software', e.target.value)}
+                      disabled={isView}
+                    >
+                      <option value="">Selecciona una opción</option>
+                      <option value="App Android">App Android</option>
+                      <option value="App Multiplataforma">App Multiplataforma</option>
+                      <option value="App Web">App Web</option>
+                      <option value="Software Nativo PC">Software Nativo PC</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {form.cat === 'Agente' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div>
+                    <label style={labelStyle}>Tipo de Agente *</label>
+                    <select
+                      style={inputStyle}
+                      value={form.datos_adicionales?.tipo_agente || ''}
+                      onChange={e => setExtraField('tipo_agente', e.target.value)}
+                      disabled={isView}
+                    >
+                      <option value="">Selecciona una opción</option>
+                      <option value="Autónomo">Autónomo</option>
+                      <option value="Semiautónomo">Semiautónomo</option>
+                      <option value="Reactivo / Reglas">Reactivo / Reglas</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Integración / LLM *</label>
+                    <input
+                      style={inputStyle}
+                      value={form.datos_adicionales?.integracion_llm || ''}
+                      onChange={e => setExtraField('integracion_llm', e.target.value)}
+                      disabled={isView}
+                      placeholder="e.g. OpenAI GPT-4, Claude 3.5"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {form.cat === 'Script' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div>
+                    <label style={labelStyle}>Entorno / Lenguaje *</label>
+                    <select
+                      style={inputStyle}
+                      value={form.datos_adicionales?.entorno_lenguaje || ''}
+                      onChange={e => setExtraField('entorno_lenguaje', e.target.value)}
+                      disabled={isView}
+                    >
+                      <option value="">Selecciona una opción</option>
+                      <option value="Bash/Shell">Bash/Shell</option>
+                      <option value="Python">Python</option>
+                      <option value="Node.js">Node.js</option>
+                      <option value="PowerShell">PowerShell</option>
+                      <option value="Go/CLI">Go/CLI</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Propósito *</label>
+                    <select
+                      style={inputStyle}
+                      value={form.datos_adicionales?.proposito || ''}
+                      onChange={e => setExtraField('proposito', e.target.value)}
+                      disabled={isView}
+                    >
+                      <option value="">Selecciona una opción</option>
+                      <option value="Automatización">Automatización</option>
+                      <option value="Datos/ETL">Datos/ETL</option>
+                      <option value="DevOps">DevOps</option>
+                      <option value="Scraping">Scraping</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {form.cat === 'Auditoría' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div>
+                    <label style={labelStyle}>Enfoque *</label>
+                    <select
+                      style={inputStyle}
+                      value={form.datos_adicionales?.enfoque || ''}
+                      onChange={e => setExtraField('enfoque', e.target.value)}
+                      disabled={isView}
+                    >
+                      <option value="">Selecciona una opción</option>
+                      <option value="Seguridad/Pentesting">Seguridad/Pentesting</option>
+                      <option value="Calidad de Código/QA">Calidad de Código/QA</option>
+                      <option value="Rendimiento">Rendimiento</option>
+                      <option value="Cumplimiento Normativo">Cumplimiento Normativo</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {form.cat === 'Consultoría' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div>
+                    <label style={labelStyle}>Modalidad *</label>
+                    <select
+                      style={inputStyle}
+                      value={form.datos_adicionales?.modalidad || ''}
+                      onChange={e => setExtraField('modalidad', e.target.value)}
+                      disabled={isView}
+                    >
+                      <option value="">Selecciona una opción</option>
+                      <option value="Por Hora">Por Hora</option>
+                      <option value="Por Proyecto">Por Proyecto</option>
+                      <option value="Asesoría Continua">Asesoría Continua</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: '12px 20px', borderTop: '1px solid #e5e2da',
+          display: 'flex', justifyContent: 'flex-end', gap: 8, background: '#fafaf9', flexShrink: 0
+        }}>
+          <button
+            onClick={onClose}
+            style={{ padding: '7px 14px', borderRadius: 5, border: '1px solid #d8d4cc', background: '#efede8', color: '#3b3631', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+          >{isView ? 'Cerrar' : 'Cancelar'}</button>
+          {!isView && (
+            <button
+              disabled={!isValid || saving}
+              onClick={handleSubmit}
+              style={{
+                padding: '7px 16px', borderRadius: 5, border: 'none',
+                background: (!isValid || saving) ? '#93c5fd' : '#2563eb',
+                color: '#fff', fontSize: 12, fontWeight: 600,
+                cursor: (!isValid || saving) ? 'not-allowed' : 'pointer', fontFamily: 'inherit'
+              }}
+            >{saving ? 'Guardando…' : isCreate ? 'Crear producto ✓' : 'Guardar cambios ✓'}</button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── New Template Modal ─────────────────────────────────────────────────────
+const TEMPLATE_VACIO = { nombre: '', tipo_contrato: 'PLAZO_FIJO', version_codigo: '', software_id: '', modo_origen: 'archivo', archivo_docx: null };
+
+function NewTemplateModal({ onClose, onSuccess, createForm, setCreateForm, softwareList }) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const [searchSoft, setSearchSoft] = useState('');
+  const [showSoft, setShowSoft] = useState(false);
+  const filteredSoft = (softwareList || []).filter(s => (s.name || s.nombre || '').toLowerCase().includes(searchSoft.toLowerCase()));
+
+  const setField = (field, value) => setCreateForm(prev => ({ ...prev, [field]: value }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!createForm.nombre || !createForm.tipo_contrato || !createForm.version_codigo || !createForm.software_id) {
+      setError('Por favor, completa todos los campos obligatorios.');
+      return;
+    }
+    if (createForm.modo_origen === 'archivo' && !createForm.archivo_docx) {
+      setError('Debes subir un archivo .docx para el modo "Documento propio".');
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    try {
+      const fd = new FormData();
+      fd.append('nombre', createForm.nombre);
+      fd.append('tipo_contrato', createForm.tipo_contrato);
+      fd.append('version_codigo', createForm.version_codigo);
+      fd.append('software', createForm.software_id);
+      fd.append('modo_origen', createForm.modo_origen);
+      if (createForm.archivo_docx) fd.append('archivo_docx', createForm.archivo_docx);
+
+      await createPlantilla(fd);
+      setCreateForm(TEMPLATE_VACIO);
+      onSuccess();
+    } catch (err) {
+      setError(err.message || 'Error al guardar la plantilla');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputStyle = {
+    width: '100%', boxSizing: 'border-box',
+    padding: '8px 10px', border: '1px solid #d8d4cc',
+    borderRadius: 5, fontSize: 12, fontFamily: 'inherit',
+    outline: 'none', color: '#3b3631', backgroundColor: '#fff',
+  };
+  const labelStyle = { display: 'block', margin: '0 0 4px', fontSize: 11, fontWeight: 700, color: '#7c7670', textTransform: 'uppercase', letterSpacing: 0.5 };
+  const modeBtn = (active) => ({
+    flex: 1, padding: '8px 12px', borderRadius: 5,
+    border: active ? '2px solid #2563eb' : '1px solid #d8d4cc',
+    background: active ? '#eff6ff' : '#fafaf9',
+    color: active ? '#2563eb' : '#7c7670',
+    fontSize: 11, fontWeight: 600, cursor: 'pointer',
+    fontFamily: 'inherit', transition: 'all 0.15s',
+  });
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1100,
+        background: 'rgba(10,10,10,0.55)', backdropFilter: 'blur(4px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24
+      }}
+    >
+      <form
+        onClick={e => e.stopPropagation()}
+        onSubmit={handleSubmit}
+        style={{
+          background: '#fff', borderRadius: 10, boxShadow: '0 24px 80px rgba(0,0,0,.3)',
+          width: '100%', maxWidth: 520, display: 'flex', flexDirection: 'column',
+          overflow: 'hidden', animation: 'previewIn 0.2s ease-out'
+        }}
+      >
+        {/* Header */}
+        <div style={{
+          padding: '14px 20px', borderBottom: '1px solid #e5e2da',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: '#efede8', flexShrink: 0
+        }}>
           <div>
-            <label style={labelStyle}>Descripción</label>
-            <textarea
-              style={{ ...inputStyle, resize: 'vertical', minHeight: 56, fontFamily: 'inherit' }}
-              value={form.desc}
-              onChange={e => setField('desc', e.target.value)}
-              placeholder="Licencia anual por usuario, incluye soporte 8×5"
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#3b3631' }}>Nueva Plantilla de Contrato</p>
+            <p style={{ margin: '2px 0 0', fontSize: 10, color: '#7c7670' }}>El software seleccionado determina qué plantilla se usa al crear contratos</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              width: 28, height: 28, border: 'none', background: 'none', cursor: 'pointer',
+              borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#7c7670', fontSize: 18
+            }}
+          >×</button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+          {/* Nombre */}
+          <div>
+            <label style={labelStyle}>Nombre de Plantilla *</label>
+            <input
+              style={inputStyle}
+              value={createForm.nombre}
+              onChange={e => setField('nombre', e.target.value)}
+              placeholder="Ej: Contrato de Prestación de Servicios CPS"
+              required
             />
           </div>
 
+          {/* Software + Tipo */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div>
-              <label style={labelStyle}>Categoría</label>
-              <select style={inputStyle} value={form.cat} onChange={e => setField('cat', e.target.value)}>
-                {PRODUCTO_CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+            <div style={{ position: 'relative' }}>
+              <label style={labelStyle}>Software / Producto *</label>
+              <div 
+                onClick={() => setShowSoft(!showSoft)}
+                style={{ ...inputStyle, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              >
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {createForm.software_id ? ((softwareList || []).find(s => s.id == createForm.software_id)?.name || (softwareList || []).find(s => s.id == createForm.software_id)?.nombre) : 'Buscar producto...'}
+                </span>
+                <Icon d="M6 9l6 6 6-6" w={12} color="#7c7670"/>
+              </div>
+              {showSoft && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #d8d4cc', borderRadius: 5, marginTop: 4, zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                  <input 
+                    autoFocus
+                    placeholder="Buscar..."
+                    value={searchSoft}
+                    onChange={e => setSearchSoft(e.target.value)}
+                    style={{ width: '100%', padding: '8px 10px', border: 'none', borderBottom: '1px solid #e5e2da', boxSizing: 'border-box', outline: 'none', fontSize: 12, fontFamily: 'inherit', color: '#3b3631' }}
+                  />
+                  <div style={{ maxHeight: 150, overflowY: 'auto' }}>
+                    {filteredSoft.length > 0 ? filteredSoft.map(s => (
+                      <div 
+                        key={s.id} 
+                        onClick={() => { setField('software_id', s.id); setShowSoft(false); setSearchSoft(''); }}
+                        style={{ padding: '8px 10px', fontSize: 12, cursor: 'pointer', color: '#3b3631' }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#f4f4f5'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        {s.name || s.nombre}
+                      </div>
+                    )) : <div style={{ padding: '8px 10px', fontSize: 12, color: '#7c7670' }}>No hay resultados</div>}
+                  </div>
+                </div>
+              )}
             </div>
             <div>
-              <label style={labelStyle}>Estado</label>
-              <select style={inputStyle} value={form.status} onChange={e => setField('status', e.target.value)}>
-                <option value="Activo">Activo</option>
-                <option value="Descontinuado">Descontinuado</option>
+              <label style={labelStyle}>Tipo de Contrato *</label>
+              <select
+                style={inputStyle}
+                value={createForm.tipo_contrato}
+                onChange={e => setField('tipo_contrato', e.target.value)}
+                required
+              >
+                <option value="PLAZO_FIJO">Plazo Fijo</option>
+                <option value="INDEFINIDO">Indefinido</option>
+                <option value="OBRA_FAENA">Por Obra o Faena</option>
+                <option value="HONORARIOS">Honorarios / Prestación de Servicios</option>
+                <option value="PART_TIME">Part-Time</option>
               </select>
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-            <div>
-              <label style={labelStyle}>Precio</label>
-              <input type="number" min="0" step="0.01" style={inputStyle} value={form.price} onChange={e => setField('price', e.target.value)} placeholder="1200" />
-            </div>
-            <div>
-              <label style={labelStyle}>Moneda</label>
-              <input style={inputStyle} value={form.currency} onChange={e => setField('currency', e.target.value.toUpperCase())} placeholder="USD" maxLength={8} />
-            </div>
-            <div>
-              <label style={labelStyle}>Unidad</label>
-              <input style={inputStyle} value={form.unit} onChange={e => setField('unit', e.target.value)} placeholder="/usuario/año" />
+          {/* Version */}
+          <div>
+            <label style={labelStyle}>Versión / Código *</label>
+            <input
+              style={inputStyle}
+              value={createForm.version_codigo}
+              onChange={e => setField('version_codigo', e.target.value)}
+              placeholder="Ej: v1.0"
+              required
+            />
+          </div>
+
+          {/* Modo origen */}
+          <div>
+            <label style={labelStyle}>Modo de generación del documento *</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                style={modeBtn(createForm.modo_origen === 'archivo')}
+                onClick={() => setField('modo_origen', 'archivo')}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <Icon d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8" w={14} color={createForm.modo_origen === 'archivo' ? '#2563eb' : '#7c7670'} />
+                  Subir documento (.docx)
+                </span>
+              </button>
+              <button
+                type="button"
+                style={modeBtn(createForm.modo_origen === 'clausulas')}
+                onClick={() => setField('modo_origen', 'clausulas')}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <Icon d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z M3.27 6.96L12 12.01l8.73-5.05 M12 22.08V12" w={14} color={createForm.modo_origen === 'clausulas' ? '#2563eb' : '#7c7670'} />
+                  Generar con cláusulas
+                </span>
+              </button>
             </div>
           </div>
+
+          {/* Archivo — solo si modo = archivo */}
+          {createForm.modo_origen === 'archivo' && (
+            <div style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              padding: '24px', border: '1px dashed #d8d4cc', borderRadius: 6, background: '#fafaf9'
+            }}>
+              <label style={{ ...labelStyle, textAlign: 'center', marginBottom: 12 }}>Archivo Word (.docx) *</label>
+              <label style={{
+                cursor: 'pointer', padding: '8px 16px', background: '#fff', border: '1px solid #d8d4cc',
+                borderRadius: 5, fontSize: 12, fontWeight: 600, color: '#3b3631', fontFamily: 'inherit',
+                transition: 'background 0.15s', display: 'flex', alignItems: 'center', gap: 6
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = '#f4f4f5'}
+              onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+              >
+                <Icon d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M17 8l-5-5-5 5 M12 3v12" w={14} color="#7c7670" />
+                Seleccionar archivo
+                <input
+                  type="file"
+                  accept=".docx"
+                  onChange={e => setField('archivo_docx', e.target.files[0])}
+                  style={{ display: 'none' }}
+                />
+              </label>
+              {createForm.archivo_docx && (
+                <p style={{ margin: '12px 0 0 0', fontSize: 11, color: '#16a34a', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Icon d="M20 6L9 17l-5-5" w={12} color="#16a34a" /> {createForm.archivo_docx.name} ({Math.round(createForm.archivo_docx.size / 1024)} KB)
+                </p>
+              )}
+            </div>
+          )}
+
+          {createForm.modo_origen === 'clausulas' && (
+            <div style={{ padding: '10px 12px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Icon d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M12 16v-4 M12 8h.01" w={14} color="#15803d" />
+              <p style={{ margin: 0, fontSize: 11, color: '#15803d', fontWeight: 600 }}>
+                El documento se generará automáticamente con las cláusulas configuradas.
+              </p>
+            </div>
+          )}
 
           {error && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#dc2626', fontSize: 12 }}>
@@ -953,24 +1504,26 @@ function NewProductModal({ onClose, onCreated }) {
           display: 'flex', justifyContent: 'flex-end', gap: 8, background: '#fafaf9', flexShrink: 0
         }}>
           <button
+            type="button"
             onClick={onClose}
             style={{ padding: '7px 14px', borderRadius: 5, border: '1px solid #d8d4cc', background: '#efede8', color: '#3b3631', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
           >Cancelar</button>
           <button
-            disabled={!isValid || saving}
-            onClick={handleSubmit}
+            type="submit"
+            disabled={saving}
             style={{
               padding: '7px 16px', borderRadius: 5, border: 'none',
-              background: (!isValid || saving) ? '#93c5fd' : '#2563eb',
+              background: saving ? '#93c5fd' : '#2563eb',
               color: '#fff', fontSize: 12, fontWeight: 600,
-              cursor: (!isValid || saving) ? 'not-allowed' : 'pointer', fontFamily: 'inherit'
+              cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'inherit'
             }}
-          >{saving ? 'Guardando…' : 'Crear producto ✓'}</button>
+          >{saving ? 'Subiendo…' : 'Crear plantilla ✓'}</button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }
+
 
 export default function Catalogo() {
   const [ctx, setCtx] = useState(0);
@@ -984,6 +1537,19 @@ export default function Catalogo() {
 
   const [importOpen, setImportOpen] = useState(false);
   const [newTemplateOpen, setNewTemplateOpen] = useState(false);
+
+  // Cache state for creation modals
+  const [productFormCache, setProductFormCache] = useState(PRODUCTO_VACIO);
+  const [clauseFormCache, setClauseFormCache] = useState({
+    name: '',
+    cat: '',
+    risk: 'Medio',
+    versions: [
+      { label: 'Estándar', tag: 'Estándar', text: '' }
+    ]
+  });
+  const [templateFormCache, setTemplateFormCache] = useState(TEMPLATE_VACIO);
+  const [isNewTemplateModalOpen, setIsNewTemplateModalOpen] = useState(false);
   const [contextMenuTarget, setContextMenuTarget] = useState(null);
   const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
   const [filterOpen, setFilterOpen] = useState(false);
@@ -1013,6 +1579,12 @@ export default function Catalogo() {
   useEffect(() => {
     fetchPlantillasData();
   }, [fetchPlantillasData]);
+
+  // ── Software list (para el modal de nueva plantilla) ────────────────────────────────
+  const [softwareListCatalogo, setSoftwareListCatalogo] = useState([]);
+  useEffect(() => {
+    getSoftwareList().then(setSoftwareListCatalogo).catch(() => setSoftwareListCatalogo([]));
+  }, []);
 
   // ── Carga de cláusulas desde la API ─────────────────────────────────────────
   const [apiClausulas, setApiClausulas] = useState([]);
@@ -1053,7 +1625,6 @@ export default function Catalogo() {
   const [loadingProductos, setLoadingProductos] = useState(true);
   const [errorProductos, setErrorProductos] = useState(null);
   const [productoFilters, setProductoFilters] = useState({ search: '', categoria: 'Todos' });
-  const [newProductOpen, setNewProductOpen] = useState(false);
 
   const fetchProductosData = useCallback(() => {
     setLoadingProductos(true);
@@ -1072,6 +1643,74 @@ export default function Catalogo() {
   useEffect(() => {
     fetchProductosData();
   }, [fetchProductosData]);
+
+  const [productModalOpen, setProductModalOpen] = useState(false);
+  const [productModalMode, setProductModalMode] = useState('create');
+  const [selectedProduct, setSelectedProduct] = useState(null);
+
+  const handleProductModalSaved = (producto, mode) => {
+    if (mode === 'create') {
+      setApiProductos(prev => [...prev, producto]);
+    } else {
+      setApiProductos(prev => prev.map(p => p.id === producto.id ? producto : p));
+    }
+  };
+
+  const handleDeleteProduct = async (id) => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar este producto/tarifa?')) return;
+    try {
+      await deleteProducto(id);
+      setApiProductos(prev => prev.filter(p => p.id !== id));
+    } catch (err) {
+      alert(err.message || 'Error al eliminar el producto');
+    }
+  };
+
+  const [productoSort, setProductoSort] = useState({ key: '', direction: '' });
+
+  const filteredAndSortedProductos = useMemo(() => {
+    let items = apiProductos.filter(p => {
+      if (productoFilters.categoria !== 'Todos' && p.cat !== productoFilters.categoria) return false;
+      if (productoFilters.search && !p.name.toLowerCase().includes(productoFilters.search.toLowerCase()) && !p.sku.toLowerCase().includes(productoFilters.search.toLowerCase())) return false;
+      return true;
+    });
+
+    if (productoSort.key) {
+      const isAsc = productoSort.direction === 'asc';
+      items.sort((a, b) => {
+        let valA = a[productoSort.key];
+        let valB = b[productoSort.key];
+
+        if (productoSort.key === 'price') {
+          valA = parseFloat(valA) || 0;
+          valB = parseFloat(valB) || 0;
+        } else {
+          valA = String(valA || '').toLowerCase();
+          valB = String(valB || '').toLowerCase();
+        }
+
+        if (valA < valB) return isAsc ? -1 : 1;
+        if (valA > valB) return isAsc ? 1 : -1;
+        return 0;
+      });
+    }
+    return items;
+  }, [apiProductos, productoFilters, productoSort]);
+
+  const handleProductoSort = (nextOrdering) => {
+    if (!nextOrdering) {
+      setProductoSort({ key: '', direction: '' });
+    } else if (nextOrdering.startsWith('-')) {
+      setProductoSort({ key: nextOrdering.slice(1), direction: 'desc' });
+    } else {
+      setProductoSort({ key: nextOrdering, direction: 'asc' });
+    }
+  };
+
+  const getOrderingValue = () => {
+    if (!productoSort.key) return '';
+    return productoSort.direction === 'desc' ? `-${productoSort.key}` : productoSort.key;
+  };
 
   const updateFilter = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -1222,7 +1861,10 @@ export default function Catalogo() {
                       {
                         label: 'Crear desde cero',
                         icon: <Icon d={['M12 5v14', 'M5 12h14']} color="#7c7670" w={14} />,
-                        onClick: () => console.log('Crear desde cero'),
+                        onClick: () => {
+                          setNewTemplateOpen(false);
+                          setIsNewTemplateModalOpen(true);
+                        },
                       },
                       {
                         label: 'Generar con IA (Enfoque AI)',
@@ -1316,11 +1958,16 @@ export default function Catalogo() {
                       >
                         <Icon d={['M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z','M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z']} w={13} color="#7c7670" />
                       </button>
-                      {/* Use */}
-                      <button
-                        className="catalogo-btn-use"
-                        onClick={e => { e.stopPropagation(); setUseTemplate(p); }}
-                      >Usar →</button>
+                      {/* Software tag */}
+                      {p._raw?.software_nombre && (
+                        <span style={{
+                          fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                          background: '#eff6ff', color: '#2563eb', fontFamily: "'JetBrains Mono',monospace",
+                          maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }} title={p._raw.software_nombre}>
+                          {p._raw.software_nombre}
+                        </span>
+                      )}
                       {/* Three dots */}
                       <button
                         title="Más opciones"
@@ -1481,7 +2128,7 @@ export default function Catalogo() {
               >
                 {['Todos', ...PRODUCTO_CATEGORIAS].map(c => <option key={c} value={c}>{c}</option>)}
               </select>
-              <button className="catalogo-btn-primary" onClick={() => setNewProductOpen(true)}>
+              <button className="catalogo-btn-primary" onClick={() => { setSelectedProduct(null); setProductModalMode('create'); setProductModalOpen(true); }}>
                 <Icon d={['M12 5v14', 'M5 12h14']} color="#fff" w={13} />
                 Agregar Ítem
               </button>
@@ -1489,9 +2136,49 @@ export default function Catalogo() {
 
             <div className="catalogo-productos-table">
               <div className="catalogo-productos-header">
-                {['SKU', 'Nombre', 'Descripción', 'Categoría', 'Precio', 'Moneda', 'Estado'].map(col => (
-                  <span key={col}>{col}</span>
-                ))}
+                <SortableHeader
+                  className="sortable"
+                  label="SKU"
+                  field="sku"
+                  ordering={getOrderingValue()}
+                  onSort={handleProductoSort}
+                />
+                <SortableHeader
+                  className="sortable"
+                  label="Nombre"
+                  field="name"
+                  ordering={getOrderingValue()}
+                  onSort={handleProductoSort}
+                />
+                <SortableHeader
+                  className="sortable"
+                  label="Descripción"
+                  field="desc"
+                  ordering={getOrderingValue()}
+                  onSort={handleProductoSort}
+                />
+                <SortableHeader
+                  className="sortable"
+                  label="Categoría"
+                  field="cat"
+                  ordering={getOrderingValue()}
+                  onSort={handleProductoSort}
+                />
+                <SortableHeader
+                  className="sortable"
+                  label="Precio"
+                  field="price"
+                  ordering={getOrderingValue()}
+                  onSort={handleProductoSort}
+                />
+                <SortableHeader
+                  className="sortable"
+                  label="Moneda"
+                  field="currency"
+                  ordering={getOrderingValue()}
+                  onSort={handleProductoSort}
+                />
+                <span>Acciones</span>
               </div>
 
               {loadingProductos && (
@@ -1512,11 +2199,7 @@ export default function Catalogo() {
                 </div>
               )}
 
-              {!loadingProductos && !errorProductos && apiProductos.filter(p => {
-                if (productoFilters.categoria !== 'Todos' && p.cat !== productoFilters.categoria) return false;
-                if (productoFilters.search && !p.name.toLowerCase().includes(productoFilters.search.toLowerCase()) && !p.sku.toLowerCase().includes(productoFilters.search.toLowerCase())) return false;
-                return true;
-              }).length === 0 && (
+              {!loadingProductos && !errorProductos && filteredAndSortedProductos.length === 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '48px 0', color: '#b0aaa3' }}>
                   <Icon d={['M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z', 'M3 6h18', 'M16 10a4 4 0 0 1-8 0']} w={40} color="#d8d4cc" />
                   <span style={{ fontSize: 13, fontWeight: 600, color: '#7c7670' }}>No hay productos en el catálogo</span>
@@ -1524,29 +2207,96 @@ export default function Catalogo() {
                 </div>
               )}
 
-              {!loadingProductos && !errorProductos && apiProductos.filter(p => {
-                if (productoFilters.categoria !== 'Todos' && p.cat !== productoFilters.categoria) return false;
-                if (productoFilters.search && !p.name.toLowerCase().includes(productoFilters.search.toLowerCase()) && !p.sku.toLowerCase().includes(productoFilters.search.toLowerCase())) return false;
-                return true;
-              }).map((p, i) => {
-                const catColors = { 'Software': '#2563eb', 'Servicio': '#7c3aed', 'Soporte': '#0891b2', 'Formación': '#059669' };
-                const discontinued = p.status === 'Descontinuado';
+              {!loadingProductos && !errorProductos && filteredAndSortedProductos.map((p, i) => {
+                const catColors = { 
+                  'Bot': '#0891b2', 
+                  'Agente': '#7c3aed', 
+                  'Script': '#059669', 
+                  'Software': '#2563eb', 
+                  'Auditoría': '#dc2626', 
+                  'Consultoría': '#d97706' 
+                };
                 return (
-                  <div key={p.id ?? p.sku + i} className={`catalogo-productos-row ${discontinued ? 'discontinued' : ''}`}>
+                  <div key={p.id ?? p.sku + i} className="catalogo-productos-row">
                     <span style={{ fontFamily: "'JetBrains Mono','Courier New',monospace", color: '#2563eb', fontWeight: 600 }}>{p.sku}</span>
                     <span style={{ fontWeight: 600 }}>{p.name}</span>
-                    <span style={{ color: '#7c7670', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.desc}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                      <span style={{ color: '#7c7670', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.desc || <span style={{ color: '#b0aaa3', fontStyle: 'italic' }}>Sin descripción</span>}</span>
+                      {p.datos_adicionales && Object.keys(p.datos_adicionales).length > 0 && (
+                        <div style={{ display: 'flex', gap: 6, marginTop: 3, flexWrap: 'wrap' }}>
+                          {Object.entries(p.datos_adicionales).map(([k, v]) => {
+                            if (!v) return null;
+                            const keyLabel = k.replace('_', ' ');
+                            return (
+                              <span key={k} style={{ 
+                                background: '#f4f3ef', 
+                                border: '1px solid #e5e2da', 
+                                borderRadius: 3, 
+                                padding: '1px 5px', 
+                                fontSize: 9, 
+                                color: '#7c7670',
+                                fontFamily: 'monospace'
+                              }}>
+                                <strong style={{ textTransform: 'capitalize' }}>{keyLabel}:</strong> {v}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                     <span style={{ color: catColors[p.cat], fontWeight: 600, fontSize: 10 }}>{p.cat}</span>
                     <div>
-                      <span style={{ fontSize: 13, fontWeight: 700 }}>{formatPrecio(p.price)}</span>
-                      <span style={{ fontSize: 10, color: '#b0aaa3' }}>{p.unit}</span>
+                      <span style={{ fontSize: 13, fontWeight: 700 }}>
+                        {p.tipo_licencia === 'Gratuito / OpenSource' ? 'Gratis' : formatPrecio(p.price)}
+                      </span>
+                      {p.tipo_licencia !== 'Gratuito / OpenSource' && p.unit && (
+                        <span style={{ fontSize: 10, color: '#b0aaa3' }}> {p.unit}</span>
+                      )}
                     </div>
-                    <span style={{ color: '#7c7670' }}>{p.currency}</span>
-                    {discontinued ? (
-                      <span className="catalogo-status-discontinued">Descontinuado</span>
-                    ) : (
-                      <span className="catalogo-status-active">● Activo</span>
-                    )}
+                    <span style={{ color: '#7c7670' }}>{p.tipo_licencia === 'Gratuito / OpenSource' ? '—' : p.currency}</span>
+                    
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <button
+                        title="Ver detalle"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedProduct(p);
+                          setProductModalMode('view');
+                          setProductModalOpen(true);
+                        }}
+                        style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: '#7c7670' }}
+                        onMouseEnter={e => e.currentTarget.style.color = '#2563eb'}
+                        onMouseLeave={e => e.currentTarget.style.color = '#7c7670'}
+                      >
+                        <Icon d={['M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z','M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z']} w={13} />
+                      </button>
+                      <button
+                        title="Editar"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedProduct(p);
+                          setProductModalMode('edit');
+                          setProductModalOpen(true);
+                        }}
+                        style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: '#7c7670' }}
+                        onMouseEnter={e => e.currentTarget.style.color = '#2563eb'}
+                        onMouseLeave={e => e.currentTarget.style.color = '#7c7670'}
+                      >
+                        <Icon d={['M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7','M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z']} w={13} />
+                      </button>
+                      <button
+                        title="Eliminar"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteProduct(p.id);
+                        }}
+                        style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: '#7c7670' }}
+                        onMouseEnter={e => e.currentTarget.style.color = '#dc2626'}
+                        onMouseLeave={e => e.currentTarget.style.color = '#7c7670'}
+                      >
+                        <Icon d={['M19 7l-1 12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 7m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3','M10 11v6','M14 11v6']} w={13} />
+                      </button>
+                    </div>
                   </div>
                 );
               })}
@@ -1628,27 +2378,41 @@ export default function Catalogo() {
       )}
 
       {useTemplate && (
-        <UseTemplateModal
-          plantilla={useTemplate}
-          onClose={() => {
-            setUseTemplate(null);
+        <UseTemplateModal plantilla={useTemplate} onClose={() => setUseTemplate(null)} />
+      )}
+
+      {isNewTemplateModalOpen && (
+        <NewTemplateModal
+          createForm={templateFormCache}
+          setCreateForm={setTemplateFormCache}
+          softwareList={apiProductos}
+          onClose={() => setIsNewTemplateModalOpen(false)}
+          onSuccess={() => {
+            setIsNewTemplateModalOpen(false);
             fetchPlantillasData();
           }}
         />
       )}
 
-      {newTemplateOpen && <NewTemplateModal onClose={() => setNewTemplateOpen(false)} />}
-
-      {newProductOpen && (
-        <NewProductModal
-          onClose={() => setNewProductOpen(false)}
-          onCreated={(producto) => setApiProductos(prev => [...prev, producto])}
+      {productModalOpen && (
+        <ProductModal
+          mode={productModalMode}
+          product={selectedProduct}
+          createForm={productFormCache}
+          setCreateForm={setProductFormCache}
+          onClose={() => {
+            setProductModalOpen(false);
+            setSelectedProduct(null);
+          }}
+          onSaved={handleProductModalSaved}
         />
       )}
 
       {isClauseModalOpen && (
         <EditClauseModal
           clause={clauseToEdit}
+          createForm={clauseFormCache}
+          setCreateForm={setClauseFormCache}
           onClose={() => setIsClauseModalOpen(false)}
           onSuccess={() => {
             setIsClauseModalOpen(false);

@@ -586,7 +586,7 @@
 
 .catalogo-productos-header {
   display: grid;
-  grid-template-columns: 110px 1.8fr 2fr 0.8fr 1fr 0.8fr 90px;
+  grid-template-columns: 120px 1.5fr 2fr 1fr 1fr 0.8fr 100px;
   gap: 8px;
   padding: 7px 16px;
   background: #efede8;
@@ -602,6 +602,20 @@
   font-family: 'JetBrains Mono', monospace;
 }
 
+.catalogo-productos-header span.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s ease;
+}
+
+.catalogo-productos-header span.sortable:hover {
+  color: #3b3631;
+}
+
+.catalogo-productos-header span.sortable:hover svg {
+  stroke: #2563eb;
+}
+
 .catalogo-productos-rows {
   flex: 1;
   overflow-y: auto;
@@ -609,7 +623,7 @@
 
 .catalogo-productos-row {
   display: grid;
-  grid-template-columns: 110px 1.8fr 2fr 0.8fr 1fr 0.8fr 90px;
+  grid-template-columns: 120px 1.5fr 2fr 1fr 1fr 0.8fr 100px;
   gap: 8px;
   padding: 10px 16px;
   border-bottom: 1px solid #efede8;

@@ -422,18 +422,32 @@ export async function getDashboard() {
  *
  * @param {Object} params
  * @param {string}  [params.tipo_contrato]  - 'RECURRENTE' | 'PERPETUO' | 'PRO_BONO' | 'INTERNO'
- * @param {number}  [params.software]       - ID del software tenant (omitir = globales)
+ * @param {number}  [params.software]       - ID del software (filtra plantillas de ese producto)
  * @param {boolean} [params.activa]         - Filtrar por activa/inactiva
+ * @param {string}  [params.modo_origen]    - 'archivo' | 'clausulas'
  *
- * @returns {Array<{id, nombre, tipo_contrato, software_id, version_codigo, activa, fecha_creacion}>}
+ * @returns {Array<{id, nombre, tipo_contrato, tipo_contrato_display, software_id, software_nombre,
+ *                  modo_origen, modo_origen_display, version_codigo, activa, fecha_creacion, usos}>}
  */
 export async function getPlantillas(params = {}) {
   const qs = new URLSearchParams();
   if (params.tipo_contrato) qs.set('tipo_contrato', params.tipo_contrato);
   if (params.software)      qs.set('software',      params.software);
   if (params.activa !== undefined) qs.set('activa', params.activa ? 'true' : 'false');
+  if (params.modo_origen)   qs.set('modo_origen',   params.modo_origen);
   const query = qs.toString() ? `?${qs.toString()}` : '';
   return request(`/plantillas/plantillas/${query}`);
+}
+
+/**
+ * Registra una nueva plantilla.
+ * @param {FormData} formData
+ */
+export async function createPlantilla(formData) {
+  return request('/plantillas/plantillas/', {
+    method: 'POST',
+    body: formData,
+  });
 }
 
 /**
@@ -455,6 +469,33 @@ export async function togglePlantillaActiva(id, activa) {
     method: 'PATCH',
     body: JSON.stringify({ activa }),
   });
+}
+
+/**
+ * Lista paginada de documentos emitidos (DocumentoGenerado — registros inmutables).
+ *
+ * @param {Object} params
+ * @param {number}  [params.software_id]   - Filtrar por software del contrato
+ * @param {number}  [params.cliente_id]    - Filtrar por cliente del contrato
+ * @param {number}  [params.contrato_id]   - Filtrar por contrato específico
+ * @param {string}  [params.fecha_desde]   - Fecha mínima de generación (YYYY-MM-DD)
+ * @param {string}  [params.fecha_hasta]   - Fecha máxima de generación (YYYY-MM-DD)
+ * @param {number}  [params.page]          - Página (default 1)
+ * @param {number}  [params.page_size]     - Tamaño de página (default 20, max 100)
+ *
+ * @returns {{ count, page, page_size, total_pages, results: Array }}
+ */
+export async function getEmitidos(params = {}) {
+  const qs = new URLSearchParams();
+  if (params.software_id)  qs.set('software_id',  params.software_id);
+  if (params.cliente_id)   qs.set('cliente_id',   params.cliente_id);
+  if (params.contrato_id)  qs.set('contrato_id',  params.contrato_id);
+  if (params.fecha_desde)  qs.set('fecha_desde',  params.fecha_desde);
+  if (params.fecha_hasta)  qs.set('fecha_hasta',  params.fecha_hasta);
+  if (params.page)         qs.set('page',         params.page);
+  if (params.page_size)    qs.set('page_size',    params.page_size);
+  const query = qs.toString() ? `?${qs.toString()}` : '';
+  return request(`/plantillas/emitidos/${query}`);
 }
 
 // ─── Cláusulas ───────────────────────────────────────────────────────────────
@@ -513,6 +554,25 @@ export async function createProducto(data) {
   return request(`/catalogo/productos/`, {
     method: 'POST',
     body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Actualiza un producto/tarifa existente en el catálogo.
+ */
+export async function updateProducto(id, data) {
+  return request(`/catalogo/productos/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Elimina un producto/tarifa del catálogo.
+ */
+export async function deleteProducto(id) {
+  return request(`/catalogo/productos/${id}/`, {
+    method: 'DELETE',
   });
 }
 
