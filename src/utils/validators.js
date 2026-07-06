@@ -71,14 +71,14 @@ export const validarDominioCorreo = (correo, dominiosPermitidos) => {
  */
 export const validarMaximoRut = (rut) => {
   if (typeof rut !== 'string') return false;
-  const cuerpo = rut.replace(/[^0-9]/g, '').slice(0, -1);
+  const clean = rut.replace(/[^0-9kK]/g, '');
+  const cuerpo = clean.slice(0, -1);
   return cuerpo.length <= 8 && parseInt(cuerpo || '0', 10) <= 99999999;
 };
 
 /**
  * Valida teléfono chileno con validación de largo.
- * Si contiene +569, debe tener 11 dígitos (+569 + 8 dígitos).
- * Si es solo número (sin +569), debe tener 9 dígitos (formato 912345678).
+ * Soporta números móviles y fijos, con o sin código de país (+56).
  * Rechaza si intenta más dígitos de lo permitido.
  * @param {string} telefono
  * @returns {object} { valido: boolean, razon?: string }
@@ -91,7 +91,7 @@ export const validarTelefonoChile = (telefono) => {
 
   const soloNumeros = telefonoLimpio.replace(/\D/g, '');
 
-  if (telefonoLimpio.startsWith('+569')) {
+  if (soloNumeros.startsWith('56')) {
     if (soloNumeros.length > 11) {
       return { valido: false, razon: 'Teléfono supera máximo permitido (11 dígitos)' };
     }
@@ -106,8 +106,8 @@ export const validarTelefonoChile = (telefono) => {
 };
 
 /**
- * Valida email rechazando dominios con números o símbolos raros.
- * Dominio permitido: solo letras, puntos y guiones (ej: empresa.cl, empresa-legal.com).
+ * Valida email rechazando dominios con símbolos raros.
+ * Dominio permitido: letras, números, puntos y guiones (ej: empresa1.cl, empresa-legal.com, 3m.com).
  * @param {string} correo
  * @returns {object} { valido: boolean, razon?: string }
  */
@@ -122,11 +122,12 @@ export const validarEmailDominioLimpio = (correo) => {
   }
 
   const [, dominio] = correoLimpio.split('@');
-  const regexDominio = /^[a-z.-]+$/;
+  const regexDominio = /^[a-z0-9.-]+$/;
 
   if (!regexDominio.test(dominio)) {
-    return { valido: false, razon: 'Dominio contiene números o símbolos no permitidos' };
+    return { valido: false, razon: 'Dominio contiene símbolos no permitidos' };
   }
 
   return { valido: true };
 };
+
