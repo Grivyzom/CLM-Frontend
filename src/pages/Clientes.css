@@ -586,6 +586,20 @@
   overflow: hidden;
 }
 
+.cl-th.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s ease;
+}
+
+.cl-th.sortable:hover {
+  color: #3b3631;
+}
+
+.cl-th.sortable:hover svg {
+  stroke: #2563eb;
+}
+
 /* ── Table Body ── */
 .cl-tbody {
   flex: 1;

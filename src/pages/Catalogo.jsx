@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useId } from 'react';
 import './Catalogo.css';
-import { getPlantillas, getClausulas, getProductos, createProducto } from '../api';
+import { getPlantillas, getClausulas, getProductos, createProducto, getClientes, getSLAs, createContrato, generarDocumentoContrato } from '../api';
 import EditClauseModal from './EditClauseModal';
 
 const CONTEXTS = ['Administración Global', 'SoftTrack Pro v3', 'ContaLite v2.1'];
@@ -48,7 +48,7 @@ function normalizeApiPlantilla(p) {
     vars:    null,   // el backend no expone conteo de variables por ahora
     status:  p.activa ? 'Aprobado' : 'Inactivo',
     updated: formatearFecha(p.fecha_creacion),
-    uses:    0,
+    uses:    p.usos || 0,
     color:   tc.color,
     bg:      tc.bg,
     tipo_contrato: p.tipo_contrato,
@@ -531,18 +531,20 @@ Versión ${plantilla.version} · Categoría: ${plantilla.cat}
 }
 
 // ─── Use Template Modal ──────────────────────────────────────────────────────
-const CLIENTES_SAMPLE = [
-  { id: 1, name: 'Acme Corporation', rut: '76.123.456-7', type: 'Empresa' },
-  { id: 2, name: 'Innovatech Ltda.', rut: '77.654.321-K', type: 'Empresa' },
-  { id: 3, name: 'Juan Pérez Silva', rut: '12.345.678-9', type: 'Persona Natural' },
-  { id: 4, name: 'GlobalSoft S.A.', rut: '99.111.222-3', type: 'Empresa' },
-];
-
 function UseTemplateModal({ plantilla, onClose }) {
   const [step, setStep] = useState(1);
   const [selectedClient, setSelectedClient] = useState(null);
   const [contractName, setContractName] = useState(`${plantilla.name} – `);
   const [clientSearch, setClientSearch] = useState('');
+  
+  const [clientes, setClientes] = useState([]);
+  const [slas, setSlas] = useState([]);
+  const [isCreating, setIsCreating] = useState(false);
+
+  useEffect(() => {
+    getClientes({ page_size: 100 }).then(res => setClientes(res.results || []));
+    getSLAs().then(res => setSlas(res || []));
+  }, []);
 
   useEffect(() => {
     const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -550,14 +552,37 @@ function UseTemplateModal({ plantilla, onClose }) {
     return () => window.removeEventListener('keydown', handleKey);
   }, [onClose]);
 
-  const filteredClients = CLIENTES_SAMPLE.filter(c =>
-    c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
-    c.rut.includes(clientSearch)
-  );
+  const filteredClients = clientes.filter(c => {
+    const name = c.razon_social || c.nombre_comercial || '';
+    const rut = c.id_fiscal || '';
+    return name.toLowerCase().includes(clientSearch.toLowerCase()) || rut.includes(clientSearch);
+  });
 
-  const handleCreate = () => {
-    alert(`✅ Contrato "${contractName}" creado con la plantilla ${plantilla.abbr} para ${selectedClient?.name || 'cliente seleccionado'}.`);
-    onClose();
+  const handleCreate = async () => {
+    setIsCreating(true);
+    try {
+      const nuevoContrato = await createContrato({
+        cliente_id: selectedClient.id,
+        software_id: plantilla.software_id || 1, // Fallback si la plantilla no tiene software asociado
+        sla_id: slas.length > 0 ? slas[0].id : 1, // Fallback si no hay SLAs cargados
+        tipo_contrato: plantilla.tipo_contrato || 'RECURRENTE',
+        monto: 0,
+        fecha_inicio: new Date().toISOString().split('T')[0],
+        frecuencia_facturacion: (plantilla.tipo_contrato || 'RECURRENTE') === 'RECURRENTE' ? 'MENSUAL' : undefined,
+      });
+
+      // Generar el documento para el contrato recién creado a partir de esta plantilla
+      await generarDocumentoContrato({
+        contrato_id: nuevoContrato.id,
+        plantilla_id: plantilla.id,
+      });
+
+      setStep(3);
+    } catch (e) {
+      alert('Error creando contrato: ' + JSON.stringify(e));
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   return (
@@ -591,7 +616,9 @@ function UseTemplateModal({ plantilla, onClose }) {
               <span style={{ fontSize: 9, fontWeight: 800, color: plantilla.color, fontFamily: "'JetBrains Mono',monospace" }}>{plantilla.abbr}</span>
             </div>
             <div>
-              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#3b3631' }}>Usar plantilla</p>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#3b3631' }}>
+                {step === 3 ? 'Contrato creado' : 'Crear contrato desde plantilla'}
+              </p>
               <p style={{ margin: 0, fontSize: 10, color: '#b0aaa3' }}>{plantilla.name}</p>
             </div>
           </div>
@@ -608,28 +635,30 @@ function UseTemplateModal({ plantilla, onClose }) {
         </div>
 
         {/* Steps indicator */}
-        <div style={{ padding: '12px 20px', borderBottom: '1px solid #efede8', display: 'flex', gap: 0 }}>
-          {[{n:1,label:'Cliente'},{n:2,label:'Nombre'}].map((s, i) => (
-            <React.Fragment key={s.n}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{
-                  width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 10, fontWeight: 700,
-                  background: step >= s.n ? '#2563eb' : '#e5e2da',
-                  color: step >= s.n ? '#fff' : '#b0aaa3'
-                }}>{s.n}</div>
-                <span style={{ fontSize: 11, fontWeight: 600, color: step >= s.n ? '#2563eb' : '#b0aaa3' }}>{s.label}</span>
-              </div>
-              {i < 1 && <div style={{ flex: 1, height: 1, background: '#e5e2da', margin: '0 10px', alignSelf: 'center' }} />}
-            </React.Fragment>
-          ))}
-        </div>
+        {step < 3 && (
+          <div style={{ padding: '12px 20px', borderBottom: '1px solid #efede8', display: 'flex', gap: 0 }}>
+            {[{n:1,label:'Cliente'},{n:2,label:'Configuración del contrato'}].map((s, i) => (
+              <React.Fragment key={s.n}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{
+                    width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 10, fontWeight: 700,
+                    background: step >= s.n ? '#2563eb' : '#e5e2da',
+                    color: step >= s.n ? '#fff' : '#b0aaa3'
+                  }}>{s.n}</div>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: step >= s.n ? '#2563eb' : '#b0aaa3' }}>{s.label}</span>
+                </div>
+                {i < 1 && <div style={{ flex: 1, height: 1, background: '#e5e2da', margin: '0 10px', alignSelf: 'center' }} />}
+              </React.Fragment>
+            ))}
+          </div>
+        )}
 
         {/* Body */}
         <div style={{ padding: '16px 20px', minHeight: 220 }}>
           {step === 1 && (
             <>
-              <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 600, color: '#3b3631' }}>Selecciona el cliente</p>
+              <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 600, color: '#3b3631' }}>Selecciona el cliente para el nuevo contrato</p>
               <div style={{ position: 'relative', marginBottom: 10 }}>
                 <Icon d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" color="#b0aaa3" w={13}
                   style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }}
@@ -648,29 +677,36 @@ function UseTemplateModal({ plantilla, onClose }) {
                 />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 180, overflowY: 'auto' }}>
-                {filteredClients.map(c => (
-                  <button
-                    key={c.id}
-                    onClick={() => setSelectedClient(c)}
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '9px 12px', border: '1px solid',
-                      borderColor: selectedClient?.id === c.id ? '#2563eb' : '#e5e2da',
-                      background: selectedClient?.id === c.id ? 'rgba(37,99,235,0.05)' : '#fafaf9',
-                      borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s'
-                    }}
-                  >
-                    <div style={{ textAlign: 'left' }}>
-                      <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: '#3b3631' }}>{c.name}</p>
-                      <p style={{ margin: 0, fontSize: 10, color: '#b0aaa3', fontFamily: "'JetBrains Mono',monospace" }}>{c.rut}</p>
-                    </div>
-                    <span style={{
-                      fontSize: 9, fontWeight: 700, borderRadius: 4, padding: '2px 7px',
-                      background: c.type === 'Empresa' ? 'rgba(37,99,235,0.08)' : '#f0fdf4',
-                      color: c.type === 'Empresa' ? '#2563eb' : '#15803d'
-                    }}>{c.type}</span>
-                  </button>
-                ))}
+                {filteredClients.length === 0 && <p style={{ fontSize: 12, color: '#7c7670', textAlign: 'center', padding: '20px 0' }}>No se encontraron clientes.</p>}
+                {filteredClients.map(c => {
+                  const cName = c.razon_social || c.nombre_comercial || 'Sin nombre';
+                  const cRut = c.id_fiscal || 'Sin RUT';
+                  const cType = c.tipo === 'juridica' ? 'Empresa' : 'Persona Natural';
+                  
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => setSelectedClient(c)}
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '9px 12px', border: '1px solid',
+                        borderColor: selectedClient?.id === c.id ? '#2563eb' : '#e5e2da',
+                        background: selectedClient?.id === c.id ? 'rgba(37,99,235,0.05)' : '#fafaf9',
+                        borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s'
+                      }}
+                    >
+                      <div style={{ textAlign: 'left' }}>
+                        <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: '#3b3631' }}>{cName}</p>
+                        <p style={{ margin: 0, fontSize: 10, color: '#b0aaa3', fontFamily: "'JetBrains Mono',monospace" }}>{cRut}</p>
+                      </div>
+                      <span style={{
+                        fontSize: 9, fontWeight: 700, borderRadius: 4, padding: '2px 7px',
+                        background: cType === 'Empresa' ? 'rgba(37,99,235,0.08)' : '#f0fdf4',
+                        color: cType === 'Empresa' ? '#2563eb' : '#15803d'
+                      }}>{cType}</span>
+                    </button>
+                  );
+                })}
               </div>
             </>
           )}
@@ -698,43 +734,74 @@ function UseTemplateModal({ plantilla, onClose }) {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: 11, color: '#7c7670' }}>Cliente:</span>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: '#3b3631' }}>{selectedClient?.name}</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: '#3b3631' }}>
+                      {selectedClient?.razon_social || selectedClient?.nombre_comercial}
+                    </span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: 11, color: '#7c7670' }}>Variables:</span>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: '#2563eb' }}>{plantilla.vars} a completar</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: '#2563eb' }}>{plantilla.vars || 0} a completar</span>
                   </div>
                 </div>
               </div>
             </>
+          )}
+          {step === 3 && (
+            <div style={{ textAlign: 'center', padding: '20px 0', animation: 'previewIn 0.3s ease-out' }}>
+              <div style={{
+                width: 56, height: 56, borderRadius: '50%', background: '#d1fae5', color: '#059669',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                margin: '0 auto 16px', fontSize: 28, boxShadow: '0 4px 12px rgba(5,150,105,0.15)'
+              }}>✓</div>
+              <p style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 700, color: '#3b3631' }}>Contrato y documento creados con éxito</p>
+              <p style={{ margin: 0, fontSize: 13, color: '#7c7670', lineHeight: 1.5 }}>
+                Se ha creado un nuevo contrato basado en la plantilla <strong>{plantilla.abbr}</strong> para el cliente <strong>{selectedClient?.razon_social || selectedClient?.nombre_comercial}</strong> y se ha generado su documento correspondiente.<br/><br/>
+                Puedes revisarlo y editarlo en la sección de Contratos.
+              </p>
+            </div>
           )}
         </div>
 
         {/* Footer */}
         <div style={{
           padding: '12px 20px', borderTop: '1px solid #e5e2da',
-          display: 'flex', justifyContent: 'space-between', gap: 8,
+          display: 'flex', justifyContent: step === 3 ? 'center' : 'space-between', gap: 8,
           background: '#fafaf9'
         }}>
-          <button
-            onClick={() => step === 1 ? onClose() : setStep(1)}
-            style={{
-              padding: '7px 14px', borderRadius: 5, border: '1px solid #d8d4cc',
-              background: '#efede8', color: '#3b3631', fontSize: 12, fontWeight: 600,
-              cursor: 'pointer', fontFamily: 'inherit'
-            }}
-          >{step === 1 ? 'Cancelar' : '← Atrás'}</button>
-          <button
-            disabled={step === 1 ? !selectedClient : !contractName.trim()}
-            onClick={() => step === 1 ? setStep(2) : handleCreate()}
-            style={{
-              padding: '7px 16px', borderRadius: 5, border: 'none',
-              background: (step === 1 ? !selectedClient : !contractName.trim()) ? '#93c5fd' : '#2563eb',
-              color: '#fff', fontSize: 12, fontWeight: 600,
-              cursor: (step === 1 ? !selectedClient : !contractName.trim()) ? 'not-allowed' : 'pointer',
-              fontFamily: 'inherit', transition: 'background 0.15s'
-            }}
-          >{step === 1 ? 'Siguiente →' : 'Crear contrato ✓'}</button>
+          {step < 3 ? (
+            <>
+              <button
+                onClick={() => step === 1 ? onClose() : setStep(1)}
+                style={{
+                  padding: '7px 14px', borderRadius: 5, border: '1px solid #d8d4cc',
+                  background: '#efede8', color: '#3b3631', fontSize: 12, fontWeight: 600,
+                  cursor: 'pointer', fontFamily: 'inherit'
+                }}
+              >{step === 1 ? 'Cancelar' : '← Atrás'}</button>
+              <button
+                disabled={isCreating || (step === 1 ? !selectedClient : !contractName.trim())}
+                onClick={() => step === 1 ? setStep(2) : handleCreate()}
+                style={{
+                  padding: '7px 16px', borderRadius: 5, border: 'none',
+                  background: isCreating || (step === 1 ? !selectedClient : !contractName.trim()) ? '#93c5fd' : '#2563eb',
+                  color: '#fff', fontSize: 12, fontWeight: 600,
+                  cursor: isCreating || (step === 1 ? !selectedClient : !contractName.trim()) ? 'not-allowed' : 'pointer',
+                  fontFamily: 'inherit', transition: 'background 0.15s'
+                }}
+              >{step === 1 ? 'Siguiente →' : (isCreating ? 'Creando...' : 'Crear contrato ✓')}</button>
+            </>
+          ) : (
+            <button
+              onClick={onClose}
+              style={{
+                width: '100%', padding: '9px 16px', borderRadius: 5, border: 'none',
+                background: '#2563eb', color: '#fff', fontSize: 13, fontWeight: 600,
+                cursor: 'pointer', fontFamily: 'inherit', transition: 'background 0.15s'
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = '#1d4ed8'}
+              onMouseLeave={e => e.currentTarget.style.background = '#2563eb'}
+            >Terminar y Cerrar</button>
+          )}
         </div>
       </div>
     </div>
@@ -910,6 +977,7 @@ export default function Catalogo() {
   const [tab, setTab] = useState('plantillas');
   const [selectedClause, setSelectedClause] = useState(0);
   const [clauseAlt, setClauseAlt] = useState(0);
+  const [clausePage, setClausePage] = useState(1);
 
   const [isClauseModalOpen, setIsClauseModalOpen] = useState(false);
   const [clauseToEdit, setClauseToEdit] = useState(null);
@@ -928,25 +996,23 @@ export default function Catalogo() {
   const [loadingPlantillas, setLoadingPlantillas] = useState(true);
   const [errorPlantillas, setErrorPlantillas] = useState(null);
 
-  useEffect(() => {
-    let cancelled = false;
+  const fetchPlantillasData = useCallback(() => {
     setLoadingPlantillas(true);
     setErrorPlantillas(null);
     getPlantillas()
       .then(data => {
-        if (!cancelled) {
-          setApiPlantillas((data || []).map(normalizeApiPlantilla));
-          setLoadingPlantillas(false);
-        }
+        setApiPlantillas((data || []).map(normalizeApiPlantilla));
+        setLoadingPlantillas(false);
       })
       .catch(err => {
-        if (!cancelled) {
-          setErrorPlantillas(err.message || 'Error al cargar plantillas');
-          setLoadingPlantillas(false);
-        }
+        setErrorPlantillas(err.message || 'Error al cargar plantillas');
+        setLoadingPlantillas(false);
       });
-    return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    fetchPlantillasData();
+  }, [fetchPlantillasData]);
 
   // ── Carga de cláusulas desde la API ─────────────────────────────────────────
   const [apiClausulas, setApiClausulas] = useState([]);
@@ -970,15 +1036,13 @@ export default function Catalogo() {
         }));
         setApiClausulas(normalized);
         setLoadingClausulas(false);
-        if (normalized.length > 0 && selectedClause === 0) {
-          setSelectedClause(normalized[0].id);
-        }
+        setSelectedClause(prev => (prev === 0 && normalized.length > 0) ? normalized[0].id : prev);
       })
       .catch(err => {
         setErrorClausulas(err.message || 'Error al cargar cláusulas');
         setLoadingClausulas(false);
       });
-  }, [selectedClause]);
+  }, []);
 
   useEffect(() => {
     fetchClausulasData();
@@ -1031,8 +1095,11 @@ export default function Catalogo() {
 
   const selectedClauseData = apiClausulas.find(c => c.id === selectedClause) || apiClausulas[0];
   const selectedAlt = selectedClauseData ? (selectedClauseData.versions[clauseAlt] || selectedClauseData.versions[0]) : null;
-  const clauseCategories = Array.from(new Set(apiClausulas.map(c => c.cat)));
-
+  
+  const CLAUSES_PER_PAGE = 10;
+  const totalClausePages = Math.ceil(apiClausulas.length / CLAUSES_PER_PAGE);
+  const paginatedClausulas = apiClausulas.slice((clausePage - 1) * CLAUSES_PER_PAGE, clausePage * CLAUSES_PER_PAGE);
+  const clauseCategories = Array.from(new Set(paginatedClausulas.map(c => c.cat)));
   return (
     <div className="catalogo-container">
       <div className="catalogo-header">
@@ -1293,7 +1360,7 @@ export default function Catalogo() {
               {!loadingClausulas && !errorClausulas && clauseCategories.map(cat => (
                 <div key={cat}>
                   <div className="catalogo-clausulas-cat">{cat}</div>
-                  {apiClausulas.filter(c => c.cat === cat).map(c => (
+                  {paginatedClausulas.filter(c => c.cat === cat).map(c => (
                     <button
                       key={c.id}
                       onClick={() => { setSelectedClause(c.id); setClauseAlt(0); }}
@@ -1308,7 +1375,22 @@ export default function Catalogo() {
                   ))}
                 </div>
               ))}
-              <div className="catalogo-clausulas-footer">
+              <div className="catalogo-clausulas-footer" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {totalClausePages > 1 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <button
+                      onClick={() => setClausePage(p => Math.max(1, p - 1))}
+                      disabled={clausePage === 1}
+                      style={{ background: 'none', border: '1px solid #d8d4cc', borderRadius: 4, padding: '4px 8px', cursor: clausePage === 1 ? 'not-allowed' : 'pointer', fontSize: 12, color: clausePage === 1 ? '#d8d4cc' : '#3b3631' }}
+                    >Anterior</button>
+                    <span style={{ fontSize: 11, color: '#7c7670', fontWeight: 600 }}>Pág {clausePage} de {totalClausePages}</span>
+                    <button
+                      onClick={() => setClausePage(p => Math.min(totalClausePages, p + 1))}
+                      disabled={clausePage === totalClausePages}
+                      style={{ background: 'none', border: '1px solid #d8d4cc', borderRadius: 4, padding: '4px 8px', cursor: clausePage === totalClausePages ? 'not-allowed' : 'pointer', fontSize: 12, color: clausePage === totalClausePages ? '#d8d4cc' : '#3b3631' }}
+                    >Siguiente</button>
+                  </div>
+                )}
                 <button 
                   className="catalogo-btn-primary"
                   onClick={() => { setClauseToEdit(null); setIsClauseModalOpen(true); }}
@@ -1546,7 +1628,13 @@ export default function Catalogo() {
       )}
 
       {useTemplate && (
-        <UseTemplateModal plantilla={useTemplate} onClose={() => setUseTemplate(null)} />
+        <UseTemplateModal
+          plantilla={useTemplate}
+          onClose={() => {
+            setUseTemplate(null);
+            fetchPlantillasData();
+          }}
+        />
       )}
 
       {newTemplateOpen && <NewTemplateModal onClose={() => setNewTemplateOpen(false)} />}

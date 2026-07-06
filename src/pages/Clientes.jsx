@@ -6,6 +6,7 @@ import EditClientModal from './EditClientModal';
 import ImportClientsModal from './ImportClientsModal';
 import './Clientes.css';
 import Pagination from '../components/ui/Pagination';
+import SortableHeader from '../components/ui/SortableHeader';
 
 // ─── Constantes visuales ─────────────────────────────────────────────────────
 const CONTEXTS = ['Administración Global', 'SoftTrack Pro v3', 'ContaLite v2.1'];
@@ -856,7 +857,7 @@ export default function Clientes() {
   // Al cambiar de página o filtros, el índice de la última fila clickeada ya no aplica
   useEffect(() => {
     setLastSelectedIndex(null);
-  }, [page, filters.search, filters.estado, filters.tipo, filters.fecha_desde, filters.fecha_hasta]);
+  }, [page, filters.search, filters.estado, filters.tipo, filters.fecha_desde, filters.fecha_hasta, filters.ordering]);
 
   // Cerrar dropdowns (filtros / exportar / importar) al hacer clic fuera
   useEffect(() => {
@@ -1294,16 +1295,55 @@ export default function Clientes() {
                 aria-label="Seleccionar todos los clientes de la página"
               />
             </span>
-            <span className="cl-th">
-              Razón Social
-              <Svg paths={['M8 9l4-4 4 4','M16 15l-4 4-4-4']} color="#2563eb" size={12} />
-            </span>
-            <span className="cl-th">ID Fiscal</span>
-            <span className="cl-th">Sector</span>
-            <span className="cl-th">Contacto</span>
-            <span className="cl-th">Tipo</span>
-            <span className="cl-th">Estado</span>
-            <span className="cl-th">Contratos</span>
+            <SortableHeader
+              className="cl-th"
+              label="Razón Social"
+              field="razon_social"
+              ordering={filters.ordering}
+              onSort={(next) => updateFilter('ordering', next)}
+            />
+            <SortableHeader
+              className="cl-th"
+              label="ID Fiscal"
+              field="id_fiscal"
+              ordering={filters.ordering}
+              onSort={(next) => updateFilter('ordering', next)}
+            />
+            <SortableHeader
+              className="cl-th"
+              label="Sector"
+              field="sector"
+              ordering={filters.ordering}
+              onSort={(next) => updateFilter('ordering', next)}
+            />
+            <SortableHeader
+              className="cl-th"
+              label="Contacto"
+              field="contacto"
+              ordering={filters.ordering}
+              onSort={(next) => updateFilter('ordering', next)}
+            />
+            <SortableHeader
+              className="cl-th"
+              label="Tipo"
+              field="tipo"
+              ordering={filters.ordering}
+              onSort={(next) => updateFilter('ordering', next)}
+            />
+            <SortableHeader
+              className="cl-th"
+              label="Estado"
+              field="estado"
+              ordering={filters.ordering}
+              onSort={(next) => updateFilter('ordering', next)}
+            />
+            <SortableHeader
+              className="cl-th"
+              label="Contratos"
+              field="contratos"
+              ordering={filters.ordering}
+              onSort={(next) => updateFilter('ordering', next)}
+            />
             <span className="cl-th">Acciones</span>
           </div>
 

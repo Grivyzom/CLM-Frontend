@@ -7,6 +7,7 @@ const DEFAULT_FILTERS = {
   tipo: 'Todos',
   fecha_desde: '',
   fecha_hasta: '',
+  ordering: '',
 };
 
 const PAGE_SIZE = 20;
@@ -51,6 +52,7 @@ export function useClientes() {
       tipo: filters.tipo,
       fecha_desde: filters.fecha_desde,
       fecha_hasta: filters.fecha_hasta,
+      ordering: filters.ordering,
       page
     });
 
@@ -70,6 +72,7 @@ export function useClientes() {
         tipo:        filters.tipo,
         fecha_desde: filters.fecha_desde,
         fecha_hasta: filters.fecha_hasta,
+        ordering:    filters.ordering,
         page,
         page_size: PAGE_SIZE,
       });
@@ -80,7 +83,7 @@ export function useClientes() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, filters.estado, filters.tipo, filters.fecha_desde, filters.fecha_hasta, page]);
+  }, [debouncedSearch, filters.estado, filters.tipo, filters.fecha_desde, filters.fecha_hasta, filters.ordering, page]);
 
   useEffect(() => {
     fetchData();

@@ -91,6 +91,7 @@ export async function getClientes(params = {}) {
   if (params.tipo   && params.tipo   !== 'Todos') qs.set('tipo',   params.tipo);
   if (params.fecha_desde)  qs.set('fecha_desde',  params.fecha_desde);
   if (params.fecha_hasta)  qs.set('fecha_hasta',  params.fecha_hasta);
+  if (params.ordering)     qs.set('ordering',     params.ordering);
   if (params.page)         qs.set('page',         params.page);
   if (params.page_size)    qs.set('page_size',    params.page_size);
 
@@ -247,6 +248,7 @@ export async function getContratos(params = {}) {
   if (params.search)                            qs.set('search', params.search);
   if (params.etapa && params.etapa !== 'Todos')  qs.set('etapa', params.etapa);
   if (params.software)                           qs.set('software', params.software);
+  if (params.ordering)                           qs.set('ordering', params.ordering);
   if (params.page)                               qs.set('page', params.page);
   if (params.page_size)                          qs.set('page_size', params.page_size);
   const query = qs.toString() ? `?${qs.toString()}` : '';
@@ -287,6 +289,95 @@ export async function updateContrato(id, data) {
 /** Elimina un contrato (solo permitido en etapa Borrador). */
 export async function deleteContrato(id) {
   return request(`/contratos/${id}/`, { method: 'DELETE' });
+}
+
+/** Obtiene la lista de obligaciones de un contrato. */
+export async function getObligaciones(contratoId) {
+  return request(`/contratos/${contratoId}/obligaciones/`);
+}
+
+/** Crea una nueva obligación para un contrato. */
+export async function createObligacion(contratoId, data) {
+  return request(`/contratos/${contratoId}/obligaciones/`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+/** Actualiza una obligación existente. */
+export async function updateObligacion(id, data) {
+  return request(`/obligaciones/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+/** Elimina una obligación. */
+export async function deleteObligacion(id) {
+  return request(`/obligaciones/${id}/`, { method: 'DELETE' });
+}
+
+/** Obtiene el historial de auditoría de una obligación. */
+export async function getObligacionHistorial(id) {
+  return request(`/obligaciones/${id}/historial/`);
+}
+
+/** Enmienda un contrato y crea una nueva versión en Borrador. */
+export async function enmendarContrato(id) {
+  return request(`/contratos/${id}/enmendar/`, { method: 'POST' });
+}
+
+/**
+ * Descarga contratos como Excel o CSV. Dos modos mutuamente excluyentes:
+ * - `clienteId`: exporta TODOS los contratos vinculados a ese cliente.
+ * - `search`: busca por nomenclatura estandarizada (ej. 'CTR-000041') o por
+ *   nombre del contrato (software licenciado / tipo de contrato). No busca
+ *   por cliente — para eso está `clienteId`.
+ * Dispara la descarga en el navegador. Lanza Error si falla.
+ * @param {'excel'|'csv'} format
+ * @param {Object} params
+ * @param {number} [params.clienteId]
+ * @param {string} [params.search]
+ * @param {number[]} [params.ids] - selección manual; ignora clienteId/search
+ */
+export async function exportContratos(format, { clienteId, search, ids } = {}) {
+  const path = format === 'csv' ? 'csv' : 'excel';
+  const qs = new URLSearchParams();
+  if (ids && ids.length > 0) {
+    qs.set('ids', ids.join(','));
+  } else if (clienteId) {
+    qs.set('cliente_id', clienteId);
+  } else if (search) {
+    qs.set('search', search);
+  }
+  const query = qs.toString() ? `?${qs.toString()}` : '';
+
+  const res = await fetch(`${BASE}/documentos/exportar/contratos/${path}/${query}`, {
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    let errMsg = `HTTP ${res.status}`;
+    try {
+      const err = await res.json();
+      errMsg = err.error || err.detail || errMsg;
+    } catch (_) {}
+    throw new Error(errMsg);
+  }
+
+  const blob = await res.blob();
+  const disposition = res.headers.get('Content-Disposition') || '';
+  const match = disposition.match(/filename="?([^";]+)"?/);
+  const filename = match ? match[1] : (format === 'csv' ? 'contratos.csv' : 'contratos.xlsx');
+
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
 }
 
 // ─── Catálogo: Software / SLA ─────────────────────────────────────────────────

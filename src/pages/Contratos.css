@@ -413,6 +413,11 @@
   animation: fadeIn 0.2s ease-out;
 }
 
+.ct-tbody {
+  flex: 1;
+  overflow-y: auto;
+}
+
 .ct-table-header {
   display: grid;
   grid-template-columns: 130px 1fr 140px 140px 110px 90px 140px 110px 70px;
@@ -429,6 +434,20 @@
   text-transform: uppercase;
   letter-spacing: 0.1em;
   font-family: 'JetBrains Mono', monospace;
+}
+
+.ct-table-header span.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s ease;
+}
+
+.ct-table-header span.sortable:hover {
+  color: #3b3631;
+}
+
+.ct-table-header span.sortable:hover svg {
+  stroke: #2563eb;
 }
 
 .ct-table-row {
