@@ -59,11 +59,12 @@ function Icon({ d, color = '#7c7670', w = 14 }) {
 // ─── Badges ──────────────────────────────────────────────────────────────────
 function EtapaBadge({ etapa, label, size = 'md' }) {
   const c = ETAPA_CFG[etapa] || ETAPA_CFG['TERMINADO'];
+  const text = label || c.label;
   return (
-    <span className={`ct-badge ct-badge-${size}`}
+    <span className={`ct-badge ct-badge-${size}`} title={text}
       style={{ background: c.bg, border: `1px solid ${c.border}`, color: c.color }}>
       <span className="ct-badge-dot" style={{ background: c.dot }} />
-      {label || c.label}
+      <span className="ct-badge-text">{text}</span>
     </span>
   );
 }
@@ -80,7 +81,7 @@ function StatusOpBadge({ status, size = 'sm' }) {
 
 function SoftwareTag({ software }) {
   const c = swColor(software);
-  return <span className="ct-sw-tag" style={{ background: c.bg, color: c.color }}>{software}</span>;
+  return <span className="ct-sw-tag" title={software} style={{ background: c.bg, color: c.color }}>{software}</span>;
 }
 
 // ─── transiciones permitidas ──────────────────────────────────────────────────
@@ -305,7 +306,7 @@ export default function ContractDetail() {
   const tabs = [
     { id: 'resumen', label: 'Resumen', icon: 'M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8' },
     { id: 'documento', label: 'Documento', icon: ['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z', 'M14 2v6h6', 'M8 13h8', 'M8 17h4'] },
-    { id: 'historial', label: 'Historial', icon: 'M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z' },
+    { id: 'historial', label: 'Historial', icon: ['M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z', 'M12 7v5l3 3'] },
     { id: 'sla', label: 'Obligaciones / SLA', icon: ['M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z', 'M9 12l2 2 4-4'] },
   ];
 
@@ -346,15 +347,13 @@ export default function ContractDetail() {
       </div>
 
       {actionError && (
-        <div style={{ margin: '10px 28px 0', padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 6, fontSize: 12, color: '#dc2626' }}>
-          {actionError}
-        </div>
+        <div className="ct-alert-error" role="alert">{actionError}</div>
       )}
 
       <div className="ct-workspace-titlebar">
         <div className="ct-workspace-title-left">
           <div>
-            <div className="ct-workspace-id-row" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="ct-workspace-id-row">
               <span className="ct-workspace-id">{contratoIdDisplay(contrato.id)}</span>
               
               {/* Version Selector */}
