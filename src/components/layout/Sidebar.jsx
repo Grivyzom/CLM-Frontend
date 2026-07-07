@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
+import { Pin, PinOff } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiLogout } from '../../api';
 import './Sidebar.css';
@@ -30,17 +31,16 @@ const Icon = ({ paths = [], circles = [], className = '' }) => (
 );
 
 export default function Sidebar() {
-  // Comportamiento inteligente 1: Persistencia en LocalStorage
-  const [userPreference, setUserPreference] = useState(() => {
+  const [isPinned, setIsPinned] = useState(() => {
     const saved = localStorage.getItem('clm_sidebar_preference');
     return saved !== null ? JSON.parse(saved) : false;
   });
+  const [isHovered, setIsHovered] = useState(false);
   
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [collapsed, setCollapsed] = useState(userPreference);
   const [ctxIndex, setCtxIndex] = useState(0);
   const [dropOpen, setDropOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -48,32 +48,39 @@ export default function Sidebar() {
   const dropdownRef = useRef(null);
   const userMenuRef = useRef(null);
 
-  // Comportamiento inteligente 2: Auto-colapso responsivo según tamaño de pantalla
+  const isExpanded = isPinned || isHovered;
+  const collapsed = !isExpanded;
+
   useEffect(() => {
     const handleResize = () => {
-      // Si la pantalla es menor a 1024px (tablets/móviles), colapsar automáticamente
       if (window.innerWidth < 1024) {
-        setCollapsed(true);
+        setIsPinned(false);
       } else {
-        // Al volver a pantallas grandes, restaurar la preferencia del usuario
-        setCollapsed(userPreference);
+        const saved = localStorage.getItem('clm_sidebar_preference');
+        if (saved !== null) {
+          setIsPinned(JSON.parse(saved));
+        }
       }
     };
     
-    handleResize(); // Chequeo inicial
+    handleResize(); 
     
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [userPreference]);
+  }, []);
 
-  // Manejador inteligente del toggle manual
-  const handleToggleCollapse = () => {
-    const newValue = !collapsed;
-    setCollapsed(newValue);
-    
-    // Solo guardamos la preferencia si el usuario la acciona desde escritorio
+  const handleSidebarClick = () => {
+    if (!isPinned && window.innerWidth >= 1024) {
+      setIsPinned(true);
+      localStorage.setItem('clm_sidebar_preference', JSON.stringify(true));
+    }
+  };
+
+  const togglePin = (e) => {
+    e.stopPropagation();
+    const newValue = !isPinned;
+    setIsPinned(newValue);
     if (window.innerWidth >= 1024) {
-      setUserPreference(newValue);
       localStorage.setItem('clm_sidebar_preference', JSON.stringify(newValue));
     }
   };
@@ -103,7 +110,20 @@ export default function Sidebar() {
   };
 
   return (
-    <div className={`sidebar-proto ${collapsed ? 'collapsed' : 'expanded'}`}>
+    <>
+      {/* Hitbox invisible en el borde de la pantalla */}
+      {!isPinned && (
+        <div 
+          className="sb-hitbox"
+          onMouseEnter={() => setIsHovered(true)}
+        />
+      )}
+      <div 
+        className={`sidebar-proto ${collapsed ? 'collapsed' : 'expanded'}`}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        onClick={handleSidebarClick}
+      >
       {/* Header / Selector de Contexto */}
       <div className="sb-header">
         <div className="sb-logo-section">
@@ -114,6 +134,18 @@ export default function Sidebar() {
             <div className="sb-logo-title">Enfoque</div>
             <div className="sb-logo-subtitle">Platform</div>
           </div>
+          
+          <button
+            onClick={togglePin}
+            className={`sb-pin-btn ${isPinned ? 'pinned' : ''}`}
+            title={isPinned ? "Desanclar sidebar" : "Anclar sidebar"}
+          >
+            {isPinned ? (
+              <PinOff size={16} strokeWidth={2} />
+            ) : (
+              <Pin size={16} strokeWidth={2} />
+            )}
+          </button>
         </div>
 
         {user && (
@@ -274,18 +306,8 @@ export default function Sidebar() {
             <span className="sb-login-label">Iniciar sesión</span>
           </button>
         )}
-        
-        <button
-          onClick={handleToggleCollapse}
-          className="sb-collapse-btn"
-          title={collapsed ? "Expandir sidebar" : "Colapsar sidebar"}
-        >
-          <svg className="sb-collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d={!collapsed ? 'M15 18l-6-6 6-6' : 'M9 18l6-6-6-6'} />
-          </svg>
-          <span className="sb-collapse-label">Colapsar sidebar</span>
-        </button>
       </div>
     </div>
+    </>
   );
 }

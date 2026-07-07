@@ -4,10 +4,11 @@
   flex-direction: column;
   background-color: #efede8;
   border-right: 1px solid #d8d4cc;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
   height: 100vh;
   z-index: 20;
+  overflow: hidden;
 }
 
 .sidebar-proto.expanded {
@@ -16,8 +17,18 @@
 }
 
 .sidebar-proto.collapsed {
-  width: 72px;
-  min-width: 72px;
+  width: 0px;
+  min-width: 0px;
+  border-right-color: transparent;
+}
+
+.sb-hitbox {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 20px;
+  z-index: 15;
 }
 
 /* Header */
@@ -59,6 +70,7 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
+  flex: 1;
   opacity: 1;
   transition: opacity 0.2s;
   overflow: hidden;
@@ -513,46 +525,31 @@
   flex: 0;
 }
 
-.sb-collapse-btn {
-  width: 100%;
-  height: 38px;
+.sb-pin-btn {
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
-  padding: 0 16px;
+  justify-content: center;
   border-radius: 5px;
   border: none;
   background-color: transparent;
   cursor: pointer;
   color: #7c7670;
   transition: all 0.2s ease;
-  overflow: hidden;
-  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.sb-collapse-btn:hover {
+.sb-pin-btn:hover {
   background-color: #e5e2da;
   color: #5c574f;
 }
 
-.sb-collapse-icon {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-  transition: transform 0.3s ease;
+.sb-pin-btn.pinned {
+  color: #3b3631;
 }
 
-.sb-collapse-label {
-  font-size: 0.75rem;
-  font-weight: 500;
-  margin-left: 0.75rem;
-  opacity: 1;
-  transition: opacity 0.2s;
-  overflow: hidden;
-}
-
-.sidebar-proto.collapsed .sb-collapse-label {
+.sidebar-proto.collapsed .sb-pin-btn {
   opacity: 0;
-  width: 0;
-  margin: 0;
-  flex: 0;
+  pointer-events: none;
 }
