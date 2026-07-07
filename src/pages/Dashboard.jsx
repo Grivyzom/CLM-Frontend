@@ -17,6 +17,21 @@ const SERIES_COLORS = ['#2563eb', '#16a34a', '#d97706', '#7c3aed', '#be123c', '#
 // Ramp ordinal (validado): etapas del pipeline, claro → oscuro.
 const PIPELINE_COLORS = ['#7cb1f7', '#4f8ef0', '#2563eb', '#1a45c2', '#132f8f'];
 
+// Etiquetas cortas para etapas (los display names del backend son largos).
+const ETAPA_CORTA = {
+  'Borrador (Draft)': 'Borrador',
+  'En Revisión / Negociación': 'Revisión',
+  'Aprobado internamente': 'Aprobado',
+  'Pendiente de Firma': 'P. firma',
+  'Activo / Ejecutado': 'Activo',
+  'Enmendado (Amended)': 'Enmendado',
+  'Terminado / Expirado': 'Terminado',
+};
+
+function etapaCorta(label) {
+  return ETAPA_CORTA[label] || label;
+}
+
 // ── Formato ──────────────────────────────────────────────────────────────────
 
 function fmtCLP(value) {
@@ -104,12 +119,15 @@ export default function Dashboard() {
   } = useDashboard();
 
   const [sortConfig, setSortConfig] = useState({ key: 'date_value', direction: 'asc' });
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   const handleSort = (key) => {
     setSortConfig((prev) => ({
       key,
       direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc',
     }));
+    setCurrentPage(1);
   };
 
   const sortedContracts = useMemo(() => {
@@ -121,6 +139,11 @@ export default function Dashboard() {
     });
     return items;
   }, [urgent_contracts, sortConfig]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedContracts.length / PAGE_SIZE));
+  const page = Math.min(currentPage, totalPages);
+  const offset = (page - 1) * PAGE_SIZE;
+  const paginatedContracts = sortedContracts.slice(offset, offset + PAGE_SIZE);
 
   const SortableHeader = ({ label, sortKey }) => {
     const isActive = sortConfig.key === sortKey;
@@ -216,14 +239,22 @@ export default function Dashboard() {
             <div className="db-kpi-bar">
               {kpiCards.map((kpi, i) => (
                 <div key={i} className={`db-kpi-item ${kpi.bg || ''}`}>
-                  <div className="db-kpi-content">
-                    <span className={`db-kpi-label-compact ${kpi.labelColor || ''}`}>{kpi.label}</span>
-                    <span className={`db-kpi-value-compact ${kpi.valueColor || ''}`}>{loading ? '—' : kpi.value}</span>
-                  </div>
-                  <span className={`db-kpi-sub-compact ${kpi.subColor || ''}`}>{loading ? '' : kpi.sub}</span>
+                  <span className={`db-kpi-label-compact ${kpi.labelColor || ''}`}>{kpi.label}</span>
+                  <span className={`db-kpi-value-compact ${kpi.valueColor || ''}`}>{loading ? '—' : kpi.value}</span>
+                  <span className={`db-kpi-sub-compact ${kpi.subColor || ''}`}>{loading ? ' ' : kpi.sub}</span>
                 </div>
               ))}
             </div>
+
+            {kpis.sin_documento.value > 0 && (
+              <div className="db-doc-warning">
+                <FileWarning size={13} />
+                <span>
+                  {kpis.sin_documento.value} contrato(s) activo(s) sin documento PDF de respaldo.
+                  Genera el documento desde la ficha del contrato para mantener la trazabilidad legal.
+                </span>
+              </div>
+            )}
 
             <div className="db-main-grid">
 
@@ -244,36 +275,73 @@ export default function Dashboard() {
                     <p>Nada requiere acción hoy. Sin contratos en mora, gracia ni vencimientos próximos.</p>
                   </div>
                 ) : (
-                  <div className="db-table-wrapper">
-                    <table className="db-table">
-                      <thead>
-                        <tr>
-                          <SortableHeader label="Cliente" sortKey="client" />
-                          <SortableHeader label="Software" sortKey="app" />
-                          <SortableHeader label="Monto" sortKey="monto" />
-                          <SortableHeader label="Vence" sortKey="date_value" />
-                          <SortableHeader label="SLA" sortKey="plan" />
-                          <SortableHeader label="Estado" sortKey="status" />
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {sortedContracts.map((c) => (
-                          <tr key={c.id} className="db-row-link" onClick={() => navigate(`/contratos/${c.id}`)}>
-                            <td className="db-td-client">{c.client}</td>
-                            <td>{c.app}</td>
-                            <td className="db-td-mono">{fmtCompact(c.monto)}</td>
-                            <td className={c.date_class}>{c.date}</td>
-                            <td>{c.plan}</td>
-                            <td>
-                              <span className={`db-status-badge ${c.status_class}`}>
-                                <AlertTriangle size={9} /> {c.status}
-                              </span>
-                            </td>
+                  <>
+                    <div className="db-table-wrapper">
+                      <table className="db-table">
+                        <thead>
+                          <tr>
+                            <SortableHeader label="Cliente" sortKey="client" />
+                            <SortableHeader label="Software" sortKey="app" />
+                            <SortableHeader label="Monto" sortKey="monto" />
+                            <SortableHeader label="Vence" sortKey="date_value" />
+                            <SortableHeader label="SLA" sortKey="plan" />
+                            <SortableHeader label="Estado" sortKey="status" />
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {paginatedContracts.map((c) => (
+                            <tr
+                              key={c.id}
+                              className="db-row-link"
+                              tabIndex={0}
+                              onClick={() => navigate(`/contratos/${c.id}`)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  navigate(`/contratos/${c.id}`);
+                                }
+                              }}
+                            >
+                              <td className="db-td-client">{c.client}</td>
+                              <td>{c.app}</td>
+                              <td className="db-td-mono">{fmtCompact(c.monto)}</td>
+                              <td className={c.date_class}>{c.date}</td>
+                              <td>{c.plan}</td>
+                              <td>
+                                <span className={`db-status-badge ${c.status_class}`}>
+                                  <AlertTriangle size={9} /> {c.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {sortedContracts.length > PAGE_SIZE && (
+                      <div className="db-pagination">
+                        <span className="db-pagination-info">{offset + 1}–{Math.min(offset + PAGE_SIZE, sortedContracts.length)} de {sortedContracts.length}</span>
+                        <div className="db-pagination-controls">
+                          <button
+                            className="db-pagination-btn"
+                            onClick={() => setCurrentPage(Math.max(page - 1, 1))}
+                            disabled={page === 1}
+                            title="Página anterior"
+                          >
+                            ← Anterior
+                          </button>
+                          <span className="db-pagination-counter">{page} / {totalPages}</span>
+                          <button
+                            className="db-pagination-btn"
+                            onClick={() => setCurrentPage(Math.min(page + 1, totalPages))}
+                            disabled={page === totalPages}
+                            title="Página siguiente"
+                          >
+                            Siguiente →
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -285,8 +353,8 @@ export default function Dashboard() {
                   <h3 className="db-section-title">Pipeline por etapa</h3>
                   <div className="db-hbar-list">
                     {pipeline.map((p, i) => (
-                      <div key={p.etapa} className="db-hbar-row" title={`${p.count} contrato(s) · ${fmtCLP(p.monto)}`}>
-                        <span className="db-hbar-label">{p.label.split(' ')[0]}</span>
+                      <div key={p.etapa} className="db-hbar-row" title={`${p.label}: ${p.count} contrato(s) · ${fmtCLP(p.monto)}`}>
+                        <span className="db-hbar-label">{etapaCorta(p.label)}</span>
                         <div className="db-hbar-track">
                           <div
                             className="db-hbar-fill"
@@ -382,12 +450,23 @@ export default function Dashboard() {
                 ) : (
                   <ul className="db-activity-list">
                     {actividad.map((a) => (
-                      <li key={a.id} className="db-activity-item" onClick={() => navigate(`/contratos/${a.contrato_id}`)}>
+                      <li
+                        key={a.id}
+                        className="db-activity-item"
+                        tabIndex={0}
+                        onClick={() => navigate(`/contratos/${a.contrato_id}`)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            navigate(`/contratos/${a.contrato_id}`);
+                          }
+                        }}
+                      >
                         <div className="db-activity-main">
                           <span className="db-activity-client">{a.cliente}</span>
                           <span className="db-activity-transition">
-                            {a.etapa_anterior && <>{a.etapa_anterior.split(' ')[0]} <ArrowRight size={9} /></>}
-                            {a.etapa_nueva.split(' ')[0]}
+                            {a.etapa_anterior && <>{etapaCorta(a.etapa_anterior)} <ArrowRight size={9} /></>}
+                            {etapaCorta(a.etapa_nueva)}
                           </span>
                         </div>
                         <div className="db-activity-meta">
@@ -401,16 +480,6 @@ export default function Dashboard() {
               </div>
 
             </div>
-
-            {kpis.sin_documento.value > 0 && (
-              <div className="db-doc-warning">
-                <FileWarning size={13} />
-                <span>
-                  {kpis.sin_documento.value} contrato(s) activo(s) sin documento PDF de respaldo.
-                  Genera el documento desde la ficha del contrato para mantener la trazabilidad legal.
-                </span>
-              </div>
-            )}
           </>
         )}
 

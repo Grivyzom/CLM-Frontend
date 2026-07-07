@@ -104,26 +104,18 @@
 
 .db-kpi-item {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 10px 16px;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 16px;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
   color: #7c7670;
   white-space: nowrap;
   border-right: 1px solid #e5e2da;
   flex: 1;
-  min-width: 190px;
+  min-width: 150px;
 }
 
 .db-kpi-item:last-child { border-right: none; }
-
-.db-kpi-content {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
 
 .db-kpi-label-compact {
   font-size: 9px;
@@ -135,17 +127,19 @@
 }
 
 .db-kpi-value-compact {
-  font-size: 13px;
+  font-size: 20px;
   font-weight: 700;
   color: #2d2520;
+  line-height: 1.1;
   font-family: 'JetBrains Mono', monospace;
 }
 
 .db-kpi-sub-compact {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 500;
   color: #8b8480;
   font-family: 'JetBrains Mono', monospace;
+  min-height: 13px;
 }
 
 /* Colores dinámicos */
@@ -155,7 +149,9 @@
 .color-red { color: #dc2626; }
 .bg-amber { background-color: #fffbf0; }
 
-/* Grid principal: tabla+lateral / gráfico+actividad */
+/* Grid principal.
+   Fila 1: tabla (2fr) + lateral pipeline/renovaciones (1fr), alturas alineadas.
+   Fila 2: gráfico MRR (2fr) + actividad (1fr). */
 .db-main-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -163,14 +159,22 @@
 }
 
 @media (min-width: 1024px) {
-  .db-main-grid { grid-template-columns: 2fr 1fr; }
+  .db-main-grid {
+    grid-template-columns: 2fr 1fr;
+    align-items: stretch;
+  }
 }
 
 .db-side-col {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  min-width: 0;
 }
+
+/* Las dos cards laterales se reparten la altura de la tabla,
+   así ambas columnas terminan exactamente en la misma línea. */
+.db-side-col > .db-panel-card { flex: 1; }
 
 /* Tarjetas */
 .db-panel-card {
@@ -290,7 +294,14 @@
   border: 1px solid #d8d4cc;
   overflow: hidden;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
+
+/* La tabla llena la card; la paginación queda anclada abajo. */
+.db-table-card .db-table-wrapper { flex: 1; }
+.db-table-card .db-pagination { margin-top: auto; }
 
 .db-table-header {
   padding: 0.875rem 1.25rem;
@@ -407,6 +418,9 @@
   padding: 0;
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .db-activity-item {
@@ -563,4 +577,61 @@
   font-weight: 700;
   font-family: 'JetBrains Mono', monospace;
   text-align: right;
+}
+
+/* Paginación */
+.db-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid #e5e2da;
+  background-color: #fafaf9;
+  font-size: 11px;
+  color: #7c7670;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.db-pagination-info {
+  font-weight: 600;
+  color: #5c574f;
+}
+
+.db-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.db-pagination-btn {
+  padding: 0.375rem 0.75rem;
+  border: 1px solid #d8d4cc;
+  background-color: #ffffff;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #2563eb;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap;
+}
+
+.db-pagination-btn:hover:not(:disabled) {
+  background-color: #f0f4ff;
+  border-color: #2563eb;
+}
+
+.db-pagination-btn:disabled {
+  color: #b0aaa3;
+  border-color: #e5e2da;
+  background-color: #efede8;
+  cursor: not-allowed;
+}
+
+.db-pagination-counter {
+  font-weight: 700;
+  color: #3b3631;
+  min-width: 48px;
+  text-align: center;
 }
