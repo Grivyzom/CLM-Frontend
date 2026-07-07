@@ -1,5 +1,12 @@
 /* ─── Contratos Page ─────────────────────────────────────────────── */
 
+/*
+ * Escala tipográfica mínima: 10px para etiquetas mono uppercase,
+ * 11px para texto secundario, 12px+ para contenido.
+ * Texto atenuado sobre blanco: #8d8578 (labels) / #7c7670 (texto) — nunca #b0aaa3
+ * (ese tono queda reservado para placeholders e iconografía decorativa).
+ */
+
 /* ── Animations ── */
 @keyframes slideIn {
   from { transform: translateX(100%); opacity: 0; }
@@ -41,7 +48,7 @@
 
 .ct-header-label {
   margin: 0;
-  font-size: 8px;
+  font-size: 9px;
   color: #b0aaa3;
   font-weight: 700;
   text-transform: uppercase;
@@ -76,6 +83,7 @@
   background: #d8d4cc;
 }
 
+/* Indicador de contexto (no interactivo: sin cursor ni hover) */
 .ct-ctx-badge {
   display: flex;
   align-items: center;
@@ -88,11 +96,7 @@
   color: #2563eb;
   font-weight: 700;
   font-family: 'JetBrains Mono', monospace;
-  cursor: pointer;
-  transition: background 0.15s;
 }
-
-.ct-ctx-badge:hover { background: rgba(37, 99, 235, 0.1); }
 
 .ct-ctx-dot {
   width: 5px;
@@ -153,11 +157,11 @@
 
 .ct-stat-label {
   margin: 0;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.07em;
-  color: #b0aaa3;
+  color: #8d8578;
   font-family: 'JetBrains Mono', monospace;
   white-space: nowrap;
   overflow: hidden;
@@ -166,7 +170,7 @@
 
 .ct-stat-value {
   margin: 2px 0 0;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   color: #3b3631;
   letter-spacing: -0.02em;
@@ -175,9 +179,20 @@
 
 .ct-stat-sub {
   margin: 0;
-  font-size: 9px;
-  color: #b0aaa3;
+  font-size: 10px;
+  color: #8d8578;
   font-family: 'JetBrains Mono', monospace;
+}
+
+/* Skeleton de carga (usa shimmer) */
+.ct-skeleton {
+  display: inline-block;
+  height: 14px;
+  width: 64px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #efede8 25%, #e5e2da 50%, #efede8 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
 }
 
 /* ── Toolbar ── */
@@ -306,6 +321,22 @@
 
 .ct-btn-secondary:hover { background: #e5e2da; }
 
+/* Foco visible por teclado en todos los controles */
+.ct-btn-primary:focus-visible,
+.ct-btn-secondary:focus-visible,
+.ct-btn-danger:focus-visible,
+.ct-icon-btn:focus-visible,
+.ct-icon-btn-sm:focus-visible,
+.ct-view-btn:focus-visible,
+.ct-row-open-btn:focus-visible,
+.ct-select:focus-visible,
+.ct-search input:focus-visible,
+.ct-workspace-tab:focus-visible,
+.ct-breadcrumb-btn:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
 .ct-btn-danger {
   display: flex;
   align-items: center;
@@ -357,6 +388,8 @@
 .ct-icon-btn-sm:hover { background: #efede8; }
 
 /* ── Badges ── */
+/* max-width + min-width 0: el badge nunca desborda su celda de grid;
+   el texto se trunca con ellipsis (title muestra el texto completo) */
 .ct-badge {
   display: inline-flex;
   align-items: center;
@@ -366,16 +399,26 @@
   font-weight: 700;
   text-transform: uppercase;
   white-space: nowrap;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ct-badge-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ct-badge-md {
   padding: 2px 8px;
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .ct-badge-sm {
-  padding: 1px 6px;
-  font-size: 8px;
+  padding: 2px 7px;
+  font-size: 9px;
 }
 
 .ct-badge-dot {
@@ -386,14 +429,17 @@
 }
 
 .ct-sw-tag {
-  display: inline-flex;
-  align-items: center;
+  display: inline-block;
   border-radius: 4px;
   padding: 2px 8px;
   font-size: 10px;
   font-weight: 600;
   font-family: 'JetBrains Mono', monospace;
   white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
 }
 
 .ct-mono {
@@ -420,7 +466,7 @@
 
 .ct-table-header {
   display: grid;
-  grid-template-columns: 130px 1fr 140px 140px 110px 90px 140px 110px 70px;
+  grid-template-columns: 110px 1fr 130px 170px 110px 90px 140px 110px 70px;
   gap: 8px;
   padding: 7px 16px;
   background: #efede8;
@@ -428,7 +474,7 @@
 }
 
 .ct-table-header span {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   color: #7c7670;
   text-transform: uppercase;
@@ -452,7 +498,7 @@
 
 .ct-table-row {
   display: grid;
-  grid-template-columns: 130px 1fr 140px 140px 110px 90px 140px 110px 70px;
+  grid-template-columns: 110px 1fr 130px 170px 110px 90px 140px 110px 70px;
   gap: 8px;
   padding: 10px 16px;
   border-bottom: 1px solid #f7f6f2;
@@ -467,9 +513,15 @@
 
 .ct-table-row:hover { background: #f7f6f2; }
 
+.ct-table-row:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
+
+/* box-shadow inset en vez de border-left: evita desplazar el contenido 2px */
 .ct-table-row.selected {
   background: rgba(37, 99, 235, 0.04);
-  border-left: 2px solid #2563eb;
+  box-shadow: inset 3px 0 0 #2563eb;
 }
 
 .ct-id-cell {
@@ -494,8 +546,8 @@
 }
 
 .ct-row-client {
-  font-size: 10px;
-  color: #b0aaa3;
+  font-size: 11px;
+  color: #7c7670;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -520,7 +572,7 @@
 }
 
 .ct-expiring-tag {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
 }
 
@@ -560,10 +612,22 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
-  color: #b0aaa3;
+  color: #8d8578;
   font-size: 13px;
   padding: 40px;
 }
+
+/* Banner de error reutilizable */
+.ct-alert-error {
+  padding: 10px 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #dc2626;
+}
+
+.ct-workspace > .ct-alert-error { margin: 10px 28px 0; }
 
 /* ── Kanban ── */
 .ct-kanban {
@@ -595,6 +659,13 @@
   flex-shrink: 0;
 }
 
+.ct-kanban-col-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .ct-kanban-col-dot {
   width: 7px;
   height: 7px;
@@ -606,23 +677,30 @@
   font-size: 11px;
   font-weight: 700;
   color: #3b3631;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ct-kanban-col-count {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   font-family: 'JetBrains Mono', monospace;
-  color: #b0aaa3;
+  color: #5c574f;
   background: #d8d4cc;
   border-radius: 10px;
   padding: 1px 6px;
+  flex-shrink: 0;
 }
 
 .ct-kanban-col-mrr {
-  font-size: 9px;
+  font-size: 10px;
   font-family: 'JetBrains Mono', monospace;
   font-weight: 700;
   color: #7c7670;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .ct-kanban-cards {
@@ -660,19 +738,24 @@
 }
 
 .ct-kc-id {
-  font-size: 9px;
+  font-size: 10px;
   font-family: 'JetBrains Mono', monospace;
-  color: #b0aaa3;
+  color: #8d8578;
   font-weight: 700;
 }
 
+/* Trunca con ellipsis igual que en tabla (title muestra nombre completo) */
 .ct-kc-sw {
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 700;
   font-family: 'JetBrains Mono', monospace;
   border-radius: 4px;
   padding: 1px 6px;
   text-transform: uppercase;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ct-kc-name {
@@ -684,7 +767,7 @@
 }
 
 .ct-kc-client {
-  font-size: 10px;
+  font-size: 11px;
   color: #7c7670;
 }
 
@@ -702,30 +785,41 @@
   font-weight: 700;
   font-family: 'JetBrains Mono', monospace;
   color: #3b3631;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ct-kc-mrr-sub {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 400;
-  color: #b0aaa3;
+  color: #8d8578;
 }
 
 .ct-kc-alert {
   display: flex;
   align-items: center;
   gap: 3px;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   font-family: 'JetBrains Mono', monospace;
+  flex-shrink: 0;
 }
 
 .ct-kanban-empty {
   text-align: center;
   font-size: 11px;
-  color: #b0aaa3;
+  color: #8d8578;
   padding: 20px;
   border: 1px dashed #d8d4cc;
   border-radius: 6px;
+}
+
+.ct-kanban-notice {
+  margin: 0;
+  font-size: 11px;
+  color: #7c7670;
 }
 
 /* ── Slide-Over ── */
@@ -764,7 +858,7 @@
 
 .ct-slideover-id {
   margin: 0 0 3px;
-  font-size: 9px;
+  font-size: 10px;
   font-family: 'JetBrains Mono', monospace;
   font-weight: 700;
   color: #2563eb;
@@ -804,11 +898,11 @@
 
 .ct-section-label {
   margin: 0;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #b0aaa3;
+  color: #8d8578;
   font-family: 'JetBrains Mono', monospace;
 }
 
@@ -833,11 +927,11 @@
 
 .ct-field-label {
   margin: 0;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.07em;
-  color: #b0aaa3;
+  color: #8d8578;
   font-family: 'JetBrains Mono', monospace;
 }
 
@@ -955,7 +1049,33 @@
   font-size: 10px;
   font-family: 'JetBrains Mono', monospace;
   font-weight: 700;
-  color: #b0aaa3;
+  color: #8d8578;
+}
+
+/* Selector / chip de versión (paleta del sistema, no grises neutros) */
+.ct-version-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #efede8;
+  border: 1px solid #d8d4cc;
+  border-radius: 5px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  color: #5c574f;
+}
+
+.ct-version-pill select {
+  background: transparent;
+  border: none;
+  font-size: 10px;
+  color: #3b3631;
+  cursor: pointer;
+  outline: none;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 .ct-workspace-name {
@@ -982,7 +1102,7 @@
   gap: 4px;
   border-radius: 4px;
   padding: 2px 8px;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   font-family: 'JetBrains Mono', monospace;
 }
@@ -1005,11 +1125,11 @@
 
 .ct-kpi-label {
   margin: 0 0 2px;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.07em;
-  color: #b0aaa3;
+  color: #8d8578;
   font-family: 'JetBrains Mono', monospace;
 }
 
@@ -1134,9 +1254,9 @@
 
 .ct-resumen-value-label {
   margin: 0 0 2px;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
-  color: #b0aaa3;
+  color: #8d8578;
   text-transform: uppercase;
   letter-spacing: 0.07em;
   font-family: 'JetBrains Mono', monospace;
@@ -1237,7 +1357,13 @@
 .ct-doc-meta {
   margin: 2px 0 0;
   font-size: 10px;
-  color: #b0aaa3;
+  color: #8d8578;
+}
+
+.ct-doc-versions-note {
+  padding: 10px 16px;
+  font-size: 11px;
+  color: #7c7670;
 }
 
 .ct-doc-preview {
@@ -1381,6 +1507,25 @@
 
 .ct-anexo-item:last-child { border-bottom: none; }
 
+.ct-anexo-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ct-anexo-name {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #3b3631;
+}
+
+.ct-anexo-date {
+  margin: 0;
+  font-size: 10px;
+  color: #8d8578;
+}
+
 /* ─ Tab: Historial ─ */
 .ct-tab-historial {
   display: flex;
@@ -1433,9 +1578,9 @@
 
 .ct-timeline-time {
   margin: 0 0 1px;
-  font-size: 9px;
+  font-size: 10px;
   font-family: 'JetBrains Mono', monospace;
-  color: #b0aaa3;
+  color: #8d8578;
   font-weight: 700;
 }
 
@@ -1551,7 +1696,7 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
-  color: #b0aaa3;
+  color: #8d8578;
   font-size: 13px;
   font-weight: 500;
   padding: 60px;
@@ -1559,6 +1704,211 @@
   background: #fff;
   border: 1px solid #d8d4cc;
   border-radius: 6px;
+}
+
+/* Tarjetas de obligación SLA */
+.ct-sla-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ct-sla-card {
+  background: #fff;
+  border: 1px solid #d8d4cc;
+  border-radius: 6px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+  padding: 16px;
+}
+
+.ct-sla-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.ct-sla-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ct-sla-card-title h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #3b3631;
+}
+
+.ct-sla-card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.ct-sla-card-body {
+  margin-top: 8px;
+}
+
+.ct-sla-card-desc {
+  font-size: 12px;
+  color: #5c574f;
+  margin: 4px 0;
+  line-height: 1.5;
+}
+
+.ct-sla-card-penalty {
+  font-size: 12px;
+  color: #be123c;
+  margin: 4px 0;
+  line-height: 1.5;
+}
+
+.ct-sla-card-footer {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f7f6f2;
+}
+
+.ct-btn-ghost-sm {
+  padding: 4px 10px;
+  border: 1px solid #d8d4cc;
+  border-radius: 4px;
+  background: transparent;
+  font-size: 11px;
+  color: #5c574f;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Inter', system-ui, sans-serif;
+  transition: background 0.15s;
+}
+
+.ct-btn-ghost-sm:hover { background: #efede8; }
+.ct-btn-ghost-sm:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+
+/* Historial de cambios de una obligación */
+.ct-obligation-history {
+  margin-top: 10px;
+  background: #f7f6f2;
+  border: 1px solid #e5e2da;
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.ct-obligation-history h5 {
+  margin: 0 0 8px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #7c7670;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.ct-history-hint {
+  font-size: 11px;
+  color: #7c7670;
+  margin: 0;
+}
+
+.ct-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ct-history-entry {
+  font-size: 11px;
+  color: #5c574f;
+  border-left: 2px solid #2563eb;
+  padding-left: 8px;
+}
+
+.ct-history-entry-head {
+  font-weight: 600;
+  color: #3b3631;
+}
+
+.ct-history-prev {
+  color: #8d8578;
+  text-decoration: line-through;
+}
+
+.ct-history-new {
+  color: #3b3631;
+}
+
+/* Modal de obligación */
+.ct-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.ct-modal {
+  background: #fff;
+  padding: 24px;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.12);
+  animation: fadeIn 0.18s ease-out;
+}
+
+.ct-modal h3 {
+  margin: 0 0 16px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #3b3631;
+}
+
+.ct-modal-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ct-modal-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #5c574f;
+  margin-bottom: 4px;
+}
+
+.ct-modal-field input,
+.ct-modal-field textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #d8d4cc;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #3b3631;
+  background: #fff;
+  font-family: 'Inter', system-ui, sans-serif;
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+
+.ct-modal-field input:focus,
+.ct-modal-field textarea:focus {
+  border-color: #2563eb;
+}
+
+.ct-modal-field input::placeholder,
+.ct-modal-field textarea::placeholder { color: #b0aaa3; }
+
+.ct-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
 }
 
 /* ── Responsive ── */
@@ -1570,7 +1920,7 @@
 @media (max-width: 1024px) {
   .ct-table-header,
   .ct-table-row {
-    grid-template-columns: 110px 1fr 120px 120px 90px 140px 90px 60px;
+    grid-template-columns: 100px 1fr 110px 150px 90px 130px 90px 60px;
   }
   .ct-table-header span:nth-child(6),
   .ct-table-row > *:nth-child(6) { display: none; }
@@ -1588,4 +1938,22 @@
   .ct-workspace-tabs { padding: 0 16px; }
   .ct-workspace-content { padding: 14px 16px; }
   .ct-stats-grid { grid-template-columns: repeat(2, 1fr); }
+  /* Tabla con scroll horizontal en pantallas chicas, en vez de columnas aplastadas */
+  .ct-table-wrap { overflow-x: auto; }
+  .ct-table-header,
+  .ct-table-row { min-width: 860px; }
+  .ct-slideover { width: 100%; border-left: none; }
+}
+
+/* ── Movimiento reducido ── */
+@media (prefers-reduced-motion: reduce) {
+  .ct-container *,
+  .ct-workspace *,
+  .ct-slideover,
+  .ct-slideover-backdrop,
+  .ct-modal,
+  .ct-modal-backdrop {
+    animation: none !important;
+    transition: none !important;
+  }
 }
