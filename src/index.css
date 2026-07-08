@@ -1,30 +1,158 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
+/* ══════════════════════════════════════════════════════════════
+   DESIGN TOKENS — Paleta cálida "Enfoque Platform"
+   Tema claro por defecto en :root; overrides en [data-theme="dark"]
+   ══════════════════════════════════════════════════════════════ */
 :root {
-  /* Colors */
-  --bg-color: #0f172a;
-  --bg-surface: #1e293b;
-  --bg-surface-hover: #334155;
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --primary: #3b82f6;
-  --primary-hover: #2563eb;
-  --danger: #ef4444;
-  --success: #22c55e;
-  --warning: #eab308;
-  --border: #334155;
-  --glass-bg: rgba(30, 41, 59, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.1);
+  color-scheme: light;
+
+  /* ── Superficies ── */
+  --bg-page: #f4f3ef;         /* fondo general de página */
+  --bg-topbar: #efede8;       /* topbars, headers, paneles laterales */
+  --bg-subtle: #f7f6f2;       /* bloques suaves sobre página */
+  --bg-faint: #faf9f6;        /* filas alternas, hovers muy leves */
+  --bg-inset: #eceae4;        /* inputs inset, tracks, chips neutros */
+  --neutral-200: #e5e2da;     /* hover fuerte / borde suave */
+  --surface: #ffffff;         /* tarjetas, modales, popovers */
+
+  /* ── Texto ── */
+  --text-heading: #292524;
+  --text-primary: #3b3631;
+  --text-secondary: #5c574f;
+  --text-muted: #7c7670;
+  --text-soft: #8d8578;
+  --text-faint: #b0aaa3;
+  --text-on-accent: #ffffff;  /* texto sobre botones/áreas de color */
+
+  /* ── Bordes ── */
+  --border: #d8d4cc;
+  --border-strong: #c9c4bc;
+
+  /* ── Primario (azul) ── */
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-deep: #1e40af;
+  --primary-bright: #3b82f6;
+  --primary-soft: #93c5fd;
+  --primary-border: #bfdbfe;
+  --primary-tint: #dbeafe;
+  --primary-bg: #eff6ff;
+
+  /* ── Peligro (rojo) ── */
+  --danger: #dc2626;
+  --danger-deep: #b91c1c;
+  --danger-bright: #ef4444;
+  --danger-soft: #fca5a5;
+  --danger-border: #fecaca;
+  --danger-tint: #fee2e2;
+  --danger-bg: #fef2f2;
+
+  /* ── Rosa (rose) ── */
+  --rose: #be123c;
+  --rose-border: #fecdd3;
+  --rose-tint: #ffe4e6;
+  --rose-bg: #fff1f2;
+
+  /* ── Éxito (verde) ── */
+  --success: #16a34a;
+  --success-deep: #15803d;
+  --success-deeper: #166534;
+  --success-bright: #22c55e;
+  --success-alt: #059669;
+  --success-soft: #6ee7b7;
+  --success-border: #bbf7d0;
+  --success-tint: #d1fae5;
+  --success-bg: #f0fdf4;
+
+  /* ── Advertencia (ámbar) ── */
+  --warning: #b45309;
+  --warning-deep: #92400e;
+  --warning-bright: #d97706;
+  --warning-vivid: #f59e0b;
+  --warning-soft: #fcd34d;
+  --warning-border: #fde68a;
+  --warning-tint: #fef3c7;
+  --warning-bg: #fffbeb;
+
+  /* ── Violeta ── */
+  --violet: #6d28d9;
+  --violet-bright: #7c3aed;
+  --violet-border: #ddd6fe;
+  --violet-tint: #ede9fe;
+  --violet-bg: #f5f3ff;
+
+  /* ── Cian ── */
+  --cyan: #0891b2;
+  --cyan-deep: #0e7490;
+  --cyan-tint: #cffafe;
+  --cyan-border: #a5f3fc;
+  --cyan-bg: #ecfeff;
+
+  /* ── Sky ── */
+  --sky: #0284c7;
+  --sky-deep: #0369a1;
+  --sky-border: #bae6fd;
+  --sky-bg: #e0f2fe;
+
+  /* ── Índigo ── */
+  --indigo: #4338ca;
+  --indigo-bright: #4f46e5;
+  --indigo-border: #c7d2fe;
+  --indigo-bg: #eef2ff;
+
+  /* ── Teal ── */
+  --teal: #0d9488;
+  --teal-tint: #99f6e4;
+
+  /* ── Lima ── */
+  --lime: #65a30d;
+  --lime-tint: #ecfccb;
+
+  /* ── Rosa fuerte (pink) ── */
+  --pink: #db2777;
+  --pink-tint: #fce7f3;
+
+  /* ── Naranja ── */
+  --orange: #ea580c;
+  --orange-tint: #fed7aa;
+
+  /* ── Violeta profundo ── */
+  --violet-deep: #5b21b6;
+
+  /* ── Gráficos (pipeline dashboard) ── */
+  --chart-pipeline-1: #7cb1f7;
+  --chart-pipeline-2: #4f8ef0;
+  --chart-pipeline-3: #2563eb;
+  --chart-pipeline-4: #1a45c2;
+  --chart-pipeline-5: #132f8f;
+  --chart-grid: #eceae4;
+  --chart-cursor: #f4f3ef;
+
+  /* ── Scrollbar ── */
+  --scrollbar-thumb: #cbd5e1;
+  --scrollbar-thumb-hover: #94a3b8;
+
+  /* ── Overlays / sombras ── */
+  --overlay: rgba(10, 10, 10, 0.55);
+  --shadow-color: rgba(0, 0, 0, 0.08);
+
+  /* ── Aliases legacy (componentes ui genéricos) ── */
+  --bg-color: var(--bg-page);
+  --bg-surface: var(--surface);
+  --bg-surface-hover: var(--neutral-200);
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(0, 0, 0, 0.08);
 
   /* Typography */
   --font-family: 'Inter', system-ui, sans-serif;
-  
+
   /* Shadows & Effects */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-  
+
   /* Radii */
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
@@ -35,6 +163,156 @@
   --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* ══════════════════════════════════════════════════════════════
+   TEMA OSCURO — misma calidez (tonos piedra/café), no gris frío
+   ══════════════════════════════════════════════════════════════ */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Superficies */
+  --bg-page: #191715;
+  --bg-topbar: #1f1c19;
+  --bg-subtle: #211e1b;
+  --bg-faint: #1d1a17;
+  --bg-inset: #262220;
+  --neutral-200: #2c2825;
+  --surface: #24211d;
+
+  /* Texto */
+  --text-heading: #f2ede5;
+  --text-primary: #e8e3da;
+  --text-secondary: #c6bfb4;
+  --text-muted: #a29a8f;
+  --text-soft: #8f877c;
+  --text-faint: #746d64;
+  --text-on-accent: #ffffff;
+
+  /* Bordes */
+  --border: #37322d;
+  --border-strong: #443e38;
+
+  /* Primario */
+  --primary: #5c8df6;
+  --primary-hover: #7da4f8;
+  --primary-deep: #93b4f8;
+  --primary-bright: #6ea1f7;
+  --primary-soft: #3c5a94;
+  --primary-border: #2f4877;
+  --primary-tint: #243a63;
+  --primary-bg: #1c2740;
+
+  /* Peligro */
+  --danger: #f26b6b;
+  --danger-deep: #f28b8b;
+  --danger-bright: #f47272;
+  --danger-soft: #7a3d3d;
+  --danger-border: #5c2e2e;
+  --danger-tint: #452525;
+  --danger-bg: #2e1c1c;
+
+  /* Rosa */
+  --rose: #f0709a;
+  --rose-border: #5c2c38;
+  --rose-tint: #46242e;
+  --rose-bg: #2f1d22;
+
+  /* Éxito */
+  --success: #4ade80;
+  --success-deep: #6fd99a;
+  --success-deeper: #86e0a8;
+  --success-bright: #57d987;
+  --success-alt: #3ecf9a;
+  --success-soft: #2c6b4f;
+  --success-border: #29573c;
+  --success-tint: #1f4632;
+  --success-bg: #1a2e22;
+
+  /* Advertencia */
+  --warning: #e8a04c;
+  --warning-deep: #f0b46a;
+  --warning-bright: #f59e42;
+  --warning-vivid: #fbbf24;
+  --warning-soft: #8a6a1f;
+  --warning-border: #6b5418;
+  --warning-tint: #4a3c14;
+  --warning-bg: #322a14;
+
+  /* Violeta */
+  --violet: #b195f5;
+  --violet-bright: #a78bfa;
+  --violet-border: #43386b;
+  --violet-tint: #322a52;
+  --violet-bg: #26213b;
+
+  /* Cian */
+  --cyan: #38bdd8;
+  --cyan-deep: #3ec6dd;
+  --cyan-tint: #123c46;
+  --cyan-border: #1a4a57;
+  --cyan-bg: #12303a;
+
+  /* Sky */
+  --sky: #4db8f5;
+  --sky-deep: #7cc9f7;
+  --sky-border: #1f3c55;
+  --sky-bg: #16293a;
+
+  /* Índigo */
+  --indigo: #8b93f8;
+  --indigo-bright: #9ba3fa;
+  --indigo-border: #343b6b;
+  --indigo-bg: #232647;
+
+  /* Teal */
+  --teal: #2dd4bf;
+  --teal-tint: #134e48;
+
+  /* Lima */
+  --lime: #a3e635;
+  --lime-tint: #2d3a12;
+
+  /* Rosa fuerte (pink) */
+  --pink: #f472b6;
+  --pink-tint: #451b31;
+
+  /* Naranja */
+  --orange: #fb923c;
+  --orange-tint: #4a2812;
+
+  /* Violeta profundo */
+  --violet-deep: #c4b5fd;
+
+  /* Gráficos */
+  --chart-pipeline-1: #7cb1f7;
+  --chart-pipeline-2: #5b93ef;
+  --chart-pipeline-3: #4478e0;
+  --chart-pipeline-4: #335fc0;
+  --chart-pipeline-5: #274a99;
+  --chart-grid: #2c2825;
+  --chart-cursor: #262220;
+
+  /* Scrollbar */
+  --scrollbar-thumb: #443e38;
+  --scrollbar-thumb-hover: #5a534b;
+
+  /* Overlays / sombras */
+  --overlay: rgba(0, 0, 0, 0.65);
+  --shadow-color: rgba(0, 0, 0, 0.45);
+
+  /* Aliases legacy */
+  --glass-bg: rgba(36, 33, 29, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.08);
+}
+
+/* Durante el cambio de tema se suprimen todas las transiciones para que
+   los componentes con transition de hover (botones, chips) cambien de
+   color al mismo tiempo que el resto de la UI. */
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition: none !important;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -43,10 +321,17 @@
 
 body {
   font-family: var(--font-family);
-  background-color: var(--bg-color);
+  background-color: var(--bg-page);
   color: var(--text-primary);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+#root {
+  /* clip recorta sin crear scroll container (hidden rompe position: sticky del sidebar) */
+  overflow-x: hidden;
+  overflow-x: clip;
   min-height: 100vh;
 }
 
@@ -77,12 +362,12 @@ ul {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--scrollbar-thumb);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--scrollbar-thumb-hover);
 }
 
 input[type="text"],
@@ -96,7 +381,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 button:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
@@ -117,6 +402,13 @@ button:focus-visible {
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* Agrupa fecha + acciones a la derecha de los topbars */
+.topbar-right-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 /* Page Utilities */

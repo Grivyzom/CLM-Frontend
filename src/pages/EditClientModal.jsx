@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getClienteDetail, updateCliente } from '../api';
 
-function Svg({ paths = [], circles = [], size = 14, color = '#7c7670', strokeWidth = 1.8 }) {
+function Svg({ paths = [], circles = [], size = 14, color = 'var(--text-muted)', strokeWidth = 1.8 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
       stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"
@@ -15,8 +15,8 @@ function Svg({ paths = [], circles = [], size = 14, color = '#7c7670', strokeWid
 function FormField({ label, name, type = 'text', value, onChange, error, placeholder, required, disabled }) {
   return (
     <div style={{ marginBottom: 14 }}>
-      <label style={{ display: 'block', fontSize: 9, fontWeight: 700, color: '#7c7670', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.07em', fontFamily: "'JetBrains Mono', monospace" }}>
-        {label} {required && <span style={{ color: '#dc2626' }}>*</span>}
+      <label style={{ display: 'block', fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.07em', fontFamily: "'JetBrains Mono', monospace" }}>
+        {label} {required && <span style={{ color: 'var(--danger)' }}>*</span>}
       </label>
       <input
         type={type}
@@ -28,20 +28,20 @@ function FormField({ label, name, type = 'text', value, onChange, error, placeho
         style={{
           width: '100%',
           padding: '8px 12px',
-          border: error ? '1px solid #fca5a5' : '1px solid #d8d4cc',
+          border: error ? '1px solid var(--danger-soft)' : '1px solid var(--border)',
           borderRadius: 5,
           fontSize: 12,
           fontFamily: 'inherit',
-          background: error ? '#fef2f2' : disabled ? '#f1f5f9' : '#efede8',
-          color: disabled ? '#b0aaa3' : '#3b3631',
+          background: error ? 'var(--danger-bg)' : disabled ? 'var(--bg-inset)' : 'var(--bg-topbar)',
+          color: disabled ? 'var(--text-faint)' : 'var(--text-primary)',
           outline: 'none',
           transition: 'border-color 0.15s, background 0.15s',
           cursor: disabled ? 'not-allowed' : 'text',
         }}
-        onFocus={e => { if (!disabled) { e.target.style.borderColor = 'rgba(37, 99, 235, 0.4)'; e.target.style.background = '#fff'; } }}
-        onBlur={e => { e.target.style.borderColor = error ? '#fca5a5' : '#d8d4cc'; e.target.style.background = error ? '#fef2f2' : disabled ? '#f1f5f9' : '#efede8'; }}
+        onFocus={e => { if (!disabled) { e.target.style.borderColor = 'rgba(37, 99, 235, 0.4)'; e.target.style.background = 'var(--surface)'; } }}
+        onBlur={e => { e.target.style.borderColor = error ? 'var(--danger-soft)' : 'var(--border)'; e.target.style.background = error ? 'var(--danger-bg)' : disabled ? 'var(--bg-inset)' : 'var(--bg-topbar)'; }}
       />
-      {error && <p style={{ margin: '4px 0 0', fontSize: 10, color: '#dc2626' }}>{error}</p>}
+      {error && <p style={{ margin: '4px 0 0', fontSize: 10, color: 'var(--danger)' }}>{error}</p>}
     </div>
   );
 }
@@ -155,9 +155,9 @@ export default function EditClientModal({ clientId, onClose, onSuccess }) {
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 6,
-          border: '1px solid #d8d4cc',
+          border: '1px solid var(--border)',
           boxShadow: '0 20px 25px rgba(0, 0, 0, 0.15)',
           zIndex: 50,
           width: '90%',
@@ -169,14 +169,14 @@ export default function EditClientModal({ clientId, onClose, onSuccess }) {
       >
         <div style={{
           padding: '20px 24px',
-          borderBottom: '1px solid #d8d4cc',
+          borderBottom: '1px solid var(--border)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
         }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#3b3631' }}>Editar Cliente</h2>
-            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#7c7670' }}>Actualizar información del cliente</p>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Editar Cliente</h2>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>Actualizar información del cliente</p>
           </div>
           <button
             onClick={onClose}
@@ -184,8 +184,8 @@ export default function EditClientModal({ clientId, onClose, onSuccess }) {
             style={{
               width: 32,
               height: 32,
-              border: '1px solid #d8d4cc',
-              background: '#f8fafc',
+              border: '1px solid var(--border)',
+              background: 'var(--bg-faint)',
               borderRadius: 6,
               cursor: saving ? 'not-allowed' : 'pointer',
               display: 'flex',
@@ -194,15 +194,15 @@ export default function EditClientModal({ clientId, onClose, onSuccess }) {
               transition: 'background 0.12s',
               opacity: saving ? 0.6 : 1,
             }}
-            onMouseEnter={e => !saving && (e.target.style.background = '#fee2e2')}
-            onMouseLeave={e => !saving && (e.target.style.background = '#f8fafc')}
+            onMouseEnter={e => !saving && (e.target.style.background = 'var(--danger-tint)')}
+            onMouseLeave={e => !saving && (e.target.style.background = 'var(--bg-faint)')}
           >
-            <Svg paths={['M18 6 6 18', 'M6 6l12 12']} color="#7c7670" size={13} />
+            <Svg paths={['M18 6 6 18', 'M6 6l12 12']} color="var(--text-muted)" size={13} />
           </button>
         </div>
 
         {loading ? (
-          <div style={{ padding: '40px 24px', textAlign: 'center', color: '#b0aaa3' }}>
+          <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-faint)' }}>
             Cargando...
           </div>
         ) : (
@@ -210,23 +210,23 @@ export default function EditClientModal({ clientId, onClose, onSuccess }) {
             {errors.submit && (
               <div style={{
                 padding: '12px 14px',
-                background: '#fef2f2',
-                border: '1px solid #fecaca',
+                background: 'var(--danger-bg)',
+                border: '1px solid var(--danger-border)',
                 borderRadius: 6,
                 display: 'flex',
                 gap: 8,
                 marginBottom: 16,
                 fontSize: 12,
-                color: '#dc2626',
+                color: 'var(--danger)',
               }}>
-                <Svg paths={['M12 9v4M12 17h.01', 'M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z']} color="#dc2626" size={14} />
+                <Svg paths={['M12 9v4M12 17h.01', 'M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z']} color="var(--danger)" size={14} />
                 {errors.submit}
               </div>
             )}
 
             <div style={{ marginBottom: 20 }}>
-              <p style={{ margin: '0 0 12px', fontSize: 10, fontWeight: 700, color: '#7c7670', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'flex', alignItems: 'center', gap: 5 }}>
-                <Svg paths={['M3 8l7.89 5.26a2 2 0 0 0 2.22 0L21 8M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z']} color="#7c7670" size={11} />
+              <p style={{ margin: '0 0 12px', fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Svg paths={['M3 8l7.89 5.26a2 2 0 0 0 2.22 0L21 8M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z']} color="var(--text-muted)" size={11} />
                 Contacto
               </p>
               <FormField
@@ -249,8 +249,8 @@ export default function EditClientModal({ clientId, onClose, onSuccess }) {
             </div>
 
             <div style={{ marginBottom: 20 }}>
-              <p style={{ margin: '0 0 12px', fontSize: 10, fontWeight: 700, color: '#7c7670', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'flex', alignItems: 'center', gap: 5 }}>
-                <Svg paths={['M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0 1 12 2.944a11.955 11.955 0 0 1-8.618 3.04A12.02 12.02 0 0 0 3 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z']} color="#7c7670" size={11} />
+              <p style={{ margin: '0 0 12px', fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Svg paths={['M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0 1 12 2.944a11.955 11.955 0 0 1-8.618 3.04A12.02 12.02 0 0 0 3 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z']} color="var(--text-muted)" size={11} />
                 Identificación
               </p>
 
@@ -312,7 +312,7 @@ export default function EditClientModal({ clientId, onClose, onSuccess }) {
 
         <div style={{
           padding: '16px 24px',
-          borderTop: '1px solid #d8d4cc',
+          borderTop: '1px solid var(--border)',
           display: 'flex',
           gap: 8,
         }}>
@@ -323,9 +323,9 @@ export default function EditClientModal({ clientId, onClose, onSuccess }) {
               flex: 1,
               padding: '10px',
               borderRadius: 5,
-              border: '1px solid #d8d4cc',
-              background: '#efede8',
-              color: '#3b3631',
+              border: '1px solid var(--border)',
+              background: 'var(--bg-topbar)',
+              color: 'var(--text-primary)',
               fontSize: 12,
               fontWeight: 600,
               cursor: saving || loading ? 'not-allowed' : 'pointer',
@@ -333,8 +333,8 @@ export default function EditClientModal({ clientId, onClose, onSuccess }) {
               transition: 'background 0.12s',
               opacity: saving || loading ? 0.6 : 1,
             }}
-            onMouseEnter={e => !saving && !loading && (e.target.style.background = '#e5e2da')}
-            onMouseLeave={e => !saving && !loading && (e.target.style.background = '#efede8')}
+            onMouseEnter={e => !saving && !loading && (e.target.style.background = 'var(--neutral-200)')}
+            onMouseLeave={e => !saving && !loading && (e.target.style.background = 'var(--bg-topbar)')}
           >
             Cancelar
           </button>
@@ -346,8 +346,8 @@ export default function EditClientModal({ clientId, onClose, onSuccess }) {
               padding: '10px',
               borderRadius: 5,
               border: 'none',
-              background: saving || loading ? '#cbd5e1' : '#2563eb',
-              color: '#fff',
+              background: saving || loading ? 'var(--border)' : 'var(--primary)',
+              color: 'var(--text-on-accent)',
               fontSize: 12,
               fontWeight: 600,
               cursor: saving || loading ? 'not-allowed' : 'pointer',
@@ -355,8 +355,8 @@ export default function EditClientModal({ clientId, onClose, onSuccess }) {
               transition: 'background 0.12s',
               opacity: saving || loading ? 0.7 : 1,
             }}
-            onMouseEnter={e => !saving && !loading && (e.target.style.background = '#1d4ed8')}
-            onMouseLeave={e => !saving && !loading && (e.target.style.background = '#2563eb')}
+            onMouseEnter={e => !saving && !loading && (e.target.style.background = 'var(--primary-hover)')}
+            onMouseLeave={e => !saving && !loading && (e.target.style.background = 'var(--primary)')}
           >
             {saving ? 'Guardando...' : 'Guardar Cambios'}
           </button>

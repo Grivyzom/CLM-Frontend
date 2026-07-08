@@ -57,14 +57,14 @@ export default function CopyableValue({ value, children }) {
           pointerEvents: (isHovered || copied) ? 'auto' : 'none',
           transition: 'opacity 0.2s ease, background 0.2s ease'
         }}
-        onMouseEnter={e => e.currentTarget.style.background = '#efede8'}
+        onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-topbar)'}
         onMouseLeave={e => e.currentTarget.style.background = 'none'}
         aria-label="Copiar"
       >
         {copied ? (
-          <Svg paths={['M20 6L9 17l-5-5']} color="#15803d" size={12} />
+          <Svg paths={['M20 6L9 17l-5-5']} color="var(--success-deep)" size={12} />
         ) : (
-          <Svg paths={['M8 4v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7.242a2 2 0 0 0-.602-1.43L16.083 2.57A2 2 0 0 0 14.685 2H10a2 2 0 0 0-2 2z', 'M16 18v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2']} color="#b0aaa3" size={12} />
+          <Svg paths={['M8 4v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7.242a2 2 0 0 0-.602-1.43L16.083 2.57A2 2 0 0 0 14.685 2H10a2 2 0 0 0-2 2z', 'M16 18v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2']} color="var(--text-faint)" size={12} />
         )}
       </button>
     </div>

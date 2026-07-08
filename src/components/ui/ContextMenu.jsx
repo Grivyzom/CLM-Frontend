@@ -53,8 +53,8 @@ export default function ContextMenu({ clientId, pos, onClose, onEdit, onDelete, 
           position: 'fixed',
           top: menuPos.top,
           left: menuPos.left,
-          background: '#fff',
-          border: '1px solid #d8d4cc',
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
           borderRadius: 6,
           boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
           zIndex: 999,
@@ -74,16 +74,16 @@ export default function ContextMenu({ clientId, pos, onClose, onEdit, onDelete, 
             background: 'none',
             cursor: 'pointer',
             fontSize: 12,
-            color: '#5c574f',
+            color: 'var(--text-secondary)',
             textAlign: 'left',
             fontFamily: 'inherit',
-            borderBottom: '1px solid #e5e2da',
+            borderBottom: '1px solid var(--neutral-200)',
             transition: 'background 0.12s',
           }}
-          onMouseEnter={e => e.currentTarget.style.background = '#efede8'}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-topbar)'}
           onMouseLeave={e => e.currentTarget.style.background = 'none'}
         >
-          <Svg paths={['M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7','M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z']} color="#7c7670" size={14} />
+          <Svg paths={['M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7','M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z']} color="var(--text-muted)" size={14} />
           Editar
         </button>
         <button
@@ -98,16 +98,16 @@ export default function ContextMenu({ clientId, pos, onClose, onEdit, onDelete, 
             background: 'none',
             cursor: 'pointer',
             fontSize: 12,
-            color: '#5c574f',
+            color: 'var(--text-secondary)',
             textAlign: 'left',
             fontFamily: 'inherit',
-            borderBottom: '1px solid #e5e2da',
+            borderBottom: '1px solid var(--neutral-200)',
             transition: 'background 0.12s',
           }}
-          onMouseEnter={e => e.currentTarget.style.background = '#efede8'}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-topbar)'}
           onMouseLeave={e => e.currentTarget.style.background = 'none'}
         >
-          <Svg paths={['M9 12l2 2 4-4m7 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0z']} color="#7c7670" size={14} />
+          <Svg paths={['M9 12l2 2 4-4m7 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0z']} color="var(--text-muted)" size={14} />
           {clientEstado === 'Activo' ? 'Desactivar' : 'Activar'}
         </button>
         <button
@@ -122,15 +122,15 @@ export default function ContextMenu({ clientId, pos, onClose, onEdit, onDelete, 
             background: 'none',
             cursor: 'pointer',
             fontSize: 12,
-            color: '#dc2626',
+            color: 'var(--danger)',
             textAlign: 'left',
             fontFamily: 'inherit',
             transition: 'background 0.12s',
           }}
-          onMouseEnter={e => e.currentTarget.style.background = '#fee2e2'}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--danger-tint)'}
           onMouseLeave={e => e.currentTarget.style.background = 'none'}
         >
-          <Svg paths={['M19 7l-1 12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 7m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3','M10 11v6','M14 11v6']} color="#dc2626" size={14} />
+          <Svg paths={['M19 7l-1 12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 7m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3','M10 11v6','M14 11v6']} color="var(--danger)" size={14} />
           Eliminar
         </button>
       </div>

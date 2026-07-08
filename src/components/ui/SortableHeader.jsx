@@ -6,20 +6,20 @@ const HeaderChevron = ({ ordering, field }) => {
 
   if (isAsc) {
     return (
-      <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block', flexShrink: 0 }}>
+      <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block', flexShrink: 0 }}>
         <path d="M8 9l4-4 4 4" />
       </svg>
     );
   }
   if (isDesc) {
     return (
-      <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block', flexShrink: 0 }}>
+      <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block', flexShrink: 0 }}>
         <path d="M16 15l-4 4-4-4" />
       </svg>
     );
   }
   return (
-    <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="#b0aaa3" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block', flexShrink: 0 }}>
+    <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="var(--text-faint)" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block', flexShrink: 0 }}>
       <path d="M8 9l4-4 4 4" />
       <path d="M16 15l-4 4-4-4" />
     </svg>

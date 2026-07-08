@@ -1,0 +1,57 @@
+/* ── ANALYTICS ──
+   La vista reutiliza la capa visual del dashboard (Dashboard.css, clases db-*);
+   aquí solo viven los ajustes propios de esta página. */
+
+/* Altura fija de los gráficos Recharts */
+.an-chart {
+  height: 240px;
+}
+
+/* Las etiquetas de software/cliente/SLA son más largas que las del pipeline:
+   columna de etiqueta más ancha que la base db-hbar-row. */
+.an-hbar-row {
+  grid-template-columns: 110px 1fr 24px 52px;
+}
+
+/* Salud de cobranza: barra segmentada + leyenda */
+.an-salud-card {
+  margin-bottom: 1rem;
+}
+
+.an-estado-bar {
+  display: flex;
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: var(--bg-inset);
+  margin-top: 0.5rem;
+}
+
+.an-estado-seg {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.an-estado-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.an-estado-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-muted);
+}
+
+.an-estado-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}

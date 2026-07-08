@@ -17,20 +17,31 @@ const EMPTY = {
   actividad: [],
 };
 
+// Caché en memoria para evitar recargas al navegar
+let cachedDashboardData = null;
+
 /**
  * Hook que carga los datos agregados del dashboard desde el backend.
  */
 export function useDashboard() {
-  const [data, setData] = useState(EMPTY);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(cachedDashboardData || EMPTY);
+  const [loading, setLoading] = useState(!cachedDashboardData);
   const [error, setError] = useState(null);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (force = false) => {
+    if (!force && cachedDashboardData) {
+      setData(cachedDashboardData);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
       const result = await getDashboard();
-      setData({ ...EMPTY, ...result, kpis: { ...EMPTY.kpis, ...(result.kpis || {}) } });
+      const newData = { ...EMPTY, ...result, kpis: { ...EMPTY.kpis, ...(result.kpis || {}) } };
+      cachedDashboardData = newData;
+      setData(newData);
     } catch (err) {
       setError(err.message || 'Error al cargar el dashboard');
     } finally {
@@ -42,5 +53,9 @@ export function useDashboard() {
     fetchData();
   }, [fetchData]);
 
-  return { ...data, loading, error, refetch: fetchData };
+  const refetch = useCallback(() => {
+    fetchData(true);
+  }, [fetchData]);
+
+  return { ...data, loading, error, refetch };
 }

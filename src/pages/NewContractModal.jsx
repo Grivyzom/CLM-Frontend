@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { createContrato, getClientes, getSoftwareList, getSLAs, getPlantillas } from '../api';
+import { createContrato, getClientes, getClienteDetail, getSoftwareList, getSLAs, getPlantillas, generarDocumentoContrato, getClausulas } from '../api';
+import { contratoIdDisplay } from '../utils/formatters';
+import './Contratos.css';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TIPO_CONTRATO_OPTIONS = [
@@ -14,8 +16,33 @@ const FRECUENCIA_OPTIONS = [
 ];
 function todayISO() { return new Date().toISOString().slice(0, 10); }
 
+const INITIAL_FORM = {
+  software_id: '',
+  plantilla_id: '',
+  sla_id: '',
+  tipo_contrato: 'RECURRENTE',
+  frecuencia_facturacion: 'MENSUAL',
+  monto: '',
+  fecha_inicio: todayISO(),
+  fecha_vencimiento: '',
+  sin_vencimiento: false,
+  dias_gracia_autorizados: '0',
+};
+
+// Campos que el backend puede devolver como error de validación por campo.
+const BACKEND_FIELDS = [
+  'cliente_id', 'software_id', 'sla_id', 'tipo_contrato', 'monto',
+  'fecha_inicio', 'fecha_vencimiento', 'dias_gracia_autorizados', 'frecuencia_facturacion',
+];
+// Paso del wizard donde vive cada campo (para volver al paso con error).
+const FIELD_STEP = {
+  cliente_id: 1, software_id: 1, plantilla_id: 1, tipo_contrato: 1,
+  sla_id: 2, monto: 2, frecuencia_facturacion: 2,
+  fecha_inicio: 3, fecha_vencimiento: 3, dias_gracia_autorizados: 3,
+};
+
 // ─── Micro SVG ────────────────────────────────────────────────────────────────
-function Svg({ d, size = 14, color = '#7c7670', sw = 1.8 }) {
+function Svg({ d, size = 14, color = 'var(--text-muted)', sw = 1.8 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
       stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round"
@@ -26,37 +53,33 @@ function Svg({ d, size = 14, color = '#7c7670', sw = 1.8 }) {
 }
 
 // ─── Field primitives ─────────────────────────────────────────────────────────
-const iS = (err) => ({
-  width: '100%', padding: '8px 12px', boxSizing: 'border-box',
-  border: err ? '1px solid #fca5a5' : '1px solid #d8d4cc',
-  borderRadius: 6, fontSize: 12, fontFamily: 'inherit',
-  background: err ? '#fef2f2' : '#f8f7f5', color: '#3b3631', outline: 'none',
-});
-const labelS = { display: 'block', fontSize: 9, fontWeight: 700, color: '#7c7670',
-  marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.07em', fontFamily: "'JetBrains Mono',monospace" };
-
 function FL({ children, req }) {
-  return <label style={labelS}>{children} {req && <span style={{ color: '#dc2626' }}>*</span>}</label>;
+  return <label className="ctm-label">{children} {req && <span className="ctm-req">*</span>}</label>;
 }
-function TF({ label, req, name, type = 'text', value, onChange, error, placeholder, ...rest }) {
+function FieldError({ children }) {
+  if (!children) return null;
+  return <p className="ctm-field-error">{children}</p>;
+}
+function TF({ label, req, name, type = 'text', value, onChange, error, placeholder, hint, ...rest }) {
   return (
-    <div style={{ marginBottom: 14 }}>
+    <div className="ctm-field">
       <FL req={req}>{label}</FL>
       <input type={type} name={name} value={value} onChange={onChange}
-        placeholder={placeholder} style={iS(error)} {...rest} />
-      {error && <p style={{ margin: '3px 0 0', fontSize: 10, color: '#dc2626' }}>{error}</p>}
+        placeholder={placeholder} className={`ctm-control${error ? ' error' : ''}`} {...rest} />
+      {hint && <p className="ctm-hint">{hint}</p>}
+      <FieldError>{error}</FieldError>
     </div>
   );
 }
 function SF({ label, req, name, value, onChange, error, options, placeholder }) {
   return (
-    <div style={{ marginBottom: 14 }}>
+    <div className="ctm-field">
       <FL req={req}>{label}</FL>
-      <select name={name} value={value} onChange={onChange} style={iS(error)}>
+      <select name={name} value={value} onChange={onChange} className={`ctm-control${error ? ' error' : ''}`}>
         <option value="">{placeholder || 'Seleccionar…'}</option>
         {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
-      {error && <p style={{ margin: '3px 0 0', fontSize: 10, color: '#dc2626' }}>{error}</p>}
+      <FieldError>{error}</FieldError>
     </div>
   );
 }
@@ -69,31 +92,23 @@ const STEPS = [
 ];
 function StepBar({ current }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 0, padding: '0 24px', marginBottom: 24 }}>
+    <div className="ctm-steps">
       {STEPS.map((s, i) => {
         const done = current > s.num;
         const active = current === s.num;
+        const state = done ? 'done' : active ? 'active' : '';
         return (
           <React.Fragment key={s.num}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-              <div style={{
-                width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: done ? '#16a34a' : active ? '#2563eb' : '#e5e2da',
-                border: `2px solid ${done ? '#16a34a' : active ? '#2563eb' : '#d8d4cc'}`,
-                transition: 'all 0.2s',
-              }}>
+            <div className="ctm-step">
+              <div className={`ctm-step-circle ${state}`}>
                 {done
-                  ? <Svg d="M20 6 9 17l-5-5" size={13} color="#fff" sw={2.5} />
-                  : <span style={{ fontSize: 11, fontWeight: 700, color: active ? '#fff' : '#b0aaa3', fontFamily: "'JetBrains Mono',monospace" }}>{s.num}</span>
+                  ? <Svg d="M20 6 9 17l-5-5" size={13} color="var(--text-on-accent)" sw={2.5} />
+                  : <span className="ctm-step-num">{s.num}</span>
                 }
               </div>
-              <span style={{ fontSize: 9, fontWeight: 600, color: active ? '#2563eb' : done ? '#16a34a' : '#b0aaa3',
-                textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{s.label}</span>
+              <span className={`ctm-step-label ${state}`}>{s.label}</span>
             </div>
-            {i < STEPS.length - 1 && (
-              <div style={{ flex: 1, height: 2, background: current > s.num ? '#16a34a' : '#e5e2da',
-                margin: '0 8px', marginBottom: 20, transition: 'background 0.3s' }} />
-            )}
+            {i < STEPS.length - 1 && <div className={`ctm-step-line ${done ? 'done' : ''}`} />}
           </React.Fragment>
         );
       })}
@@ -105,19 +120,24 @@ function StepBar({ current }) {
 function SRow({ label, value, accent }) {
   if (!value) return null;
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      padding: '7px 0', borderBottom: '1px solid #f0ede8' }}>
-      <span style={{ fontSize: 11, color: '#7c7670', fontFamily: "'JetBrains Mono',monospace" }}>{label}</span>
-      <span style={{ fontSize: 12, fontWeight: 600, color: accent ? '#2563eb' : '#3b3631' }}>{value}</span>
+    <div className="ctm-srow">
+      <span className="ctm-srow-label">{label}</span>
+      <span className={`ctm-srow-value${accent ? ' accent' : ''}`}
+        title={typeof value === 'string' ? value : undefined}>{value}</span>
     </div>
   );
 }
 
 // ─── Main modal ───────────────────────────────────────────────────────────────
-export default function NewContractModal({ onClose, onSuccess }) {
+export default function NewContractModal({ onClose, onSuccess, initialClienteId = null }) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+
+  // Contrato ya creado en el backend (evita duplicados si falla un paso posterior).
+  const createdRef = useRef(null);
+  // Falló la generación del documento tras crear el contrato.
+  const [docError, setDocError] = useState('');
 
   // ── Catalog data ──────────────────────────────────────────────────────────
   const [softwareList, setSoftwareList] = useState([]);
@@ -136,56 +156,185 @@ export default function NewContractModal({ onClose, onSuccess }) {
   const [clienteResults, setClienteResults] = useState([]);
   const [clienteOpen, setClienteOpen] = useState(false);
   const [clienteLoading, setClienteLoading] = useState(false);
+  const [clienteActiveIdx, setClienteActiveIdx] = useState(-1);
   const clienteTimerRef = useRef(null);
+  const clienteBoxRef = useRef(null);
 
-  const [form, setForm] = useState({
-    software_id: '',
-    plantilla_id: '',
-    sla_id: '',
-    tipo_contrato: 'RECURRENTE',
-    tipo_facturacion: 'RECURRENTE', // mirrors tipo_contrato selection
-    frecuencia_facturacion: 'MENSUAL',
-    monto: '',
-    fecha_inicio: todayISO(),
-    fecha_vencimiento: '',
-    sin_vencimiento: false,
-    dias_gracia_autorizados: '0',
-  });
+  const [form, setForm] = useState(INITIAL_FORM);
+  const [textoClausulas, setTextoClausulas] = useState('');
+  const [allClausulas, setAllClausulas] = useState([]);
+
+  useEffect(() => {
+    getClausulas().then(setAllClausulas).catch(() => {});
+  }, []);
+
+  // Cliente precargado (deep-link desde Clientes): no cuenta como "dato ingresado"
+  // para la confirmación de descarte al cerrar.
+  const prefillRef = useRef({ clienteId: null, query: '' });
+
+  useEffect(() => {
+    if (!initialClienteId) return;
+    let cancelled = false;
+    getClienteDetail(initialClienteId)
+      .then(d => {
+        if (cancelled) return;
+        const cliente = {
+          id: Number(initialClienteId),
+          razon_social: d.razon_social,
+          nombre_comercial: d.nombre_comercial,
+        };
+        const query = cliente.nombre_comercial || cliente.razon_social || '';
+        prefillRef.current = { clienteId: cliente.id, query };
+        setClienteSelected(cliente);
+        setClienteQuery(query);
+      })
+      .catch(() => {}); // sin precarga: el usuario busca manualmente
+    return () => { cancelled = true; };
+  }, [initialClienteId]);
+
+  const isDirty = (clienteSelected?.id ?? null) !== prefillRef.current.clienteId ||
+    clienteQuery !== prefillRef.current.query ||
+    JSON.stringify(form) !== JSON.stringify(INITIAL_FORM);
+
+  // ── Cierre seguro: confirma si hay datos; si el contrato ya existe, no se pierde ──
+  const attemptClose = useCallback(() => {
+    if (loading) return;
+    if (createdRef.current) {
+      // El contrato ya fue creado; cerrar equivale a continuar sin documento.
+      onSuccess?.(createdRef.current);
+      onClose();
+      return;
+    }
+    if (isDirty && !window.confirm('¿Descartar el nuevo contrato? Se perderán los datos ingresados.')) return;
+    onClose();
+  }, [loading, isDirty, onClose, onSuccess]);
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') attemptClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [attemptClose]);
 
   // ── Cliente autocomplete ──────────────────────────────────────────────────
   useEffect(() => {
     if (clienteSelected) return;
     if (clienteTimerRef.current) clearTimeout(clienteTimerRef.current);
-    if (clienteQuery.trim().length < 2) { setClienteResults([]); return; }
+    if (clienteQuery.trim().length < 2) { setClienteResults([]); setClienteActiveIdx(-1); return; }
     clienteTimerRef.current = setTimeout(async () => {
       setClienteLoading(true);
       try {
         const res = await getClientes({ search: clienteQuery.trim(), page_size: 8 });
         setClienteResults(res.results || []);
+        setClienteActiveIdx(-1);
       } catch { setClienteResults([]); }
       finally { setClienteLoading(false); }
     }, 300);
     return () => clearTimeout(clienteTimerRef.current);
   }, [clienteQuery, clienteSelected]);
 
-  // ── Load plantillas when software changes ─────────────────────────────────
+  // Cierra el dropdown de clientes al hacer clic fuera.
+  useEffect(() => {
+    const onDown = (e) => {
+      if (clienteBoxRef.current && !clienteBoxRef.current.contains(e.target)) setClienteOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, []);
+
+  const pickCliente = (c) => {
+    setClienteSelected(c);
+    setClienteQuery(c.nombre_comercial || c.razon_social || '');
+    setClienteOpen(false);
+    setClienteActiveIdx(-1);
+    if (errors.cliente_id) setErrors(er => ({ ...er, cliente_id: '' }));
+  };
+
+  const onClienteKeyDown = (e) => {
+    if (!clienteOpen || clienteSelected || clienteResults.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setClienteActiveIdx(i => (i + 1) % clienteResults.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setClienteActiveIdx(i => (i <= 0 ? clienteResults.length - 1 : i - 1));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      pickCliente(clienteResults[clienteActiveIdx >= 0 ? clienteActiveIdx : 0]);
+    } else if (e.key === 'Escape') {
+      // Solo cierra el dropdown; el listener global de Escape no debe cerrar el modal.
+      e.stopPropagation();
+      setClienteOpen(false);
+    }
+  };
+
+  // ── Load plantillas cuando cambia software o tipo de contrato ─────────────
+  // La plantilla debe ser coherente con ambos: el motor de renderizado resuelve
+  // por (tipo_contrato, software) con fallback a plantillas globales.
   useEffect(() => {
     if (!form.software_id) { setPlantillas([]); return; }
     setLoadingPlantillas(true);
     setForm(f => ({ ...f, plantilla_id: '' }));
-    getPlantillas({ software: form.software_id, activa: true })
-      .then(data => setPlantillas(data || []))
+    getPlantillas({
+      software: form.software_id,
+      tipo_contrato: form.tipo_contrato,
+      incluir_globales: true,
+      activa: true,
+    })
+      .then(data => {
+        const lista = data || [];
+        setPlantillas(lista);
+        // Si hay una sola opción, se preselecciona.
+        if (lista.length === 1) setForm(f => ({ ...f, plantilla_id: String(lista[0].id) }));
+      })
       .catch(() => setPlantillas([]))
       .finally(() => setLoadingPlantillas(false));
-  }, [form.software_id]);
+  }, [form.software_id, form.tipo_contrato]);
 
   const set = (name, value) => {
     setForm(f => ({ ...f, [name]: value }));
     if (errors[name]) setErrors(e => ({ ...e, [name]: '' }));
+    
+    if (name === 'plantilla_id') {
+      const plantilla = plantillas.find(p => String(p.id) === String(value));
+      if (plantilla && plantilla.modo_origen === 'clausulas') {
+        const selectedIds = plantilla.clausulas_seleccionadas || [];
+        const texts = [];
+        let i = 1;
+        for (const c of allClausulas) {
+          if (selectedIds.includes(c.id)) {
+            const stdVer = c.versions?.find(v => v.tipo === 'Estándar');
+            if (stdVer) {
+              texts.push(`${i}. ${c.name.toUpperCase()}\n${stdVer.texto}`);
+              i++;
+            }
+          }
+        }
+        setTextoClausulas(texts.join('\n\n'));
+      } else {
+        setTextoClausulas('');
+      }
+    }
   };
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     set(name, type === 'checkbox' ? checked : value);
+  };
+
+  // Reglas derivadas del tipo de contrato.
+  const esRecurrente = form.tipo_contrato === 'RECURRENTE';
+  const esProBono = form.tipo_contrato === 'PRO_BONO';
+
+  const handleTipoChange = (e) => {
+    const tipo = e.target.value;
+    setForm(f => ({
+      ...f,
+      tipo_contrato: tipo,
+      // Perpetuo implica sin vencimiento (editable después si el usuario quiere).
+      sin_vencimiento: tipo === 'PERPETUO' ? true : (f.tipo_contrato === 'PERPETUO' ? false : f.sin_vencimiento),
+      // Pro Bono no factura.
+      monto: tipo === 'PRO_BONO' ? '0' : (f.tipo_contrato === 'PRO_BONO' ? '' : f.monto),
+    }));
+    setErrors(er => ({ ...er, tipo_contrato: '', monto: '', frecuencia_facturacion: '' }));
   };
 
   // ── Validate per step ─────────────────────────────────────────────────────
@@ -194,13 +343,19 @@ export default function NewContractModal({ onClose, onSuccess }) {
     if (s === 1) {
       if (!clienteSelected) errs.cliente_id = 'Selecciona un cliente';
       if (!form.software_id) errs.software_id = 'Selecciona un software';
-      if (!form.plantilla_id) errs.plantilla_id = 'Selecciona una plantilla';
+      // Plantilla requerida solo si existen opciones; sin plantillas se permite
+      // continuar y generar el documento después desde el workspace.
+      if (form.software_id && plantillas.length > 0 && !form.plantilla_id) {
+        errs.plantilla_id = 'Selecciona una plantilla';
+      }
     }
     if (s === 2) {
       if (!form.sla_id) errs.sla_id = 'Selecciona un SLA';
-      const m = parseFloat(form.monto);
-      if (form.monto === '' || isNaN(m) || m < 0) errs.monto = 'Monto inválido (debe ser ≥ 0)';
-      if (form.tipo_contrato === 'RECURRENTE' && !form.frecuencia_facturacion) {
+      if (!esProBono) {
+        const m = parseFloat(form.monto);
+        if (form.monto === '' || isNaN(m) || m < 0) errs.monto = 'Monto inválido (debe ser ≥ 0)';
+      }
+      if (esRecurrente && !form.frecuencia_facturacion) {
         errs.frecuencia_facturacion = 'Requerido para contratos recurrentes';
       }
     }
@@ -220,31 +375,93 @@ export default function NewContractModal({ onClose, onSuccess }) {
   const prevStep = () => setStep(s => s - 1);
 
   // ── Submit ────────────────────────────────────────────────────────────────
+  const generarDocumento = async (contrato) => {
+    await generarDocumentoContrato({
+      contrato_id: contrato.id,
+      plantilla_id: form.plantilla_id,
+    });
+  };
+
   const handleSubmit = async () => {
     if (!validateStep(3)) return;
     setLoading(true);
+    setDocError('');
+    setErrors(e => ({ ...e, submit: '' }));
     try {
-      const payload = {
-        cliente_id: clienteSelected.id,
-        software_id: form.software_id,
-        sla_id: form.sla_id,
-        tipo_contrato: form.tipo_contrato,
-        monto: form.monto,
-        fecha_inicio: form.fecha_inicio,
-        fecha_vencimiento: (form.sin_vencimiento || !form.fecha_vencimiento) ? null : form.fecha_vencimiento,
-        dias_gracia_autorizados: parseInt(form.dias_gracia_autorizados, 10) || 0,
-      };
-      if (form.tipo_contrato === 'RECURRENTE') {
-        payload.frecuencia_facturacion = form.frecuencia_facturacion;
+      // Si el contrato ya fue creado en un intento anterior, no se duplica.
+      let contrato = createdRef.current;
+      if (!contrato) {
+        const payload = {
+          cliente_id: clienteSelected.id,
+          software_id: form.software_id,
+          sla_id: form.sla_id,
+          tipo_contrato: form.tipo_contrato,
+          monto: esProBono ? '0' : form.monto,
+          fecha_inicio: form.fecha_inicio,
+          fecha_vencimiento: (form.sin_vencimiento || !form.fecha_vencimiento) ? null : form.fecha_vencimiento,
+          dias_gracia_autorizados: parseInt(form.dias_gracia_autorizados, 10) || 0,
+        };
+        if (esRecurrente) payload.frecuencia_facturacion = form.frecuencia_facturacion;
+        if (textoClausulas) payload.texto_adicional_clausulas = textoClausulas;
+        contrato = await createContrato(payload);
+        createdRef.current = contrato;
       }
-      const nuevo = await createContrato(payload);
-      onSuccess?.(nuevo);
+
+      if (form.plantilla_id) {
+        try {
+          await generarDocumento(contrato);
+        } catch (genErr) {
+          setDocError(genErr.message || 'Error desconocido al generar el documento.');
+          return;
+        }
+      }
+
+      onSuccess?.(contrato);
       onClose();
     } catch (err) {
+      // Errores de validación por campo del backend → se muestran en su campo
+      // y se vuelve al paso correspondiente.
+      if (err.fields) {
+        const mapped = {};
+        let firstStep = null;
+        for (const f of BACKEND_FIELDS) {
+          if (err.fields[f]) {
+            mapped[f] = err.fields[f];
+            const st = FIELD_STEP[f];
+            if (st && (firstStep === null || st < firstStep)) firstStep = st;
+          }
+        }
+        if (Object.keys(mapped).length > 0) {
+          setErrors(e => ({ ...e, ...mapped }));
+          if (firstStep) setStep(firstStep);
+          return;
+        }
+      }
       setErrors(e => ({ ...e, submit: err.message }));
     } finally {
       setLoading(false);
     }
+  };
+
+  const retryGeneracion = async () => {
+    if (!createdRef.current) return;
+    setLoading(true);
+    setDocError('');
+    try {
+      await generarDocumento(createdRef.current);
+      onSuccess?.(createdRef.current);
+      onClose();
+    } catch (err) {
+      setDocError(err.message || 'Error desconocido al generar el documento.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const continuarSinDocumento = () => {
+    if (!createdRef.current) return;
+    onSuccess?.(createdRef.current);
+    onClose();
   };
 
   // ── Derived labels for summary ────────────────────────────────────────────
@@ -255,64 +472,42 @@ export default function NewContractModal({ onClose, onSuccess }) {
   const frecLabel = FRECUENCIA_OPTIONS.find(f => f.value === form.frecuencia_facturacion)?.label || '';
   const clienteNombre = clienteSelected?.nombre_comercial || clienteSelected?.razon_social || '';
 
-  const esRecurrente = form.tipo_contrato === 'RECURRENTE';
-
   return (
     <>
-      {/* Backdrop */}
-      <div onClick={onClose} style={{
-        position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)',
-        zIndex: 40, backdropFilter: 'blur(2px)',
-        animation: 'fadeIn 0.15s ease-out',
-      }} />
+      <div className="ctm-backdrop" onClick={attemptClose} />
 
-      {/* Panel */}
-      <div style={{
-        position: 'fixed', top: '50%', left: '50%',
-        transform: 'translate(-50%, -50%)',
-        background: '#fff', borderRadius: 10,
-        border: '1px solid #d8d4cc',
-        boxShadow: '0 24px 60px rgba(0,0,0,.18)',
-        zIndex: 50, width: '94%', maxWidth: 580,
-        maxHeight: '92vh', display: 'flex', flexDirection: 'column',
-        animation: 'modalIn 0.2s cubic-bezier(0.4,0,0.2,1)',
-      }}>
+      <div className="ctm-panel" role="dialog" aria-modal="true" aria-label="Nuevo contrato">
         {/* Header */}
-        <div style={{
-          padding: '18px 24px 16px', borderBottom: '1px solid #e5e2da',
-          display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexShrink: 0,
-        }}>
+        <div className="ctm-header">
           <div>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#3b3631' }}>Nuevo Contrato</h2>
-            <p style={{ margin: '3px 0 0', fontSize: 11, color: '#7c7670' }}>
+            <h2 className="ctm-title">Nuevo Contrato</h2>
+            <p className="ctm-subtitle">
               Se crea en etapa <strong>Borrador</strong> · {STEPS[step - 1].label}
             </p>
           </div>
-          <button onClick={onClose} style={{
-            width: 30, height: 30, border: '1px solid #d8d4cc', background: '#f0ede8',
-            borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <Svg d={['M18 6 6 18', 'M6 6l12 12']} color="#b0aaa3" size={13} />
+          <button className="ctm-close" onClick={attemptClose} title="Cerrar" aria-label="Cerrar">
+            <Svg d={['M18 6 6 18', 'M6 6l12 12']} color="var(--text-muted)" size={13} />
           </button>
         </div>
 
-        {/* Step bar */}
-        <div style={{ padding: '20px 24px 0', flexShrink: 0 }}>
-          <StepBar current={step} />
-        </div>
+        <StepBar current={step} />
 
         {/* Body */}
-        <div style={{ padding: '0 24px 4px', overflowY: 'auto', flex: 1 }}>
+        <div className="ctm-body">
 
           {/* ── STEP 1 ─────────────────────────────────────────────────────── */}
           {step === 1 && (
             <div>
               {/* Cliente */}
-              <div style={{ marginBottom: 14, position: 'relative' }}>
+              <div className="ctm-field ctm-rel" ref={clienteBoxRef}>
                 <FL req>Cliente</FL>
-                <div style={{ position: 'relative' }}>
+                <div className="ctm-rel">
                   <input
                     type="text"
+                    autoFocus
+                    role="combobox"
+                    aria-expanded={clienteOpen}
+                    aria-autocomplete="list"
                     value={clienteQuery}
                     onChange={e => {
                       setClienteQuery(e.target.value);
@@ -321,83 +516,94 @@ export default function NewContractModal({ onClose, onSuccess }) {
                       if (errors.cliente_id) setErrors(er => ({ ...er, cliente_id: '' }));
                     }}
                     onFocus={() => setClienteOpen(true)}
+                    onKeyDown={onClienteKeyDown}
                     placeholder="Buscar por nombre, razón social o email…"
-                    style={iS(errors.cliente_id)}
+                    className={`ctm-control${errors.cliente_id ? ' error' : ''}`}
                   />
                   {clienteSelected && (
-                    <button type="button" onClick={() => { setClienteSelected(null); setClienteQuery(''); setClienteResults([]); }}
-                      style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', cursor: 'pointer', padding: 2 }}>
-                      <Svg d={['M18 6 6 18', 'M6 6l12 12']} color="#b0aaa3" size={12} />
+                    <button type="button" className="ctm-clear" title="Quitar cliente" aria-label="Quitar cliente"
+                      onClick={() => { setClienteSelected(null); setClienteQuery(''); setClienteResults([]); }}>
+                      <Svg d={['M18 6 6 18', 'M6 6l12 12']} color="var(--text-muted)" size={12} />
                     </button>
                   )}
                 </div>
                 {clienteOpen && !clienteSelected && clienteQuery.trim().length >= 2 && (
-                  <div style={{
-                    position: 'absolute', zIndex: 60, top: '100%', left: 0, right: 0, marginTop: 4,
-                    background: '#fff', border: '1px solid #d8d4cc', borderRadius: 6,
-                    boxShadow: '0 8px 20px rgba(0,0,0,0.12)', maxHeight: 200, overflowY: 'auto',
-                  }}>
-                    {clienteLoading && <div style={{ padding: 10, fontSize: 11, color: '#7c7670' }}>Buscando…</div>}
-                    {!clienteLoading && clienteResults.length === 0 && <div style={{ padding: 10, fontSize: 11, color: '#7c7670' }}>Sin resultados</div>}
-                    {!clienteLoading && clienteResults.map(c => (
-                      <div key={c.id} onClick={() => { setClienteSelected(c); setClienteQuery(c.nombre_comercial || c.razon_social || ''); setClienteOpen(false); if (errors.cliente_id) setErrors(er => ({ ...er, cliente_id: '' })); }}
-                        style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 12, color: '#3b3631', borderBottom: '1px solid #f0ede8' }}
-                        onMouseEnter={e => e.currentTarget.style.background = '#f8f7f5'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                        <div style={{ fontWeight: 600 }}>{c.nombre_comercial || c.razon_social}</div>
-                        <div style={{ fontSize: 10, color: '#7c7670' }}>{c.email} · {c.id_fiscal}</div>
+                  <div className="ctm-dropdown" role="listbox">
+                    {clienteLoading && <div className="ctm-dropdown-note">Buscando…</div>}
+                    {!clienteLoading && clienteResults.length === 0 && <div className="ctm-dropdown-note">Sin resultados</div>}
+                    {!clienteLoading && clienteResults.map((c, idx) => (
+                      <div key={c.id}
+                        className={`ctm-dropdown-item${idx === clienteActiveIdx ? ' active' : ''}`}
+                        role="option"
+                        aria-selected={idx === clienteActiveIdx}
+                        title={c.nombre_comercial || c.razon_social}
+                        onMouseEnter={() => setClienteActiveIdx(idx)}
+                        onClick={() => pickCliente(c)}>
+                        <div className="ctm-dropdown-item-name">{c.nombre_comercial || c.razon_social}</div>
+                        <div className="ctm-dropdown-item-meta">{c.email} · {c.id_fiscal}</div>
                       </div>
                     ))}
                   </div>
                 )}
-                {errors.cliente_id && <p style={{ margin: '3px 0 0', fontSize: 10, color: '#dc2626' }}>{errors.cliente_id}</p>}
+                <FieldError>{errors.cliente_id}</FieldError>
               </div>
 
-              {/* Software */}
-              <SF
-                label="Producto / Software"
-                req name="software_id"
-                value={form.software_id}
-                onChange={handleChange}
-                error={errors.software_id}
-                placeholder="Selecciona el producto del acuerdo"
-                options={softwareList.map(s => ({ value: s.id, label: s.nombre }))}
-              />
+              <div className="ctm-grid-2">
+                {/* Tipo de contrato — antes que la plantilla, porque la filtra */}
+                <SF
+                  label="Tipo de Contrato"
+                  req name="tipo_contrato"
+                  value={form.tipo_contrato}
+                  onChange={handleTipoChange}
+                  error={errors.tipo_contrato}
+                  options={TIPO_CONTRATO_OPTIONS}
+                />
 
-              {/* Plantilla — filtrada por software */}
-              <div style={{ marginBottom: 14 }}>
-                <FL req>Plantilla de Contrato</FL>
+                {/* Software */}
+                <SF
+                  label="Producto / Software"
+                  req name="software_id"
+                  value={form.software_id}
+                  onChange={handleChange}
+                  error={errors.software_id}
+                  placeholder="Selecciona el producto del acuerdo"
+                  options={softwareList.map(s => ({ value: s.id, label: s.nombre }))}
+                />
+              </div>
+
+              {/* Plantilla — filtrada por software + tipo de contrato */}
+              <div className="ctm-field">
+                <FL req={plantillas.length > 0}>Plantilla de Contrato</FL>
                 {!form.software_id ? (
-                  <div style={{
-                    padding: '10px 12px', background: '#fafaf9', border: '1px dashed #d8d4cc',
-                    borderRadius: 6, fontSize: 11, color: '#b0aaa3', display: 'flex', alignItems: 'center', gap: 8,
-                  }}>
-                    <Svg d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" color="#d8d4cc" size={14} />
+                  <div className="ctm-note ctm-note-empty">
+                    <Svg d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" color="var(--border)" size={14} />
                     Selecciona un software para ver las plantillas disponibles
                   </div>
                 ) : loadingPlantillas ? (
-                  <div style={{ padding: '10px 12px', background: '#f8f7f5', border: '1px solid #d8d4cc', borderRadius: 6, fontSize: 11, color: '#7c7670' }}>
+                  <div className="ctm-note ctm-note-loading">
                     Cargando plantillas…
                   </div>
                 ) : plantillas.length === 0 ? (
-                  <div style={{
-                    padding: '10px 12px', background: '#fffbeb', border: '1px solid #fde68a',
-                    borderRadius: 6, fontSize: 11, color: '#92400e', display: 'flex', alignItems: 'center', gap: 8,
-                  }}>
-                    <Svg d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01" color="#d97706" size={14} />
-                    No hay plantillas activas para este software. Crea una en Catálogo → Plantillas.
+                  <div className="ctm-note ctm-note-warn">
+                    <Svg d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01" color="var(--warning-bright)" size={14} />
+                    No hay plantillas activas para este software y tipo de contrato.
+                    Puedes crear el contrato igualmente y generar el documento después.
                   </div>
                 ) : (
-                  <select name="plantilla_id" value={form.plantilla_id} onChange={handleChange} style={iS(errors.plantilla_id)}>
-                    <option value="">Seleccionar plantilla…</option>
-                    {plantillas.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.nombre} · {p.version_codigo} {p.tipo_contrato_display ? `(${p.tipo_contrato_display})` : ''}
-                      </option>
-                    ))}
-                  </select>
+                  <>
+                    <select name="plantilla_id" value={form.plantilla_id} onChange={handleChange}
+                      className={`ctm-control${errors.plantilla_id ? ' error' : ''}`}>
+                      <option value="">Seleccionar plantilla…</option>
+                      {plantillas.map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.nombre} · {p.version_codigo}{!p.software_id ? ' (global)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="ctm-hint">El documento se genera automáticamente al crear el contrato.</p>
+                  </>
                 )}
-                {errors.plantilla_id && <p style={{ margin: '3px 0 0', fontSize: 10, color: '#dc2626' }}>{errors.plantilla_id}</p>}
+                <FieldError>{errors.plantilla_id}</FieldError>
               </div>
             </div>
           )}
@@ -405,31 +611,18 @@ export default function NewContractModal({ onClose, onSuccess }) {
           {/* ── STEP 2 ─────────────────────────────────────────────────────── */}
           {step === 2 && (
             <div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <SF label="Tipo de Contrato" req name="tipo_contrato"
-                  value={form.tipo_contrato} onChange={handleChange}
-                  error={errors.tipo_contrato}
-                  options={TIPO_CONTRATO_OPTIONS}
-                />
-                <SF label="SLA (Nivel de Servicio)" req name="sla_id"
-                  value={form.sla_id} onChange={handleChange}
-                  error={errors.sla_id}
-                  placeholder="Selecciona el SLA"
-                  options={slaList.map(s => ({ value: s.id, label: s.nombre }))}
-                />
-              </div>
+              <SF label="SLA (Nivel de Servicio)" req name="sla_id"
+                value={form.sla_id} onChange={handleChange}
+                error={errors.sla_id}
+                placeholder="Selecciona el SLA"
+                options={slaList.map(s => ({ value: s.id, label: s.nombre }))}
+              />
 
               {/* Billing section */}
-              <div style={{
-                padding: '12px 14px', background: '#f8f7f5', borderRadius: 8,
-                border: '1px solid #e5e2da', marginBottom: 14,
-              }}>
-                <p style={{ margin: '0 0 12px', fontSize: 11, fontWeight: 700, color: '#5c574f',
-                  textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: "'JetBrains Mono',monospace" }}>
-                  Facturación
-                </p>
+              <div className="ctm-section">
+                <p className="ctm-section-title">Facturación · {tipoLabel}</p>
                 {esRecurrente ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="ctm-grid-2">
                     <SF label="Frecuencia" req name="frecuencia_facturacion"
                       value={form.frecuencia_facturacion} onChange={handleChange}
                       error={errors.frecuencia_facturacion}
@@ -442,6 +635,11 @@ export default function NewContractModal({ onClose, onSuccess }) {
                       error={errors.monto} placeholder="ej: 1500.00"
                     />
                   </div>
+                ) : esProBono ? (
+                  <TF label="Monto" name="monto" type="number"
+                    value="0" onChange={handleChange} disabled
+                    hint="Los contratos Pro Bono no facturan monto."
+                  />
                 ) : (
                   <TF label="Monto" req name="monto" type="number" step="0.01" min="0"
                     value={form.monto} onChange={handleChange}
@@ -455,24 +653,25 @@ export default function NewContractModal({ onClose, onSuccess }) {
           {/* ── STEP 3 ─────────────────────────────────────────────────────── */}
           {step === 3 && (
             <div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="ctm-grid-2">
                 <TF label="Fecha de Inicio" req name="fecha_inicio" type="date"
                   value={form.fecha_inicio} onChange={handleChange} error={errors.fecha_inicio}
                 />
-                <div style={{ marginBottom: 14 }}>
+                <div className="ctm-field">
                   <FL>Fecha de Vencimiento</FL>
                   <input type="date" name="fecha_vencimiento"
                     value={form.fecha_vencimiento}
                     onChange={handleChange}
+                    min={form.fecha_inicio || undefined}
                     disabled={form.sin_vencimiento}
-                    style={{ ...iS(errors.fecha_vencimiento), opacity: form.sin_vencimiento ? 0.5 : 1 }}
+                    className={`ctm-control${errors.fecha_vencimiento ? ' error' : ''}`}
                   />
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, cursor: 'pointer' }}>
+                  <label className="ctm-check">
                     <input type="checkbox" name="sin_vencimiento" checked={form.sin_vencimiento}
-                      onChange={handleChange} style={{ cursor: 'pointer' }} />
-                    <span style={{ fontSize: 10, color: '#7c7670' }}>Sin fecha de vencimiento (perpetuo)</span>
+                      onChange={handleChange} />
+                    <span>Sin fecha de vencimiento (perpetuo)</span>
                   </label>
-                  {errors.fecha_vencimiento && <p style={{ margin: '3px 0 0', fontSize: 10, color: '#dc2626' }}>{errors.fecha_vencimiento}</p>}
+                  <FieldError>{errors.fecha_vencimiento}</FieldError>
                 </div>
               </div>
 
@@ -482,22 +681,28 @@ export default function NewContractModal({ onClose, onSuccess }) {
                 placeholder="0"
               />
 
+              {textoClausulas !== '' && (
+                <div className="ctm-section">
+                  <p className="ctm-section-title">Texto del Documento (Editable)</p>
+                  <textarea
+                    value={textoClausulas}
+                    onChange={(e) => setTextoClausulas(e.target.value)}
+                    style={{ width: '100%', minHeight: 250, padding: '10px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 5, fontFamily: 'inherit', resize: 'vertical', marginBottom: 16 }}
+                  />
+                </div>
+              )}
+
               {/* Summary */}
-              <div style={{
-                background: '#f8f7f5', borderRadius: 8, border: '1px solid #e5e2da',
-                padding: '14px 16px', marginBottom: 6,
-              }}>
-                <p style={{ margin: '0 0 10px', fontSize: 11, fontWeight: 700, color: '#5c574f',
-                  textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: "'JetBrains Mono',monospace" }}>
-                  Resumen del Contrato
-                </p>
+              <div className="ctm-section">
+                <p className="ctm-section-title">Resumen del Contrato</p>
                 <SRow label="Cliente" value={clienteNombre} />
                 <SRow label="Software" value={swNombre} accent />
-                <SRow label="Plantilla" value={plantillaNombre} />
+                <SRow label="Plantilla" value={form.plantilla_id ? plantillaNombre : 'Sin documento (se genera después)'} />
                 <SRow label="SLA" value={slaNombre} />
                 <SRow label="Tipo" value={tipoLabel} />
                 {esRecurrente && <SRow label="Facturación" value={frecLabel} />}
-                <SRow label={esRecurrente ? `Monto / ciclo` : 'Monto'} value={form.monto ? `$${Number(form.monto).toLocaleString('es-CL')} USD` : ''} accent />
+                <SRow label={esRecurrente ? `Monto / ciclo` : 'Monto'}
+                  value={esProBono ? 'Pro Bono ($0)' : (form.monto ? `$${Number(form.monto).toLocaleString('es-CL')} USD` : '')} accent />
                 <SRow label="Inicio" value={form.fecha_inicio} />
                 <SRow label="Vencimiento" value={form.sin_vencimiento ? 'Sin vencimiento' : (form.fecha_vencimiento || '—')} />
                 {parseInt(form.dias_gracia_autorizados, 10) > 0 && (
@@ -506,10 +711,19 @@ export default function NewContractModal({ onClose, onSuccess }) {
               </div>
 
               {errors.submit && (
-                <div style={{ padding: '10px 12px', background: '#fef2f2', border: '1px solid #fecaca',
-                  borderRadius: 6, fontSize: 12, color: '#dc2626', display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-                  <Svg d={['M12 9v4M12 17h.01', 'M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z']} color="#dc2626" size={14} />
+                <div className="ct-alert-error ctm-alert" role="alert">
+                  <Svg d={['M12 9v4M12 17h.01', 'M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z']} color="var(--danger)" size={14} />
                   {errors.submit}
+                </div>
+              )}
+
+              {docError && createdRef.current && (
+                <div className="ctm-note ctm-note-warn ctm-alert" role="alert">
+                  <Svg d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01" color="var(--warning-bright)" size={14} />
+                  <span>
+                    El contrato <strong>{contratoIdDisplay(createdRef.current.id)}</strong> fue creado,
+                    pero falló la generación del documento: {docError}
+                  </span>
                 </div>
               )}
             </div>
@@ -517,62 +731,46 @@ export default function NewContractModal({ onClose, onSuccess }) {
         </div>
 
         {/* Footer */}
-        <div style={{
-          padding: '14px 24px', borderTop: '1px solid #e5e2da',
-          display: 'flex', gap: 8, justifyContent: 'flex-end', flexShrink: 0, background: '#fafaf9', borderRadius: '0 0 10px 10px',
-        }}>
-          <button onClick={onClose} style={{
-            padding: '9px 16px', borderRadius: 6, border: '1px solid #d8d4cc',
-            background: '#f0ede8', color: '#5c574f', fontSize: 12, fontWeight: 500,
-            cursor: 'pointer', fontFamily: 'inherit',
-          }}>Cancelar</button>
-
-          {step > 1 && (
-            <button onClick={prevStep} style={{
-              padding: '9px 16px', borderRadius: 6, border: '1px solid #d8d4cc',
-              background: '#fff', color: '#3b3631', fontSize: 12, fontWeight: 600,
-              cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6,
-            }}>
-              <Svg d="M15 18l-6-6 6-6" size={13} color="#5c574f" />
-              Anterior
-            </button>
-          )}
-
-          {step < 3 ? (
-            <button onClick={nextStep} style={{
-              padding: '9px 20px', borderRadius: 6, border: 'none',
-              background: '#2563eb', color: '#fff', fontSize: 12, fontWeight: 600,
-              cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6,
-            }}>
-              Siguiente
-              <Svg d="M9 18l6-6-6-6" size={13} color="#fff" />
-            </button>
+        <div className="ctm-footer">
+          {docError && createdRef.current ? (
+            <>
+              <button className="ct-btn-secondary" onClick={continuarSinDocumento} disabled={loading}>
+                Continuar sin documento
+              </button>
+              <button className="ct-btn-primary" onClick={retryGeneracion} disabled={loading}>
+                {loading ? 'Generando…' : 'Reintentar generación'}
+              </button>
+            </>
           ) : (
-            <button onClick={handleSubmit} disabled={loading} style={{
-              padding: '9px 20px', borderRadius: 6, border: 'none',
-              background: loading ? '#93c5fd' : '#2563eb',
-              color: '#fff', fontSize: 12, fontWeight: 600,
-              cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
-              display: 'flex', alignItems: 'center', gap: 6,
-            }}>
-              {loading ? 'Creando…' : (
-                <>
-                  <Svg d="M20 6 9 17l-5-5" size={13} color="#fff" sw={2.5} />
-                  Crear Contrato
-                </>
+            <>
+              <button className="ct-btn-secondary" onClick={attemptClose} disabled={loading}>Cancelar</button>
+
+              {step > 1 && (
+                <button className="ct-btn-secondary" onClick={prevStep} disabled={loading}>
+                  <Svg d="M15 18l-6-6 6-6" size={13} color="var(--text-secondary)" />
+                  Anterior
+                </button>
               )}
-            </button>
+
+              {step < 3 ? (
+                <button className="ct-btn-primary" onClick={nextStep}>
+                  Siguiente
+                  <Svg d="M9 18l6-6-6-6" size={13} color="var(--text-on-accent)" />
+                </button>
+              ) : (
+                <button className="ct-btn-primary" onClick={handleSubmit} disabled={loading}>
+                  {loading ? 'Creando…' : (
+                    <>
+                      <Svg d="M20 6 9 17l-5-5" size={13} color="var(--text-on-accent)" sw={2.5} />
+                      Crear Contrato
+                    </>
+                  )}
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
-
-      <style>{`
-        @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
-        @keyframes modalIn {
-          from { opacity: 0; transform: translate(-50%, -50%) scale(0.96); }
-          to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-        }
-      `}</style>
     </>
   );
 }

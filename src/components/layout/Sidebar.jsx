@@ -1,9 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { Pin, PinOff } from 'lucide-react';
+import { gsap } from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiLogout } from '../../api';
 import './Sidebar.css';
+
+gsap.registerPlugin(useGSAP);
+
+const prefersReducedMotion = () =>
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const CONTEXTS = ['Administración Global', 'SoftTrack Pro v3', 'ContaLite v2.1'];
 
@@ -13,6 +20,7 @@ const NAV = [
   { id: 'catalogo', path: '/catalogo', label: 'Catálogo', paths: ['M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z','M3.27 6.96 12 12.01l8.73-5.05','M12 22.08V12'] },
   { id: 'contratos', path: '/contratos', label: 'Contratos', paths: ['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z','M14 2v6h6','M8 13h8'], badge: { n: 3, type: 'warning' } },
   { id: 'auditoria', path: '/auditoria', label: 'Auditoría Legal', paths: ['M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z','M9 12l2 2 4-4'], badge: { n: 12, type: 'danger' } },
+  { id: 'analytics', path: '/analytics', label: 'Analytics (BI)', paths: ['M3 3v18h18', 'M18 17V9', 'M13 17V5', 'M8 17v-3'] },
 ];
 
 const Icon = ({ paths = [], circles = [], className = '' }) => (
@@ -47,9 +55,65 @@ export default function Sidebar() {
   
   const dropdownRef = useRef(null);
   const userMenuRef = useRef(null);
+  const sidebarRef = useRef(null);
 
   const isExpanded = isPinned || isHovered;
   const collapsed = !isExpanded;
+
+  // Entrada inicial: stagger sutil de los items de navegación
+  useGSAP(() => {
+    if (prefersReducedMotion()) return;
+    gsap.fromTo(
+      '.sb-nav-item',
+      { autoAlpha: 0, x: -10 },
+      { autoAlpha: 1, x: 0, duration: 0.4, stagger: 0.05, ease: 'power2.out', delay: 0.1, clearProps: 'all' }
+    );
+  }, { scope: sidebarRef });
+
+  // Al expandir: los textos entran con un leve desplazamiento en cascada
+  useGSAP(() => {
+    if (!isExpanded || prefersReducedMotion()) return;
+    gsap.fromTo(
+      '.sb-logo-text, .sb-context-info, .sb-nav-label, .sb-user-info, .sb-section-title',
+      { autoAlpha: 0, x: -8 },
+      { autoAlpha: 1, x: 0, duration: 0.3, stagger: 0.02, ease: 'power2.out', clearProps: 'all' }
+    );
+  }, { dependencies: [isExpanded], scope: sidebarRef, revertOnUpdate: true });
+
+  // Apertura del selector de contexto
+  useGSAP(() => {
+    if (!dropOpen || collapsed || prefersReducedMotion()) return;
+    gsap.fromTo(
+      '.sb-context-wrapper .sb-context-dropdown',
+      { autoAlpha: 0, y: -6, scale: 0.98 },
+      { autoAlpha: 1, y: 0, scale: 1, duration: 0.22, ease: 'power2.out', clearProps: 'all' }
+    );
+    gsap.fromTo(
+      '.sb-context-wrapper .sb-dropdown-item',
+      { autoAlpha: 0, x: -6 },
+      { autoAlpha: 1, x: 0, duration: 0.2, stagger: 0.03, ease: 'power2.out', delay: 0.05, clearProps: 'all' }
+    );
+  }, { dependencies: [dropOpen], scope: sidebarRef });
+
+  // Apertura del menú de usuario (anclado abajo, sube)
+  useGSAP(() => {
+    if (!userMenuOpen || collapsed || prefersReducedMotion()) return;
+    gsap.fromTo(
+      '.sb-user-dropdown',
+      { autoAlpha: 0, y: 6, scale: 0.98 },
+      { autoAlpha: 1, y: 0, scale: 1, duration: 0.22, ease: 'power2.out', clearProps: 'all' }
+    );
+  }, { dependencies: [userMenuOpen], scope: sidebarRef });
+
+  // Cambio de ruta: pop sutil del ícono activo
+  useGSAP(() => {
+    if (prefersReducedMotion()) return;
+    gsap.fromTo(
+      '.sb-nav-item.active .sb-icon',
+      { scale: 0.8, transformOrigin: '50% 50%' },
+      { scale: 1, duration: 0.4, ease: 'back.out(2.5)', clearProps: 'all' }
+    );
+  }, { dependencies: [location.pathname], scope: sidebarRef });
 
   useEffect(() => {
     const handleResize = () => {
@@ -94,8 +158,18 @@ export default function Sidebar() {
         setUserMenuOpen(false);
       }
     }
+    function handleEscape(event) {
+      if (event.key === 'Escape') {
+        setDropOpen(false);
+        setUserMenuOpen(false);
+      }
+    }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
   }, []);
 
   const handleLogout = async () => {
@@ -118,7 +192,8 @@ export default function Sidebar() {
           onMouseEnter={() => setIsHovered(true)}
         />
       )}
-      <div 
+      <div
+        ref={sidebarRef}
         className={`sidebar-proto ${collapsed ? 'collapsed' : 'expanded'}`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -242,10 +317,20 @@ export default function Sidebar() {
       <div className="sb-footer">
         {user ? (
           <div className="sb-user-wrapper" ref={userMenuRef} style={{ position: 'relative' }}>
-            <div 
-              className={`sb-user-profile ${userMenuOpen ? 'open' : ''}`} 
+            <div
+              className={`sb-user-profile ${userMenuOpen ? 'open' : ''}`}
               onClick={() => setUserMenuOpen(!userMenuOpen)}
-              title={collapsed ? "Ver opciones" : "Ver opciones"}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setUserMenuOpen(!userMenuOpen);
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              aria-haspopup="menu"
+              aria-expanded={userMenuOpen}
+              title="Ver opciones"
               style={{ cursor: 'pointer' }}
             >
               <div className="sb-avatar">
@@ -280,11 +365,11 @@ export default function Sidebar() {
                   </svg>
                   {collapsed ? '?' : 'FAQ'}
                 </button>
-                <div style={{ borderTop: '1px solid #d8d4cc', margin: '4px 0' }}></div>
+                <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }}></div>
                 <button
                   className="sb-dropdown-item"
                   onClick={handleLogout}
-                  style={{ color: '#dc2626' }}
+                  style={{ color: 'var(--danger)' }}
                 >
                   <svg className="sb-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, marginRight: 8, opacity: 0.7 }}>
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>

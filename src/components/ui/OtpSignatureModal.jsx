@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+import './OtpSignatureModal.css';
 
 /**
  * OtpSignatureModal Component
- * 
+ *
  * A high-friction confirmation modal for signing legal documents with OTP verification.
  * Follows strict UX guidelines: positive friction, focus trapping, immediate loading feedback,
  * smart multi-input autofocus/backspace/paste handlers, countdown manager, and resend cooldown.
@@ -88,9 +89,12 @@ export default function OtpSignatureModal({
 
   // --- Keyboard & Focus Management (Focus Trap) ---
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
-        onClose();
+        // No cerrar mientras se está firmando (evita estados a medias)
+        if (!isSigning) onClose();
         return;
       }
 
@@ -120,7 +124,7 @@ export default function OtpSignatureModal({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  }, [isOpen, isSigning, onClose]);
 
   // --- Format Seconds into MM:SS ---
   const formatTime = (seconds) => {
@@ -172,7 +176,7 @@ export default function OtpSignatureModal({
   const handlePaste = (e) => {
     e.preventDefault();
     const pastedData = e.clipboardData.getData('text').trim().replace(/[^0-9]/g, '');
-    
+
     if (pastedData) {
       const newOtp = [...otp];
       for (let i = 0; i < otpLength; i++) {
@@ -196,7 +200,7 @@ export default function OtpSignatureModal({
     // Reset OTP fields
     setOtp(Array(otpLength).fill(''));
     setError('');
-    
+
     // Simulate generation loading state again for sending
     setIsGenerating(true);
     setResendCooldown(resendCooldownSeconds);
@@ -239,437 +243,194 @@ export default function OtpSignatureModal({
 
   const isOtpComplete = otp.every(digit => digit !== '');
 
-  // --- Visuals: Styling Tokens ---
-  const overlayStyle = {
-    position: 'fixed',
-    inset: 0,
-    zIndex: 1500,
-    background: 'rgba(10, 10, 10, 0.55)',
-    backdropFilter: 'blur(5px)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-    fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
-  };
-
-  const modalStyle = {
-    background: '#ffffff',
-    borderRadius: 12,
-    boxShadow: '0 24px 50px rgba(0, 0, 0, 0.18), 0 0 1px rgba(0,0,0,0.1)',
-    width: '100%',
-    maxWidth: 460,
-    display: 'flex',
-    flexDirection: 'column',
-    overflow: 'hidden',
-    border: '1px solid #e5e2da',
-    animation: 'modalIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-  };
-
-  const headerStyle = {
-    padding: '20px 24px',
-    borderBottom: '1px solid #e5e2da',
-    background: '#efede8',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  };
-
-  const bodyStyle = {
-    padding: '24px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 20,
-  };
-
-  const footerStyle = {
-    padding: '16px 24px',
-    borderTop: '1px solid #e5e2da',
-    background: '#fafaf9',
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: 12,
-  };
-
   if (!isOpen) return null;
 
   return (
-    <>
-      {/* Inline styles for custom animations */}
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes modalIn {
-          from { opacity: 0; transform: scale(0.96) translateY(8px); }
-          to { opacity: 1; transform: scale(1) translateY(0); }
-        }
-        @keyframes pulse {
-          0% { opacity: 0.6; }
-          50% { opacity: 1; }
-          100% { opacity: 0.6; }
-        }
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}} />
+    <div className="otp-overlay" onClick={(success || isSigning) ? undefined : onClose}>
+      <div
+        ref={containerRef}
+        className="otp-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Firma de documento con código OTP"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="otp-header">
+          <div>
+            <h3 className="otp-title">Firma de Documento</h3>
+            <p className="otp-subtitle">Verificación de Identidad Electrónica</p>
+          </div>
+          {!success && !isSigning && !isGenerating && (
+            <button
+              ref={closeButtonRef}
+              className="otp-close"
+              onClick={onClose}
+              title="Cerrar"
+              aria-label="Cerrar"
+            >
+              ×
+            </button>
+          )}
+        </div>
 
-      <div style={overlayStyle} onClick={success ? undefined : onClose}>
-        <div 
-          ref={containerRef}
-          style={modalStyle} 
-          onClick={e => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div style={headerStyle}>
+        {/* Body */}
+        {success ? (
+          <div className="otp-body otp-body--center">
+            <div className="otp-success-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#3b3631', letterSpacing: '-0.01em' }}>
-                Firma de Documento
-              </h3>
-              <p style={{ margin: '3px 0 0', fontSize: 11, color: '#7c7670' }}>
-                Verificación de Identidad Electrónica
+              <h4 className="otp-success-title">Documento Firmado Correctamente</h4>
+              <p className="otp-success-text">
+                La firma digital se ha registrado exitosamente en el historial de auditoría inmutable del contrato.
               </p>
             </div>
-            {!success && !isSigning && !isGenerating && (
-              <button
-                ref={closeButtonRef}
-                onClick={onClose}
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 6,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#7c7670',
-                  fontSize: 18,
-                  cursor: 'pointer',
-                  border: 'none',
-                  background: 'transparent',
-                  transition: 'background 0.15s',
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = '#e5e2da'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                title="Cerrar modal"
-              >
-                ×
-              </button>
-            )}
+            <div className="otp-receipt">
+              <div className="otp-receipt-row">
+                <span className="otp-receipt-label">Documento:</span>
+                <span className="otp-receipt-value" title={contractName}>{contractName}</span>
+              </div>
+              {contractId && (
+                <div className="otp-receipt-row">
+                  <span className="otp-receipt-label">ID Contrato:</span>
+                  <span className="otp-receipt-value mono">#{contractId}</span>
+                </div>
+              )}
+              <div className="otp-receipt-row">
+                <span className="otp-receipt-label">Método:</span>
+                <span className="otp-receipt-value accent">Firma OTP autorizada</span>
+              </div>
+            </div>
+            <button className="otp-btn-block" onClick={onClose}>
+              Entendido
+            </button>
           </div>
-
-          {/* Body */}
-          {success ? (
-            <div style={{ ...bodyStyle, padding: '36px 24px', alignItems: 'center', textAlign: 'center', gap: 16 }}>
-              <div style={{
-                width: 52,
-                height: 52,
-                borderRadius: '50%',
-                background: '#f0fdf4',
-                border: '2px solid #bbf7d0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#16a34a',
-                marginBottom: 4,
-              }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
+        ) : isGenerating ? (
+          /* Generating/Sending Loader Step */
+          <div className="otp-body otp-body--center otp-body--loading">
+            <div className="otp-spinner" aria-hidden="true" />
+            <div>
+              <p className="otp-loading-title">Generando firma y enviando código...</p>
+              <p className="otp-loading-sub">Preparando el entorno seguro de firma digital</p>
+            </div>
+          </div>
+        ) : (
+          /* OTP Entry Form Step */
+          <form onSubmit={handleSubmit}>
+            <div className="otp-body">
+              {/* Warning / Explanation Banner */}
+              <div className="otp-banner">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
                 </svg>
-              </div>
-              <div>
-                <h4 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, color: '#15803d' }}>
-                  Documento Firmado Correctamente
-                </h4>
-                <p style={{ margin: 0, fontSize: 13, color: '#7c7670', lineHeight: 1.5 }}>
-                  La firma digital se ha registrado exitosamente en el historial de auditoría inmutable del contrato.
-                </p>
-              </div>
-              <div style={{
-                width: '100%',
-                background: '#fafaf9',
-                border: '1px solid #e5e2da',
-                borderRadius: 8,
-                padding: '12px 16px',
-                fontSize: 12,
-                color: '#3b3631',
-                textAlign: 'left',
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ color: '#7c7670' }}>Documento:</span>
-                  <span style={{ fontWeight: 600 }}>{contractName}</span>
-                </div>
-                {contractId && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{ color: '#7c7670' }}>ID Contrato:</span>
-                    <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>#{contractId}</span>
-                  </div>
-                )}
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#7c7670' }}>Método:</span>
-                  <span style={{ color: '#2563eb', fontWeight: 600 }}>Firma OTP autorizada</span>
+                <div>
+                  <strong className="otp-banner-title">Fricción de Seguridad Requerida</strong>
+                  Estás firmando el documento <strong className="otp-banner-name">{contractName}</strong>. Esta acción tiene validez jurídica. Confirma tu intención ingresando el código OTP enviado.
                 </div>
               </div>
-              <button
-                onClick={onClose}
-                style={{
-                  width: '100%',
-                  marginTop: 8,
-                  padding: '10px 16px',
-                  borderRadius: 6,
-                  background: '#2563eb',
-                  color: '#fff',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  border: 'none',
-                }}
-              >
-                Entendido
-              </button>
-            </div>
-          ) : isGenerating ? (
-            /* Generating/Sending Loader Step */
-            <div style={{ ...bodyStyle, padding: '48px 24px', alignItems: 'center', textAlign: 'center', gap: 16 }}>
-              <div style={{
-                width: 36,
-                height: 36,
-                border: '3px solid #e5e2da',
-                borderTopColor: '#2563eb',
-                borderRadius: '50%',
-                animation: 'spin 0.8s linear infinite',
-              }} />
-              <div>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#3b3631', animation: 'pulse 1.5s ease-in-out infinite' }}>
-                  Generando firma y enviando código...
+
+              {/* Instructions */}
+              <div className="otp-instructions">
+                <p className="otp-inst">
+                  Hemos enviado un código temporal de {otpLength} dígitos a:
                 </p>
-                <p style={{ margin: '4px 0 0', fontSize: 11, color: '#7c7670' }}>
-                  Preparando el entorno seguro de firma digital
+                <p className="otp-inst-target">
+                  {recipientPhone} y {recipientEmail}
                 </p>
               </div>
-            </div>
-          ) : (
-            /* OTP Entry Form Step */
-            <form onSubmit={handleSubmit}>
-              <div style={bodyStyle}>
-                {/* Warning / Explanation Banner */}
-                <div style={{
-                  background: '#fef3c7',
-                  border: '1px solid #fde68a',
-                  borderRadius: 8,
-                  padding: '12px 14px',
-                  fontSize: 12,
-                  color: '#92400e',
-                  lineHeight: 1.45,
-                  display: 'flex',
-                  gap: 10,
-                }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+
+              {/* Input Fields Row */}
+              <div className="otp-inputs" onPaste={handlePaste}>
+                {otp.map((digit, i) => (
+                  <input
+                    key={i}
+                    ref={(el) => (inputRefs.current[i] = el)}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength="1"
+                    value={digit}
+                    disabled={timeLeft === 0 || isSigning}
+                    aria-label={`Dígito ${i + 1} de ${otpLength}`}
+                    className={`otp-digit${digit !== '' ? ' filled' : ''}`}
+                    onChange={(e) => handleInputChange(e.target.value, i)}
+                    onKeyDown={(e) => handleInputKeyDown(e, i)}
+                  />
+                ))}
+              </div>
+
+              {/* Error message */}
+              {error && (
+                <div className="otp-error" role="alert">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2" />
                     <line x1="12" y1="9" x2="12" y2="13" />
                     <line x1="12" y1="17" x2="12.01" y2="17" />
                   </svg>
-                  <div>
-                    <strong style={{ display: 'block', marginBottom: 2 }}>Fricción de Seguridad Requerida</strong>
-                    Estás firmando el documento <strong style={{ color: '#78350f' }}>{contractName}</strong>. Esta acción tiene validez jurídica. Confirma tu intención ingresando el código OTP enviado.
-                  </div>
+                  {error}
                 </div>
+              )}
 
-                {/* Instructions */}
-                <div style={{ textAlign: 'center' }}>
-                  <p style={{ margin: 0, fontSize: 13, color: '#3b3631' }}>
-                    Hemos enviado un código temporal de {otpLength} dígitos a:
-                  </p>
-                  <p style={{ margin: '4px 0 0', fontSize: 13, fontWeight: 700, color: '#2563eb' }}>
-                    {recipientPhone} y {recipientEmail}
-                  </p>
-                </div>
+              {/* Countdown & Resend Option */}
+              <div className="otp-meta">
+                {/* Countdown Timer */}
+                <span className={`otp-countdown${timeLeft < 60 ? ' warn' : ''}`}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                  Expira en {formatTime(timeLeft)}
+                </span>
 
-                {/* Input Fields Row */}
-                <div 
-                  style={{ 
-                    display: 'flex', 
-                    gap: 8, 
-                    justifyContent: 'center', 
-                    margin: '10px 0',
-                  }}
-                  onPaste={handlePaste}
-                >
-                  {otp.map((digit, i) => (
-                    <input
-                      key={i}
-                      ref={(el) => (inputRefs.current[i] = el)}
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      maxLength="1"
-                      value={digit}
-                      disabled={timeLeft === 0 || isSigning}
-                      onChange={(e) => handleInputChange(e.target.value, i)}
-                      onKeyDown={(e) => handleInputKeyDown(e, i)}
-                      style={{
-                        width: 44,
-                        height: 52,
-                        textAlign: 'center',
-                        fontSize: 22,
-                        fontWeight: 700,
-                        fontFamily: "'JetBrains Mono', monospace",
-                        border: digit !== '' ? '2px solid #2563eb' : '1px solid #d8d4cc',
-                        borderRadius: 6,
-                        color: '#3b3631',
-                        backgroundColor: timeLeft === 0 ? '#f4f3ef' : '#ffffff',
-                        outline: 'none',
-                        boxShadow: digit !== '' ? '0 0 0 3px rgba(37, 99, 235, 0.15)' : 'none',
-                        transition: 'border-color 0.15s, box-shadow 0.15s',
-                      }}
-                      onFocus={(e) => {
-                        e.target.style.borderColor = '#2563eb';
-                        e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.15)';
-                      }}
-                      onBlur={(e) => {
-                        e.target.style.borderColor = digit !== '' ? '#2563eb' : '#d8d4cc';
-                        e.target.style.boxShadow = 'none';
-                      }}
-                    />
-                  ))}
-                </div>
-
-                {/* Error message */}
-                {error && (
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                    color: '#dc2626',
-                    fontSize: 12,
-                    textAlign: 'center',
-                    fontWeight: 600,
-                  }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                      <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2" />
-                      <line x1="12" y1="9" x2="12" y2="13" />
-                      <line x1="12" y1="17" x2="12.01" y2="17" />
-                    </svg>
-                    {error}
-                  </div>
-                )}
-
-                {/* Countdown & Resend Option */}
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  fontSize: 12,
-                  borderTop: '1px solid #e5e2da',
-                  paddingTop: 14,
-                  marginTop: 6,
-                }}>
-                  {/* Countdown Timer */}
-                  <span style={{ 
-                    color: timeLeft < 60 ? '#dc2626' : '#7c7670', 
-                    fontWeight: timeLeft < 60 ? 700 : 500,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4
-                  }}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10" />
-                      <polyline points="12 6 12 12 16 14" />
-                    </svg>
-                    Expira en {formatTime(timeLeft)}
-                  </span>
-
-                  {/* Resend Cooldown Button */}
-                  <button
-                    ref={resendRef}
-                    type="button"
-                    disabled={resendCooldown > 0 || isSigning}
-                    onClick={handleResend}
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: resendCooldown > 0 ? '#b0aaa3' : '#2563eb',
-                      cursor: resendCooldown > 0 ? 'not-allowed' : 'pointer',
-                      border: 'none',
-                      background: 'none',
-                      padding: '4px 8px',
-                      borderRadius: 4,
-                      transition: 'background 0.15s, color 0.15s',
-                    }}
-                    onMouseEnter={e => {
-                      if (resendCooldown === 0) e.currentTarget.style.background = '#eff6ff';
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.background = 'transparent';
-                    }}
-                  >
-                    {resendCooldown > 0
-                      ? `Reenviar código (${resendCooldown}s)`
-                      : 'Reenviar código'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div style={footerStyle}>
+                {/* Resend Cooldown Button */}
                 <button
+                  ref={resendRef}
                   type="button"
-                  onClick={onClose}
-                  disabled={isSigning}
-                  style={{
-                    padding: '8px 16px',
-                    borderRadius: 6,
-                    border: '1px solid #d8d4cc',
-                    background: '#efede8',
-                    color: '#3b3631',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: isSigning ? 'not-allowed' : 'pointer',
-                    fontFamily: 'inherit',
-                    transition: 'background 0.15s',
-                  }}
-                  onMouseEnter={e => !isSigning && (e.currentTarget.style.background = '#e5e2da')}
-                  onMouseLeave={e => !isSigning && (e.currentTarget.style.background = '#efede8')}
+                  className="otp-resend"
+                  disabled={resendCooldown > 0 || isSigning}
+                  onClick={handleResend}
                 >
-                  Cancelar
-                </button>
-                <button
-                  ref={confirmButtonRef}
-                  type="submit"
-                  disabled={!isOtpComplete || isSigning || timeLeft === 0}
-                  style={{
-                    padding: '8px 18px',
-                    borderRadius: 6,
-                    border: 'none',
-                    background: isSigning
-                      ? '#93c5fd'
-                      : !isOtpComplete || timeLeft === 0
-                      ? '#d8d4cc'
-                      : '#2563eb',
-                    color: '#fff',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: (!isOtpComplete || isSigning || timeLeft === 0) ? 'not-allowed' : 'pointer',
-                    fontFamily: 'inherit',
-                    transition: 'background 0.15s, box-shadow 0.15s',
-                    boxShadow: (isOtpComplete && !isSigning && timeLeft > 0) ? '0 4px 12px rgba(37, 99, 235, 0.25)' : 'none',
-                  }}
-                  onMouseEnter={e => {
-                    if (isOtpComplete && !isSigning && timeLeft > 0) {
-                      e.currentTarget.style.background = '#1d4ed8';
-                    }
-                  }}
-                  onMouseLeave={e => {
-                    if (isOtpComplete && !isSigning && timeLeft > 0) {
-                      e.currentTarget.style.background = '#2563eb';
-                    }
-                  }}
-                >
-                  {isSigning ? 'Verificando...' : 'Firmar Contrato ✓'}
+                  {resendCooldown > 0
+                    ? `Reenviar código (${resendCooldown}s)`
+                    : 'Reenviar código'}
                 </button>
               </div>
-            </form>
-          )}
-        </div>
+            </div>
+
+            {/* Footer */}
+            <div className="otp-footer">
+              <button
+                type="button"
+                className="otp-btn otp-btn-cancel"
+                onClick={onClose}
+                disabled={isSigning}
+              >
+                Cancelar
+              </button>
+              <button
+                ref={confirmButtonRef}
+                type="submit"
+                className={`otp-btn otp-btn-sign${isSigning ? ' signing' : ''}`}
+                disabled={!isOtpComplete || isSigning || timeLeft === 0}
+              >
+                {isSigning ? 'Verificando...' : (
+                  <>
+                    Firmar Contrato
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
-    </>
+    </div>
   );
 }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createClausula, updateClausula } from '../api';
 
-function Svg({ paths = [], circles = [], size = 14, color = '#7c7670', strokeWidth = 1.8 }) {
+function Svg({ paths = [], circles = [], size = 14, color = 'var(--text-muted)', strokeWidth = 1.8 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
       stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"
@@ -15,8 +15,8 @@ function Svg({ paths = [], circles = [], size = 14, color = '#7c7670', strokeWid
 function FormField({ label, name, type = 'text', value, onChange, placeholder, required }) {
   return (
     <div style={{ marginBottom: 14 }}>
-      <label style={{ display: 'block', fontSize: 9, fontWeight: 700, color: '#7c7670', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.07em', fontFamily: "'JetBrains Mono', monospace" }}>
-        {label} {required && <span style={{ color: '#dc2626' }}>*</span>}
+      <label style={{ display: 'block', fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.07em', fontFamily: "'JetBrains Mono', monospace" }}>
+        {label} {required && <span style={{ color: 'var(--danger)' }}>*</span>}
       </label>
       <input
         type={type}
@@ -27,18 +27,18 @@ function FormField({ label, name, type = 'text', value, onChange, placeholder, r
         style={{
           width: '100%',
           padding: '8px 12px',
-          border: '1px solid #d8d4cc',
+          border: '1px solid var(--border)',
           borderRadius: 5,
           fontSize: 12,
           fontFamily: 'inherit',
-          background: '#efede8',
-          color: '#3b3631',
+          background: 'var(--bg-topbar)',
+          color: 'var(--text-primary)',
           outline: 'none',
           boxSizing: 'border-box',
           transition: 'border-color 0.15s, background 0.15s',
         }}
-        onFocus={e => { e.target.style.borderColor = 'rgba(37, 99, 235, 0.4)'; e.target.style.background = '#fff'; }}
-        onBlur={e => { e.target.style.borderColor = '#d8d4cc'; e.target.style.background = '#efede8'; }}
+        onFocus={e => { e.target.style.borderColor = 'rgba(37, 99, 235, 0.4)'; e.target.style.background = 'var(--surface)'; }}
+        onBlur={e => { e.target.style.borderColor = 'var(--border)'; e.target.style.background = 'var(--bg-topbar)'; }}
       />
     </div>
   );
@@ -47,8 +47,8 @@ function FormField({ label, name, type = 'text', value, onChange, placeholder, r
 function SelectField({ label, value, onChange, options, required }) {
   return (
     <div style={{ marginBottom: 14 }}>
-      <label style={{ display: 'block', fontSize: 9, fontWeight: 700, color: '#7c7670', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.07em', fontFamily: "'JetBrains Mono', monospace" }}>
-        {label} {required && <span style={{ color: '#dc2626' }}>*</span>}
+      <label style={{ display: 'block', fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.07em', fontFamily: "'JetBrains Mono', monospace" }}>
+        {label} {required && <span style={{ color: 'var(--danger)' }}>*</span>}
       </label>
       <select
         value={value}
@@ -56,12 +56,12 @@ function SelectField({ label, value, onChange, options, required }) {
         style={{
           width: '100%',
           padding: '8px 12px',
-          border: '1px solid #d8d4cc',
+          border: '1px solid var(--border)',
           borderRadius: 5,
           fontSize: 12,
           fontFamily: 'inherit',
-          background: '#efede8',
-          color: '#3b3631',
+          background: 'var(--bg-topbar)',
+          color: 'var(--text-primary)',
           outline: 'none',
           boxSizing: 'border-box',
           appearance: 'none',
@@ -101,6 +101,7 @@ export default function EditClauseModal({ clause, onClose, onSuccess, createForm
         risk: clause.risk || 'Medio',
         versions: (clause.versions && clause.versions.length > 0) 
           ? clause.versions.map(v => ({
+              id: v.id,
               label: v.label || v.etiqueta,
               tag: v.tag || v.tipo,
               text: v.text || v.texto || ''
@@ -187,9 +188,9 @@ export default function EditClauseModal({ clause, onClose, onSuccess, createForm
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 6,
-          border: '1px solid #d8d4cc',
+          border: '1px solid var(--border)',
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
           width: '90%',
           maxWidth: 600,
@@ -200,12 +201,12 @@ export default function EditClauseModal({ clause, onClose, onSuccess, createForm
           animation: 'dropIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: '1px solid #efede8', background: '#faf9f8', borderRadius: '6px 6px 0 0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: '1px solid var(--bg-topbar)', background: 'var(--bg-faint)', borderRadius: '6px 6px 0 0' }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: 16, color: '#3b3631', fontWeight: 600 }}>
+            <h2 style={{ margin: 0, fontSize: 16, color: 'var(--text-primary)', fontWeight: 600 }}>
               {isEditing ? 'Editar Cláusula' : 'Nueva Cláusula'}
             </h2>
-            <p style={{ margin: '2px 0 0', fontSize: 11, color: '#7c7670' }}>
+            <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>
               Define el texto y las variantes alternativas de esta cláusula.
             </p>
           </div>
@@ -220,7 +221,7 @@ export default function EditClauseModal({ clause, onClose, onSuccess, createForm
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#b0aaa3',
+              color: 'var(--text-faint)',
               borderRadius: 4,
             }}
           >
@@ -230,8 +231,8 @@ export default function EditClauseModal({ clause, onClose, onSuccess, createForm
 
         <div style={{ padding: 24, overflowY: 'auto' }}>
           {error && (
-            <div style={{ padding: '10px 12px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 4, color: '#dc2626', fontSize: 11, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Svg paths={['M12 8v4', 'M12 16h.01', 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z']} size={14} color="#dc2626" />
+            <div style={{ padding: '10px 12px', background: 'var(--danger-bg)', border: '1px solid var(--danger-soft)', borderRadius: 4, color: 'var(--danger)', fontSize: 11, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Svg paths={['M12 8v4', 'M12 16h.01', 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z']} size={14} color="var(--danger)" />
               {error}
             </div>
           )}
@@ -273,21 +274,21 @@ export default function EditClauseModal({ clause, onClose, onSuccess, createForm
 
           <div style={{ marginTop: 8 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 12 }}>
-              <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#3b3631' }}>Versiones</h3>
+              <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Versiones</h3>
               <button
                 type="button"
                 onClick={handleAddVersion}
                 style={{
-                  background: 'transparent', border: 'none', color: '#2563eb', fontSize: 11, fontWeight: 600,
+                  background: 'transparent', border: 'none', color: 'var(--primary)', fontSize: 11, fontWeight: 600,
                   cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
                 }}
               >
-                <Svg paths={['M12 5v14', 'M5 12h14']} size={12} color="#2563eb" /> Agregar Versión
+                <Svg paths={['M12 5v14', 'M5 12h14']} size={12} color="var(--primary)" /> Agregar Versión
               </button>
             </div>
 
             {formData.versions.map((v, idx) => (
-              <div key={idx} style={{ background: '#f8f7f5', border: '1px solid #efede8', borderRadius: 6, padding: 16, marginBottom: 12 }}>
+              <div key={idx} style={{ background: 'var(--bg-faint)', border: '1px solid var(--bg-topbar)', borderRadius: 6, padding: 16, marginBottom: 12 }}>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 12 }}>
                   <div style={{ flex: 1 }}>
                     <FormField
@@ -312,16 +313,16 @@ export default function EditClauseModal({ clause, onClose, onSuccess, createForm
                     <button
                       type="button"
                       onClick={() => handleRemoveVersion(idx)}
-                      style={{ marginTop: 20, padding: 8, background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      style={{ marginTop: 20, padding: 8, background: 'var(--danger-bg)', border: '1px solid var(--danger-soft)', borderRadius: 4, cursor: 'pointer', color: 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       title="Eliminar versión"
                     >
-                      <Svg paths={['M3 6h18', 'M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2']} size={14} color="#dc2626" />
+                      <Svg paths={['M3 6h18', 'M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2']} size={14} color="var(--danger)" />
                     </button>
                   )}
                 </div>
                 
                 <div>
-                  <label style={{ display: 'block', fontSize: 9, fontWeight: 700, color: '#7c7670', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.07em', fontFamily: "'JetBrains Mono', monospace" }}>
+                  <label style={{ display: 'block', fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.07em', fontFamily: "'JetBrains Mono', monospace" }}>
                     Texto de la Cláusula
                   </label>
                   <textarea
@@ -331,19 +332,19 @@ export default function EditClauseModal({ clause, onClose, onSuccess, createForm
                     style={{
                       width: '100%',
                       padding: '8px 12px',
-                      border: '1px solid #d8d4cc',
+                      border: '1px solid var(--border)',
                       borderRadius: 5,
                       fontSize: 12,
                       fontFamily: 'inherit',
-                      background: '#fff',
-                      color: '#3b3631',
+                      background: 'var(--surface)',
+                      color: 'var(--text-primary)',
                       outline: 'none',
                       boxSizing: 'border-box',
                       resize: 'vertical',
                       transition: 'border-color 0.15s',
                     }}
                     onFocus={e => e.target.style.borderColor = 'rgba(37, 99, 235, 0.4)'}
-                    onBlur={e => e.target.style.borderColor = '#d8d4cc'}
+                    onBlur={e => e.target.style.borderColor = 'var(--border)'}
                   />
                 </div>
               </div>
@@ -351,13 +352,13 @@ export default function EditClauseModal({ clause, onClose, onSuccess, createForm
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, padding: '14px 24px', borderTop: '1px solid #efede8', background: '#faf9f8', borderRadius: '0 0 6px 6px', justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: 8, padding: '14px 24px', borderTop: '1px solid var(--bg-topbar)', background: 'var(--bg-faint)', borderRadius: '0 0 6px 6px', justifyContent: 'flex-end' }}>
           <button
             onClick={onClose}
             disabled={loading}
             style={{
-              padding: '6px 14px', border: '1px solid #d8d4cc', background: '#fff',
-              borderRadius: 5, fontSize: 12, fontWeight: 500, color: '#3b3631', cursor: 'pointer'
+              padding: '6px 14px', border: '1px solid var(--border)', background: 'var(--surface)',
+              borderRadius: 5, fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', cursor: 'pointer'
             }}
           >
             Cancelar
@@ -367,8 +368,8 @@ export default function EditClauseModal({ clause, onClose, onSuccess, createForm
             disabled={loading}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
-              padding: '6px 14px', border: 'none', background: '#2563eb',
-              borderRadius: 5, fontSize: 12, fontWeight: 600, color: '#fff', cursor: 'pointer'
+              padding: '6px 14px', border: 'none', background: 'var(--primary)',
+              borderRadius: 5, fontSize: 12, fontWeight: 600, color: 'var(--text-on-accent)', cursor: 'pointer'
             }}
           >
             {loading ? 'Guardando...' : 'Guardar Cláusula'}

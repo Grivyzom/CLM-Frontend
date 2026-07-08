@@ -1,5 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { gsap } from 'gsap';
+import { useGSAP } from '@gsap/react';
+
+gsap.registerPlugin(useGSAP);
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend,
   Tooltip as RechartsTooltip, ResponsiveContainer,
@@ -7,15 +11,17 @@ import {
 import {
   ChevronUp, ChevronDown, ChevronsUpDown, Download, RefreshCw,
   CheckCircle2, AlertTriangle, FileWarning, ArrowRight,
+  DollarSign, FileText, Users, Calendar, FileQuestion
 } from 'lucide-react';
 import { useDashboard } from '../hooks/useDashboard';
+import TopbarActions from '../components/layout/TopbarActions';
 import './Dashboard.css';
 
 // Paleta categórica fija (validada CVD): una serie = un color, orden estable.
-const SERIES_COLORS = ['#2563eb', '#16a34a', '#d97706', '#7c3aed', '#be123c', '#0891b2'];
+const SERIES_COLORS = ['var(--primary)', 'var(--success)', 'var(--warning-bright)', 'var(--violet-bright)', 'var(--rose)', 'var(--cyan)'];
 
 // Ramp ordinal (validado): etapas del pipeline, claro → oscuro.
-const PIPELINE_COLORS = ['#7cb1f7', '#4f8ef0', '#2563eb', '#1a45c2', '#132f8f'];
+const PIPELINE_COLORS = ['var(--chart-pipeline-1)', 'var(--chart-pipeline-2)', 'var(--primary)', 'var(--chart-pipeline-4)', 'var(--chart-pipeline-5)'];
 
 // Etiquetas cortas para etapas (los display names del backend son largos).
 const ETAPA_CORTA = {
@@ -118,6 +124,161 @@ export default function Dashboard() {
     loading, error, refetch,
   } = useDashboard();
 
+  const dashboardRef = useRef(null);
+
+  // Coordinate entrance animations and text reveal
+  useGSAP(() => {
+    if (loading) return;
+
+    // Skip animation if it has already played in this session
+    if (sessionStorage.getItem('dashboard_animated') === 'true') return;
+
+    const topbar = dashboardRef.current?.querySelector('.db-topbar');
+    const kpiItems = dashboardRef.current?.querySelectorAll('.db-kpi-item');
+    const kpiValues = dashboardRef.current?.querySelectorAll('.db-kpi-value-compact');
+    const docWarning = dashboardRef.current?.querySelector('.db-doc-warning');
+    const panelCards = dashboardRef.current?.querySelectorAll('.db-table-card, .db-panel-card');
+    
+    // Select the section headers for Text Reveal
+    const sectionLabels = dashboardRef.current?.querySelectorAll('.db-section-label');
+    const sectionTitles = dashboardRef.current?.querySelectorAll('.db-table-title, .db-section-title');
+
+    const tableRows = dashboardRef.current?.querySelectorAll('tr.db-row-link');
+    const hbarRows = dashboardRef.current?.querySelectorAll('.db-hbar-row');
+    const activityItems = dashboardRef.current?.querySelectorAll('.db-activity-item');
+
+    gsap.killTweensOf([topbar, kpiItems, kpiValues, docWarning, panelCards, sectionLabels, sectionTitles, tableRows, hbarRows, activityItems]);
+
+    // Initial hidden states (eliminates FOUC synchronously)
+    if (topbar) gsap.set(topbar, { y: -20, opacity: 0 });
+    if (kpiItems) gsap.set(kpiItems, { y: 20, opacity: 0, scale: 0.95 });
+    if (kpiValues) gsap.set(kpiValues, { y: 15, opacity: 0 });
+    if (docWarning) gsap.set(docWarning, { y: 10, opacity: 0 });
+    if (panelCards) gsap.set(panelCards, { y: 25, opacity: 0 });
+    if (sectionLabels) gsap.set(sectionLabels, { y: 10, opacity: 0 });
+    if (sectionTitles) gsap.set(sectionTitles, { y: 15, opacity: 0 });
+    if (tableRows) gsap.set(tableRows, { x: -10, opacity: 0 });
+    if (hbarRows) gsap.set(hbarRows, { x: 15, opacity: 0 });
+    if (activityItems) gsap.set(activityItems, { x: -15, opacity: 0 });
+
+    const tl = gsap.timeline({
+      onComplete: () => {
+        sessionStorage.setItem('dashboard_animated', 'true');
+      }
+    });
+
+    if (topbar) {
+      tl.to(topbar, { y: 0, opacity: 1, duration: 0.5, ease: 'power3.out', clearProps: 'transform,opacity' });
+    }
+
+    if (kpiItems && kpiItems.length > 0) {
+      tl.to(kpiItems, {
+        y: 0, opacity: 1, scale: 1, duration: 0.5, stagger: 0.06, ease: 'back.out(1.2)', clearProps: 'transform,opacity,scale'
+      }, '-=0.3');
+    }
+
+    // Text Reveal for KPI values
+    if (kpiValues && kpiValues.length > 0) {
+      tl.to(kpiValues, {
+        y: 0, opacity: 1, duration: 0.45, stagger: 0.05, ease: 'power3.out', clearProps: 'transform,opacity'
+      }, '-=0.35');
+    }
+
+    if (docWarning) {
+      tl.to(docWarning, { y: 0, opacity: 1, duration: 0.4, ease: 'power2.out', clearProps: 'transform,opacity' }, '-=0.2');
+    }
+
+    if (panelCards && panelCards.length > 0) {
+      tl.to(panelCards, {
+        y: 0, opacity: 1, duration: 0.6, stagger: 0.08, ease: 'power3.out', clearProps: 'transform,opacity'
+      }, '-=0.3');
+    }
+
+    // Text Reveal for Panel Section Headers
+    if (sectionLabels && sectionLabels.length > 0) {
+      tl.to(sectionLabels, {
+        y: 0, opacity: 1, duration: 0.4, stagger: 0.05, ease: 'power2.out', clearProps: 'transform,opacity'
+      }, '-=0.4');
+    }
+
+    if (sectionTitles && sectionTitles.length > 0) {
+      tl.to(sectionTitles, {
+        y: 0, opacity: 1, duration: 0.5, stagger: 0.05, ease: 'power3.out', clearProps: 'transform,opacity'
+      }, '-=0.35');
+    }
+
+    if (tableRows && tableRows.length > 0) {
+      tl.to(tableRows, { x: 0, opacity: 1, duration: 0.4, stagger: 0.04, ease: 'power2.out', clearProps: 'transform,opacity' }, '-=0.4');
+    }
+    if (hbarRows && hbarRows.length > 0) {
+      tl.to(hbarRows, { x: 0, opacity: 1, duration: 0.4, stagger: 0.04, ease: 'power2.out', clearProps: 'transform,opacity' }, '-=0.3');
+    }
+    if (activityItems && activityItems.length > 0) {
+      tl.to(activityItems, { x: 0, opacity: 1, duration: 0.4, stagger: 0.04, ease: 'power2.out', clearProps: 'transform,opacity' }, '-=0.3');
+    }
+
+    // Auto-draw SVG icons (runs parallel)
+    const paths = dashboardRef.current?.querySelectorAll(
+      'svg.lucide path, svg.lucide line, svg.lucide polyline, svg.lucide circle, svg.lucide rect'
+    );
+    if (paths) {
+      paths.forEach(path => {
+        try {
+          const length = path.getTotalLength();
+          if (length > 0) {
+            gsap.fromTo(path,
+              { strokeDasharray: length, strokeDashoffset: length },
+              { strokeDashoffset: 0, duration: 0.8, ease: 'power2.inOut', clearProps: 'strokeDasharray,strokeDashoffset' }
+            );
+          }
+        } catch (e) {}
+      });
+    }
+  }, { dependencies: [loading], scope: dashboardRef });
+
+  // Draw SVG icons on hover of interactive elements
+  useGSAP(() => {
+    const handleMouseEnter = (e) => {
+      const paths = e.currentTarget.querySelectorAll(
+        'svg.lucide path, svg.lucide line, svg.lucide polyline, svg.lucide circle, svg.lucide rect'
+      );
+      paths.forEach(path => {
+        try {
+          const length = path.getTotalLength();
+          if (length > 0) {
+            gsap.fromTo(path,
+              { strokeDasharray: length, strokeDashoffset: length },
+              {
+                strokeDashoffset: 0,
+                duration: 0.8,
+                ease: 'power2.out',
+                clearProps: 'strokeDasharray,strokeDashoffset'
+              }
+            );
+          }
+        } catch (e) {}
+      });
+    };
+
+    const interactiveElements = dashboardRef.current?.querySelectorAll(
+      '.db-icon-btn, .db-row-link, .db-activity-item, .db-link-btn, .db-kpi-item'
+    );
+
+    if (interactiveElements) {
+      interactiveElements.forEach(el => {
+        el.addEventListener('mouseenter', handleMouseEnter);
+      });
+    }
+
+    return () => {
+      if (interactiveElements) {
+        interactiveElements.forEach(el => {
+          el.removeEventListener('mouseenter', handleMouseEnter);
+        });
+      }
+    };
+  }, { dependencies: [loading], scope: dashboardRef });
+
   const [sortConfig, setSortConfig] = useState({ key: 'date_value', direction: 'asc' });
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 10;
@@ -166,24 +327,28 @@ export default function Dashboard() {
       value: fmtCompact(kpis.mrr.value),
       sub: `${variacionMrr >= 0 ? '↑ +' : '↓ '}${Math.abs(variacionMrr)}% vs mes anterior`,
       subColor: variacionMrr >= 0 ? 'color-emerald' : 'color-red',
+      icon: <DollarSign size={14} className="lucide" style={{ opacity: 0.7, color: 'var(--text-muted)' }} />
     },
     {
       label: 'Contratos Activos',
       value: kpis.contratos_activos.value,
       sub: `+${kpis.contratos_activos.nuevos_mes} este mes`,
       subColor: 'color-emerald',
+      icon: <FileText size={14} className="lucide" style={{ opacity: 0.7, color: 'var(--text-muted)' }} />
     },
     {
       label: 'Clientes Activos',
       value: kpis.clientes_activos.value,
       sub: `+${kpis.clientes_activos.nuevos_mes} nuevos`,
       subColor: 'color-emerald',
+      icon: <Users size={14} className="lucide" style={{ opacity: 0.7, color: 'var(--text-muted)' }} />
     },
     {
       label: 'Renovaciones 30d',
       value: kpis.renovaciones_30d.value,
       sub: `${fmtCompact(kpis.renovaciones_30d.monto)} en juego`,
       subColor: kpis.renovaciones_30d.value > 0 ? 'color-amber' : '',
+      icon: <Calendar size={14} className="lucide" style={{ opacity: 0.7, color: 'var(--text-muted)' }} />
     },
     {
       label: 'Requieren Acción',
@@ -191,12 +356,14 @@ export default function Dashboard() {
       sub: 'mora · gracia · vencen ≤7d',
       bg: kpis.requieren_accion.value > 0 ? 'bg-amber' : '',
       valueColor: kpis.requieren_accion.value > 0 ? 'color-amber-value' : 'color-emerald',
+      icon: <AlertTriangle size={14} className="lucide" style={{ opacity: 0.7, color: kpis.requieren_accion.value > 0 ? 'var(--warning-bright)' : 'var(--success)' }} />
     },
     {
       label: 'Sin Documento',
       value: kpis.sin_documento.value,
       sub: 'activos sin PDF generado',
       valueColor: kpis.sin_documento.value > 0 ? 'color-amber-value' : 'color-emerald',
+      icon: <FileQuestion size={14} className="lucide" style={{ opacity: 0.7, color: kpis.sin_documento.value > 0 ? 'var(--warning-bright)' : 'var(--success)' }} />
     },
   ];
 
@@ -208,7 +375,7 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="db-container">
+    <div className="db-container" ref={dashboardRef}>
 
       <div className="db-topbar">
         <div>
@@ -226,6 +393,7 @@ export default function Dashboard() {
           <button className="db-icon-btn" onClick={() => downloadMetricsCSV(kpis)} title="Exportar métricas (CSV)">
             <Download size={13} />
           </button>
+          <TopbarActions />
         </div>
       </div>
 
@@ -239,7 +407,10 @@ export default function Dashboard() {
             <div className="db-kpi-bar">
               {kpiCards.map((kpi, i) => (
                 <div key={i} className={`db-kpi-item ${kpi.bg || ''}`}>
-                  <span className={`db-kpi-label-compact ${kpi.labelColor || ''}`}>{kpi.label}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 4 }}>
+                    <span className={`db-kpi-label-compact ${kpi.labelColor || ''}`}>{kpi.label}</span>
+                    {kpi.icon}
+                  </div>
                   <span className={`db-kpi-value-compact ${kpi.valueColor || ''}`}>{loading ? '—' : kpi.value}</span>
                   <span className={`db-kpi-sub-compact ${kpi.subColor || ''}`}>{loading ? ' ' : kpi.sub}</span>
                 </div>
@@ -381,7 +552,7 @@ export default function Dashboard() {
                         <div className="db-hbar-track">
                           <div
                             className="db-hbar-fill"
-                            style={{ width: `${(r.monto / maxRenovacion) * 100}%`, backgroundColor: '#2563eb' }}
+                            style={{ width: `${(r.monto / maxRenovacion) * 100}%`, backgroundColor: 'var(--primary)' }}
                           ></div>
                         </div>
                         <span className="db-hbar-value">{r.count}</span>
@@ -415,10 +586,10 @@ export default function Dashboard() {
                   <div style={{ height: 220 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={mrr_series.data} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
-                        <CartesianGrid vertical={false} stroke="#eceae4" />
-                        <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#7c7670', fontFamily: 'JetBrains Mono' }} dy={8} />
-                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#7c7670', fontFamily: 'JetBrains Mono' }} tickFormatter={(v) => `$${v}k`} />
-                        <RechartsTooltip content={<MrrTooltip />} cursor={{ fill: '#f4f3ef' }} />
+                        <CartesianGrid vertical={false} stroke="var(--bg-inset)" />
+                        <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }} dy={8} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }} tickFormatter={(v) => `$${v}k`} />
+                        <RechartsTooltip content={<MrrTooltip />} cursor={{ fill: 'var(--bg-page)' }} />
                         {mrr_series.softwares.length > 1 && (
                           <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: 10, fontFamily: 'JetBrains Mono' }} />
                         )}
@@ -427,8 +598,8 @@ export default function Dashboard() {
                             key={nombre}
                             dataKey={nombre}
                             stackId="mrr"
-                            fill={nombre === 'Otros' ? '#a8a29e' : SERIES_COLORS[i % SERIES_COLORS.length]}
-                            stroke="#ffffff"
+                            fill={nombre === 'Otros' ? 'var(--text-faint)' : SERIES_COLORS[i % SERIES_COLORS.length]}
+                            stroke="var(--surface)"
                             strokeWidth={1}
                             radius={i === mrr_series.softwares.length - 1 ? [3, 3, 0, 0] : 0}
                           />

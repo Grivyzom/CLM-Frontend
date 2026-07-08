@@ -1,9 +1,9 @@
 import React from 'react';
 
 export function getTipoBadgeStyle(tipo) {
-  if (tipo === 'juridica') return { label: 'Empresa',          color: '#5b21b6', bg: '#ede9fe' };
-  if (tipo === 'natural')  return { label: 'Persona Natural',  color: '#065f46', bg: '#d1fae5' };
-  return                          { label: tipo,               color: '#5c574f', bg: '#e5e2da' };
+  if (tipo === 'juridica') return { label: 'Empresa',          color: 'var(--violet-deep)', bg: 'var(--violet-tint)' };
+  if (tipo === 'natural')  return { label: 'Persona Natural',  color: 'var(--success-deeper)', bg: 'var(--success-tint)' };
+  return                          { label: tipo,               color: 'var(--text-secondary)', bg: 'var(--neutral-200)' };
 }
 
 export default function TipoBadge({ tipo }) {

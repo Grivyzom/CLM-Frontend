@@ -1,9 +1,9 @@
 import React from 'react';
 
 const STATUS_CFG = {
-  'Activo':      { color: '#15803d', bg: '#f0fdf4', border: '#bbf7d0', dot: '#16a34a' },
-  'En revisión': { color: '#b45309', bg: '#fffbeb', border: '#fde68a', dot: '#d97706' },
-  'Inactivo':    { color: '#b0aaa3', bg: '#efede8', border: '#d8d4cc', dot: '#c9c4bc' },
+  'Activo':      { color: 'var(--success-deep)', bg: 'var(--success-bg)', border: 'var(--success-border)', dot: 'var(--success)' },
+  'En revisión': { color: 'var(--warning)', bg: 'var(--warning-bg)', border: 'var(--warning-border)', dot: 'var(--warning-bright)' },
+  'Inactivo':    { color: 'var(--text-faint)', bg: 'var(--bg-topbar)', border: 'var(--border)', dot: 'var(--border-strong)' },
 };
 
 export default function StatusBadge({ estado }) {

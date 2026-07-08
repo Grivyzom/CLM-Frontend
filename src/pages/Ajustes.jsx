@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { apiLogout } from '../api';
+import TopbarActions from '../components/layout/TopbarActions';
 import './Ajustes.css';
 
-const Icon = ({ d, color = '#7c7670', w = 14 }) => (
+const Icon = ({ d, color = 'var(--text-muted)', w = 14 }) => (
   <svg width={w} height={w} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     {Array.isArray(d) ? d.map((p, i) => <path key={i} d={p} />) : <path d={d} />}
   </svg>
@@ -18,6 +20,7 @@ const TABS = [
 
 export default function Ajustes() {
   const { user, logout } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [tab, setTab] = useState('perfil');
 
@@ -91,7 +94,10 @@ export default function Ajustes() {
           <p className="ajustes-header-label">Enfoque Platform</p>
           <h1 className="ajustes-header-title">Ajustes</h1>
         </div>
-        <span className="ajustes-header-date">Vie 4 jul 2026</span>
+        <div className="topbar-right-group">
+          <span className="ajustes-header-date">Vie 4 jul 2026</span>
+          <TopbarActions />
+        </div>
       </div>
 
       <div className="ajustes-tabs">
@@ -101,7 +107,7 @@ export default function Ajustes() {
             onClick={() => setTab(t.id)}
             className={`ajustes-tab ${tab === t.id ? 'active' : ''}`}
           >
-            <Icon d={t.icon} color={tab === t.id ? '#2563eb' : '#b0aaa3'} w={14} />
+            <Icon d={t.icon} color={tab === t.id ? 'var(--primary)' : 'var(--text-faint)'} w={14} />
             <span>{t.label}</span>
           </button>
         ))}
@@ -185,6 +191,23 @@ export default function Ajustes() {
 
         {tab === 'preferencias' && (
           <div className="ajustes-panel">
+            <div className="ajustes-card">
+              <div className="ajustes-toggle-row">
+                <div>
+                  <p className="ajustes-toggle-title">Modo oscuro</p>
+                  <p className="ajustes-toggle-desc">Cambia la apariencia de la plataforma. Se aplica de inmediato y se recuerda en este navegador.</p>
+                </div>
+                <button
+                  type="button"
+                  className={`ajustes-switch ${isDark ? 'on' : ''}`}
+                  onClick={toggleTheme}
+                  aria-pressed={isDark}
+                >
+                  <span className="ajustes-switch-knob" />
+                </button>
+              </div>
+            </div>
+
             <div className="ajustes-card">
               <div className="ajustes-toggle-row">
                 <div>

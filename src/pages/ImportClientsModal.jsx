@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { importClientesExcel } from '../api';
 
-function Svg({ paths = [], circles = [], size = 14, color = '#7c7670', strokeWidth = 1.8 }) {
+function Svg({ paths = [], circles = [], size = 14, color = 'var(--text-muted)', strokeWidth = 1.8 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
       stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"
@@ -90,33 +90,33 @@ export default function ImportClientsModal({ onClose, onSuccess }) {
       <div
         style={{
           position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-          background: '#fff', borderRadius: 6, border: '1px solid #d8d4cc',
+          background: 'var(--surface)', borderRadius: 6, border: '1px solid var(--border)',
           boxShadow: '0 20px 25px rgba(0, 0, 0, 0.15)', zIndex: 50,
           width: '90%', maxWidth: 460, animation: 'modalIn 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
         {/* Header */}
         <div style={{
-          padding: '20px 24px', borderBottom: '1px solid #d8d4cc',
+          padding: '20px 24px', borderBottom: '1px solid var(--border)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#3b3631' }}>Importar clientes</h2>
-            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#7c7670' }}>Desde archivo Excel (.xls, .xlsx)</p>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Importar clientes</h2>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>Desde archivo Excel (.xls, .xlsx)</p>
           </div>
           <button
             onClick={onClose}
             disabled={uploading}
             style={{
-              width: 32, height: 32, border: '1px solid #d8d4cc', background: '#efede8',
+              width: 32, height: 32, border: '1px solid var(--border)', background: 'var(--bg-topbar)',
               borderRadius: 6, cursor: uploading ? 'not-allowed' : 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               opacity: uploading ? 0.6 : 1, transition: 'background 0.12s',
             }}
-            onMouseEnter={e => !uploading && (e.currentTarget.style.background = '#fee2e2')}
-            onMouseLeave={e => !uploading && (e.currentTarget.style.background = '#efede8')}
+            onMouseEnter={e => !uploading && (e.currentTarget.style.background = 'var(--danger-tint)')}
+            onMouseLeave={e => !uploading && (e.currentTarget.style.background = 'var(--bg-topbar)')}
           >
-            <Svg paths={['M18 6 6 18', 'M6 6l12 12']} color="#b0aaa3" size={13} />
+            <Svg paths={['M18 6 6 18', 'M6 6l12 12']} color="var(--text-faint)" size={13} />
           </button>
         </div>
 
@@ -128,24 +128,24 @@ export default function ImportClientsModal({ onClose, onSuccess }) {
               onDragLeave={() => setDragOver(false)}
               onDrop={handleDrop}
               style={{
-                border: `2px dashed ${dragOver ? '#2563eb' : '#d8d4cc'}`,
+                border: `2px dashed ${dragOver ? 'var(--primary)' : 'var(--border)'}`,
                 borderRadius: 8,
                 padding: '36px 20px',
                 textAlign: 'center',
-                background: dragOver ? 'rgba(37, 99, 235, 0.04)' : '#faf9f7',
+                background: dragOver ? 'rgba(37, 99, 235, 0.04)' : 'var(--bg-faint)',
                 transition: 'border-color 0.15s, background 0.15s',
               }}
             >
               <div style={{
                 width: 44, height: 44, margin: '0 auto 12px', borderRadius: '50%',
-                background: '#efede8', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'var(--bg-topbar)', display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <Svg paths={['M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4', 'M17 8l-5-5-5 5', 'M12 3v12']} color="#7c7670" size={20} />
+                <Svg paths={['M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4', 'M17 8l-5-5-5 5', 'M12 3v12']} color="var(--text-muted)" size={20} />
               </div>
-              <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 600, color: '#3b3631' }}>
+              <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
                 Arrastra tu archivo Excel aquí
               </p>
-              <p style={{ margin: '0 0 14px', fontSize: 11, color: '#b0aaa3' }}>o</p>
+              <p style={{ margin: '0 0 14px', fontSize: 11, color: 'var(--text-faint)' }}>o</p>
               <button
                 type="button"
                 onClick={() => inputRef.current?.click()}
@@ -164,20 +164,20 @@ export default function ImportClientsModal({ onClose, onSuccess }) {
             </div>
           ) : (
             <div style={{
-              border: '1px solid #d8d4cc', borderRadius: 8, padding: '14px 16px',
-              display: 'flex', alignItems: 'center', gap: 12, background: '#faf9f7',
+              border: '1px solid var(--border)', borderRadius: 8, padding: '14px 16px',
+              display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bg-faint)',
             }}>
               <div style={{
-                width: 36, height: 36, borderRadius: 6, background: '#dcfce7',
+                width: 36, height: 36, borderRadius: 6, background: 'var(--success-tint)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
               }}>
-                <Svg paths={['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z', 'M14 2v6h6']} color="#15803d" size={17} />
+                <Svg paths={['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z', 'M14 2v6h6']} color="var(--success-deep)" size={17} />
               </div>
               <div style={{ minWidth: 0, flex: 1 }}>
-                <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: '#3b3631', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {file.name}
                 </p>
-                <p style={{ margin: '2px 0 0', fontSize: 11, color: '#7c7670' }}>{formatBytes(file.size)}</p>
+                <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>{formatBytes(file.size)}</p>
               </div>
               {!uploading && (
                 <button
@@ -187,10 +187,10 @@ export default function ImportClientsModal({ onClose, onSuccess }) {
                     width: 26, height: 26, border: 'none', background: 'none', cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 5,
                   }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#efede8'}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-topbar)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'none'}
                 >
-                  <Svg paths={['M18 6 6 18', 'M6 6l12 12']} color="#b0aaa3" size={13} />
+                  <Svg paths={['M18 6 6 18', 'M6 6l12 12']} color="var(--text-faint)" size={13} />
                 </button>
               )}
             </div>
@@ -199,8 +199,8 @@ export default function ImportClientsModal({ onClose, onSuccess }) {
           {error && (
             <div style={{
               marginTop: 12, padding: '10px 12px', borderRadius: 6,
-              background: '#fef2f2', border: '1px solid #fecaca',
-              fontSize: 12, color: '#dc2626',
+              background: 'var(--danger-bg)', border: '1px solid var(--danger-border)',
+              fontSize: 12, color: 'var(--danger)',
             }}>
               {error}
             </div>
@@ -209,15 +209,15 @@ export default function ImportClientsModal({ onClose, onSuccess }) {
 
         {/* Footer */}
         <div style={{
-          padding: '16px 24px', borderTop: '1px solid #efede8',
+          padding: '16px 24px', borderTop: '1px solid var(--bg-topbar)',
           display: 'flex', justifyContent: 'flex-end', gap: 8,
         }}>
           <button
             onClick={onClose}
             disabled={uploading}
             style={{
-              padding: '8px 16px', borderRadius: 5, border: '1px solid #d8d4cc',
-              background: '#efede8', color: '#3b3631', fontSize: 12, fontWeight: 600,
+              padding: '8px 16px', borderRadius: 5, border: '1px solid var(--border)',
+              background: 'var(--bg-topbar)', color: 'var(--text-primary)', fontSize: 12, fontWeight: 600,
               cursor: uploading ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
               opacity: uploading ? 0.6 : 1,
             }}
@@ -229,13 +229,13 @@ export default function ImportClientsModal({ onClose, onSuccess }) {
             disabled={!file || uploading}
             style={{
               padding: '8px 16px', borderRadius: 5, border: 'none',
-              background: '#2563eb', color: '#fff', fontSize: 12, fontWeight: 600,
+              background: 'var(--primary)', color: 'var(--text-on-accent)', fontSize: 12, fontWeight: 600,
               cursor: (!file || uploading) ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
               opacity: (!file || uploading) ? 0.6 : 1,
               display: 'flex', alignItems: 'center', gap: 8,
             }}
           >
-            {uploading && <span className="cl-spinner" style={{ borderColor: 'rgba(255,255,255,0.4)', borderTopColor: '#fff' }} />}
+            {uploading && <span className="cl-spinner" style={{ borderColor: 'rgba(255,255,255,0.4)', borderTopColor: 'var(--surface)' }} />}
             {uploading ? 'Importando...' : 'Confirmar importación'}
           </button>
         </div>

@@ -1,0 +1,411 @@
+/* ── OtpSignatureModal — firma de documento con verificación OTP ── */
+/* Tokens del sistema Contratos: greige var(--bg-topbar)/var(--neutral-200)/var(--border), tinta var(--text-primary),
+   atenuado var(--text-muted)/var(--text-soft), acento var(--primary). Keyframes con prefijo otp- para
+   no colisionar con los de Contratos.css. */
+
+@keyframes otpModalIn {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes otpPulse {
+  0%   { opacity: 0.6; }
+  50%  { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+@keyframes otpSpin {
+  to { transform: rotate(360deg); }
+}
+
+.otp-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  background: rgba(10, 10, 10, 0.55);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.otp-modal {
+  background: var(--surface);
+  border: 1px solid var(--neutral-200);
+  border-radius: 12px;
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.18), 0 0 1px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 460px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: otpModalIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.otp-modal button:focus-visible,
+.otp-modal input:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.otp-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--neutral-200);
+  background: var(--bg-topbar);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.otp-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.otp-subtitle {
+  margin: 3px 0 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.otp-close {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 18px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.otp-close:hover { background: var(--neutral-200); }
+
+.otp-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.otp-body--center {
+  padding: 36px 24px;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+}
+
+.otp-body--loading { padding: 48px 24px; }
+
+.otp-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--neutral-200);
+  background: var(--bg-faint);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* ── Estado: éxito ── */
+.otp-success-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--success-bg);
+  border: 2px solid var(--success-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--success);
+  margin-bottom: 4px;
+}
+
+.otp-success-title {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--success-deep);
+}
+
+.otp-success-text {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.otp-receipt {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--bg-faint);
+  border: 1px solid var(--neutral-200);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 12px;
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.otp-receipt-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.otp-receipt-row:last-child { margin-bottom: 0; }
+
+.otp-receipt-label {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.otp-receipt-value {
+  font-weight: 600;
+  min-width: 0;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.otp-receipt-value.mono { font-family: 'JetBrains Mono', monospace; }
+.otp-receipt-value.accent { color: var(--primary); }
+
+/* ── Estado: generando / enviando ── */
+.otp-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--neutral-200);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: otpSpin 0.8s linear infinite;
+}
+
+.otp-loading-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  animation: otpPulse 1.5s ease-in-out infinite;
+}
+
+.otp-loading-sub {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── Formulario OTP ── */
+.otp-banner {
+  background: var(--warning-tint);
+  border: 1px solid var(--warning-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 12px;
+  color: var(--warning-deep);
+  line-height: 1.45;
+  display: flex;
+  gap: 10px;
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+.otp-banner svg { flex-shrink: 0; margin-top: 1px; }
+
+.otp-banner-title {
+  display: block;
+  margin-bottom: 2px;
+}
+
+.otp-banner-name { color: var(--warning-deep); }
+
+.otp-instructions { text-align: center; }
+
+.otp-inst {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.otp-inst-target {
+  margin: 4px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary);
+  overflow-wrap: break-word;
+}
+
+.otp-inputs {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin: 10px 0;
+}
+
+.otp-digit {
+  width: 44px;
+  height: 52px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  background: var(--surface);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.otp-digit.filled {
+  border: 2px solid var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.otp-digit:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.otp-digit:disabled { background: var(--bg-page); }
+
+.otp-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--danger);
+  font-size: 12px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.otp-error svg { flex-shrink: 0; }
+
+.otp-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  border-top: 1px solid var(--neutral-200);
+  padding-top: 14px;
+  margin-top: 6px;
+  gap: 12px;
+}
+
+.otp-countdown {
+  color: var(--text-muted);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.otp-countdown.warn {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.otp-resend {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  border: none;
+  background: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+}
+
+.otp-resend:hover:not(:disabled) { background: var(--primary-bg); }
+
+.otp-resend:disabled {
+  color: var(--text-soft);
+  cursor: not-allowed;
+}
+
+/* ── Botones ── */
+.otp-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+.otp-btn-cancel {
+  border: 1px solid var(--border);
+  background: var(--bg-topbar);
+  color: var(--text-primary);
+}
+
+.otp-btn-cancel:hover:not(:disabled) { background: var(--neutral-200); }
+
+.otp-btn-cancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.otp-btn-sign {
+  padding: 8px 18px;
+  border: none;
+  background: var(--primary);
+  color: var(--text-on-accent);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+.otp-btn-sign:hover:not(:disabled) { background: var(--primary-hover); }
+
+.otp-btn-sign:disabled {
+  background: var(--border);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.otp-btn-sign.signing:disabled { background: var(--primary-soft); }
+
+.otp-btn-block {
+  width: 100%;
+  margin-top: 8px;
+  justify-content: center;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  background: var(--primary);
+  color: var(--text-on-accent);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+
+.otp-btn-block:hover { background: var(--primary-hover); }
+
+/* ── Movimiento reducido ── */
+@media (prefers-reduced-motion: reduce) {
+  .otp-overlay *,
+  .otp-modal {
+    animation: none !important;
+    transition: none !important;
+  }
+}

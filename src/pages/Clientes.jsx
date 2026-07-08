@@ -1,6 +1,11 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { getClienteDetail, deleteCliente, updateClienteStatus, exportClientes } from '../api';
+import { useNavigate } from 'react-router-dom';
+import { gsap } from 'gsap';
+import { useGSAP } from '@gsap/react';
+import { getClienteDetail, getContratos, deleteCliente, updateClienteStatus, exportClientes } from '../api';
 import { useClientes } from '../hooks/useClientes';
+
+gsap.registerPlugin(useGSAP);
 import NewClientModal from './NewClientModal';
 import EditClientModal from './EditClientModal';
 import ImportClientsModal from './ImportClientsModal';
@@ -14,14 +19,14 @@ import SkeletonRow from '../components/ui/SkeletonRow';
 import ErrorBanner from '../components/ui/ErrorBanner';
 import IndeterminateCheckbox from '../components/ui/IndeterminateCheckbox';
 import CopyableValue from '../components/ui/CopyableValue';
-import ConfirmModal from '../components/ui/ConfirmModal';
+import { useConfirm } from '../contexts/ConfirmContext';
 import ContextMenu from '../components/ui/ContextMenu';
 import ActionDropdown from '../components/ui/ActionDropdown';
 import Toast from '../components/ui/Toast';
+import TopbarActions from '../components/layout/TopbarActions';
+import { fmtMoney, fmtDate, contratoIdDisplay } from '../utils/formatters';
 
 // ─── Constantes visuales ─────────────────────────────────────────────────────
-const CONTEXTS = ['Administración Global', 'SoftTrack Pro v3', 'ContaLite v2.1'];
-
 const FILTER_ESTADOS  = ['Todos', 'Activo', 'En revisión', 'Inactivo'];
 const FILTER_TIPOS    = ['Todos', 'juridica', 'natural'];
 const FILTER_TIPO_LABELS = { Todos: 'Todos', juridica: 'Empresa', natural: 'Persona Natural' };
@@ -34,16 +39,16 @@ function getAvatarStyle(name = '') {
     : (name.substring(0, 2)).toUpperCase();
 
   const PALETTE = [
-    { color: '#2563eb', bg: 'rgba(37, 99, 235, 0.1)' },
-    { color: '#0891b2', bg: '#cffafe' },
-    { color: '#059669', bg: '#a7f3d0' },
-    { color: '#7c3aed', bg: '#ddd6fe' },
-    { color: '#be123c', bg: '#fecdd3' },
-    { color: '#d97706', bg: '#fde68a' },
-    { color: '#0284c7', bg: '#bae6fd' },
-    { color: '#0d9488', bg: '#99f6e4' },
-    { color: '#ea580c', bg: '#fed7aa' },
-    { color: '#dc2626', bg: '#fecaca' },
+    { color: 'var(--primary)', bg: 'rgba(37, 99, 235, 0.1)' },
+    { color: 'var(--cyan)', bg: 'var(--cyan-tint)' },
+    { color: 'var(--success-alt)', bg: 'var(--success-tint)' },
+    { color: 'var(--violet-bright)', bg: 'var(--violet-border)' },
+    { color: 'var(--rose)', bg: 'var(--rose-border)' },
+    { color: 'var(--warning-bright)', bg: 'var(--warning-border)' },
+    { color: 'var(--sky)', bg: 'var(--sky-border)' },
+    { color: 'var(--teal)', bg: 'var(--teal-tint)' },
+    { color: 'var(--orange)', bg: 'var(--orange-tint)' },
+    { color: 'var(--danger)', bg: 'var(--danger-border)' },
   ];
   const idx = (name.charCodeAt(0) || 0) % PALETTE.length;
   return { initials, ...PALETTE[idx] };
@@ -59,11 +64,23 @@ function DetailRow({ label, children }) {
   );
 }
 
+// Colores por status de contrato (sub-vista contratos del DetailPanel)
+const CONTRACT_STATUS_STYLE = {
+  ACTIVO:  { color: 'var(--success-deep)', bg: 'var(--success-bg)' },
+  VENCIDO: { color: 'var(--danger)', bg: 'var(--danger-border)' },
+};
+
 // ─── Detail Panel ─────────────────────────────────────────────────────────────
 function DetailPanel({ clientId, onClose }) {
+  const navigate = useNavigate();
   const [detail, setDetail]   = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
+  // 'info' = ficha del cliente | 'contratos' = listado de sus contratos
+  const [view, setView] = useState('info');
+  const [contratos, setContratos] = useState(null);
+  const [contratosError, setContratosError] = useState(null);
+  const panelRef = useRef(null);
 
   useEffect(() => {
     if (!clientId) return;
@@ -71,6 +88,8 @@ function DetailPanel({ clientId, onClose }) {
     setLoading(true);
     setError(null);
     setDetail(null);
+    setView('info');
+    setContratos(null);
     getClienteDetail(clientId)
       .then(d => { if (!cancelled) setDetail(d); })
       .catch(e => { if (!cancelled) setError(e.message); })
@@ -78,64 +97,146 @@ function DetailPanel({ clientId, onClose }) {
     return () => { cancelled = true; };
   }, [clientId]);
 
+  // Carga perezosa del listado de contratos al entrar a la sub-vista
+  useEffect(() => {
+    if (view !== 'contratos' || contratos !== null) return;
+    let cancelled = false;
+    setContratosError(null);
+    getContratos({ cliente: clientId, page_size: 100, ordering: '-renovacion' })
+      .then(d => { if (!cancelled) setContratos(d.results || []); })
+      .catch(e => { if (!cancelled) setContratosError(e.message); })
+    return () => { cancelled = true; };
+  }, [view, contratos, clientId]);
+
+  // Escape: en sub-vista vuelve a la ficha; en ficha cierra el panel
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return;
+      if (view === 'contratos') setView('info');
+      else onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [view, onClose]);
+
+  const goNuevoContrato = () => navigate(`/contratos?nuevo=1&cliente=${clientId}`);
+
+  // Auto-draw SVG icons inside the detail panel on load
+  useGSAP(() => {
+    if (loading) return;
+    const paths = panelRef.current?.querySelectorAll(
+      'svg.clm-svg path, svg.clm-svg circle, svg.clm-svg rect, svg.clm-svg line, svg.clm-svg polyline'
+    );
+    if (!paths || paths.length === 0) return;
+
+    paths.forEach(path => {
+      try {
+        const length = path.getTotalLength();
+        if (length > 0) {
+          gsap.fromTo(path,
+            { strokeDasharray: length, strokeDashoffset: length },
+            {
+              strokeDashoffset: 0,
+              duration: 0.8,
+              ease: 'power2.inOut',
+              clearProps: 'strokeDasharray,strokeDashoffset'
+            }
+          );
+        }
+      } catch (e) {}
+    });
+  }, { dependencies: [loading, detail, view], scope: panelRef });
+
+  // Draw SVG icons on hover inside the detail panel
+  useGSAP(() => {
+    if (loading) return;
+    const handleMouseEnter = (e) => {
+      const paths = e.currentTarget.querySelectorAll(
+        'svg.clm-svg path, svg.clm-svg circle, svg.clm-svg rect, svg.clm-svg line, svg.clm-svg polyline'
+      );
+      paths.forEach(path => {
+        try {
+          const length = path.getTotalLength();
+          if (length > 0) {
+            gsap.fromTo(path,
+              { strokeDasharray: length, strokeDashoffset: length },
+              {
+                strokeDashoffset: 0,
+                duration: 0.6,
+                ease: 'power2.out',
+                clearProps: 'strokeDasharray,strokeDashoffset'
+              }
+            );
+          }
+        } catch (e) {}
+      });
+    };
+
+    const interactiveElements = panelRef.current?.querySelectorAll(
+      '.cl-detail-close, .cl-detail-header-left, .cl-detail-section-title, span[title]'
+    );
+
+    if (interactiveElements) {
+      interactiveElements.forEach(el => {
+        el.addEventListener('mouseenter', handleMouseEnter);
+      });
+    }
+
+    return () => {
+      if (interactiveElements) {
+        interactiveElements.forEach(el => {
+          el.removeEventListener('mouseenter', handleMouseEnter);
+        });
+      }
+    };
+  }, { dependencies: [loading, detail, view], scope: panelRef });
+
   if (!clientId) return null;
 
-  const avatar = detail ? getAvatarStyle(detail.razon_social || detail.nombre_comercial || '') : { initials: '…', color: '#b0aaa3', bg: '#e5e2da' };
+  const avatar = detail ? getAvatarStyle(detail.razon_social || detail.nombre_comercial || '') : { initials: '…', color: 'var(--text-faint)', bg: 'var(--neutral-200)' };
 
   return (
-    <div className="cl-detail-panel" role="dialog" aria-label="Detalle de cliente">
+    <div className="cl-detail-panel" ref={panelRef} role="dialog" aria-label="Detalle de cliente">
       {/* Header */}
       <div className="cl-detail-header">
         <div className="cl-detail-header-left">
+          {view === 'contratos' && (
+            <button
+              className="cl-detail-close"
+              onClick={() => setView('info')}
+              aria-label="Volver a la ficha del cliente"
+              title="Volver"
+            >
+              <Svg paths={['M19 12H5','M12 19l-7-7 7-7']} color="var(--text-faint)" size={13} />
+            </button>
+          )}
           <div className="cl-detail-avatar" style={{ background: avatar.bg, color: avatar.color }}>
             {loading ? '…' : avatar.initials}
           </div>
           <div>
             {loading
-              ? <div style={{ width: 160, height: 14, background: '#d8d4cc', borderRadius: 4, marginBottom: 6 }} />
+              ? <div style={{ width: 160, height: 14, background: 'var(--border)', borderRadius: 4, marginBottom: 6 }} />
               : <h2 className="cl-detail-name">{detail?.razon_social || '—'}</h2>
             }
             {loading
-              ? <div style={{ width: 100, height: 10, background: '#e5e2da', borderRadius: 4 }} />
-              : <p className="cl-detail-sub">{detail?.nombre_comercial || ''}</p>
+              ? <div style={{ width: 100, height: 10, background: 'var(--neutral-200)', borderRadius: 4 }} />
+              : <p className="cl-detail-sub">{view === 'contratos' ? 'Contratos del cliente' : (detail?.nombre_comercial || '')}</p>
             }
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          {detail && (
-            <>
-              <span
-                title={`Registrado: ${new Date(detail.fecha_registro).toLocaleString('es-CL', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 5, cursor: 'default' }}
-                onMouseEnter={e => e.currentTarget.style.background = '#efede8'}
-                onMouseLeave={e => e.currentTarget.style.background = 'none'}
-              >
-                <Svg paths={['M8 2v4','M16 2v4','M3 10h18','M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z']} color="#b0aaa3" size={14} />
-              </span>
-              <span
-                title={`Última modificación: ${new Date(detail.fecha_modificacion).toLocaleString('es-CL', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 5, cursor: 'default' }}
-                onMouseEnter={e => e.currentTarget.style.background = '#efede8'}
-                onMouseLeave={e => e.currentTarget.style.background = 'none'}
-              >
-                <Svg paths={['M12 8v4l3 3','M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z']} color="#b0aaa3" size={14} />
-              </span>
-            </>
-          )}
-          <button className="cl-detail-close" onClick={onClose} aria-label="Cerrar panel">
-            <Svg paths={['M18 6 6 18','M6 6l12 12']} color="#b0aaa3" size={13} />
-          </button>
-        </div>
+        <button className="cl-detail-close" onClick={onClose} aria-label="Cerrar panel">
+          <Svg paths={['M18 6 6 18','M6 6l12 12']} color="var(--text-faint)" size={13} />
+        </button>
       </div>
 
       {error && (
-        <div style={{ padding: '12px 20px', color: '#dc2626', fontSize: 12 }}>
+        <div style={{ padding: '12px 20px', color: 'var(--danger)', fontSize: 12 }}>
           Error al cargar: {error}
         </div>
       )}
 
       {/* Badges */}
-      {detail && (
+      {detail && view === 'info' && (
         <div className="cl-detail-badges">
           <StatusBadge estado={detail.estado} />
           <TipoBadge tipo={detail.tipo} />
@@ -148,15 +249,15 @@ function DetailPanel({ clientId, onClose }) {
         {loading ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {[1,2,3,4,5].map(i => (
-              <div key={i} style={{ height: 12, borderRadius: 4, background: '#e5e2da', width: `${60 + i * 8}%` }} />
+              <div key={i} style={{ height: 12, borderRadius: 4, background: 'var(--neutral-200)', width: `${60 + i * 8}%` }} />
             ))}
           </div>
-        ) : detail ? (
+        ) : detail && view === 'info' ? (
           <>
             {/* Identificación Legal */}
             <div>
               <p className="cl-detail-section-title">
-                <Svg paths={['M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0 1 12 2.944a11.955 11.955 0 0 1-8.618 3.04A12.02 12.02 0 0 0 3 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z']} color="#b0aaa3" size={12} />
+                <Svg paths={['M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0 1 12 2.944a11.955 11.955 0 0 1-8.618 3.04A12.02 12.02 0 0 0 3 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z']} color="var(--text-faint)" size={12} />
                 Identificación Legal
               </p>
               <div className="cl-detail-rows">
@@ -175,13 +276,18 @@ function DetailPanel({ clientId, onClose }) {
                 <DetailRow label="Registrado">
                   {new Date(detail.fecha_registro).toLocaleDateString('es-CL', { year: 'numeric', month: 'short', day: 'numeric' })}
                 </DetailRow>
+                <DetailRow label="Modificado">
+                  {detail.fecha_modificacion
+                    ? new Date(detail.fecha_modificacion).toLocaleDateString('es-CL', { year: 'numeric', month: 'short', day: 'numeric' })
+                    : '—'}
+                </DetailRow>
               </div>
             </div>
 
             {/* Contacto Principal */}
             <div>
               <p className="cl-detail-section-title">
-                <Svg paths={['M3 5a2 2 0 0 1 2-2h3.28a1 1 0 0 1 .948.684l1.498 4.493a1 1 0 0 1-.502 1.21l-2.257 1.13a11.042 11.042 0 0 0 5.516 5.516l1.13-2.257a1 1 0 0 1 1.21-.502l4.493 1.498a1 1 0 0 1 .684.949V19a2 2 0 0 1-2 2h-1C9.716 21 3 14.284 3 6V5z']} color="#b0aaa3" size={12} />
+                <Svg paths={['M3 5a2 2 0 0 1 2-2h3.28a1 1 0 0 1 .948.684l1.498 4.493a1 1 0 0 1-.502 1.21l-2.257 1.13a11.042 11.042 0 0 0 5.516 5.516l1.13-2.257a1 1 0 0 1 1.21-.502l4.493 1.498a1 1 0 0 1 .684.949V19a2 2 0 0 1-2 2h-1C9.716 21 3 14.284 3 6V5z']} color="var(--text-faint)" size={12} />
                 Contacto Principal
               </p>
               <div className="cl-detail-rows">
@@ -203,7 +309,7 @@ function DetailPanel({ clientId, onClose }) {
             {/* Contratos */}
             <div>
               <p className="cl-detail-section-title">
-                <Svg paths={['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z','M14 2v6h6','M16 13H8','M16 17H8']} color="#b0aaa3" size={12} />
+                <Svg paths={['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z','M14 2v6h6','M16 13H8','M16 17H8']} color="var(--text-faint)" size={12} />
                 Contratos
               </p>
               <div className="cl-contracts-box">
@@ -214,14 +320,14 @@ function DetailPanel({ clientId, onClose }) {
               </div>
 
               {/* Lista de contratos activos */}
-              <div style={{ marginTop: 10, border: '1px solid #e5e2da', borderRadius: 6, overflow: 'hidden' }}>
+              <div style={{ marginTop: 10, border: '1px solid var(--neutral-200)', borderRadius: 6, overflow: 'hidden' }}>
                 {detail.contratos_activos?.length > 0 ? (
                   detail.contratos_activos.map((c, i) => (
                     <div
                       key={c.id}
                       style={{
                         padding: '10px 12px',
-                        borderBottom: i < detail.contratos_activos.length - 1 ? '1px solid #efede8' : 'none',
+                        borderBottom: i < detail.contratos_activos.length - 1 ? '1px solid var(--bg-topbar)' : 'none',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
@@ -229,38 +335,122 @@ function DetailPanel({ clientId, onClose }) {
                       }}
                     >
                       <div>
-                        <div style={{ fontWeight: 600, color: '#3b3631' }}>{c.software}</div>
-                        <div style={{ color: '#7c7670', fontSize: 10, marginTop: 2 }}>
+                        <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{c.software}</div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: 10, marginTop: 2 }}>
                           {c.tipo_contrato} · vence {c.fecha_vencimiento ? new Date(c.fecha_vencimiento).toLocaleDateString('es-CL', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}
                         </div>
                       </div>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: '#15803d', background: '#f0fdf4', padding: '2px 8px', borderRadius: 999 }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--success-deep)', background: 'var(--success-bg)', padding: '2px 8px', borderRadius: 999 }}>
                         ACTIVO
                       </span>
                     </div>
                   ))
                 ) : (
-                  <div style={{ padding: '16px 12px', textAlign: 'center', color: '#b0aaa3', fontSize: 12 }}>
+                  <div style={{ padding: '16px 12px', textAlign: 'center', color: 'var(--text-faint)', fontSize: 12 }}>
                     No hay contratos activos
                   </div>
                 )}
               </div>
             </div>
           </>
+        ) : detail && view === 'contratos' ? (
+          <div>
+            <p className="cl-detail-section-title">
+              <Svg paths={['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z','M14 2v6h6','M16 13H8','M16 17H8']} color="var(--text-faint)" size={12} />
+              Todos los contratos {contratos ? `(${contratos.length})` : ''}
+            </p>
+
+            {contratosError && (
+              <div style={{ padding: '12px 0', color: 'var(--danger)', fontSize: 12 }}>
+                Error al cargar contratos: {contratosError}
+              </div>
+            )}
+
+            {!contratos && !contratosError && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+                {[1,2,3].map(i => (
+                  <div key={i} style={{ height: 52, borderRadius: 6, background: 'var(--neutral-200)' }} />
+                ))}
+              </div>
+            )}
+
+            {contratos && contratos.length === 0 && (
+              <div style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--text-faint)', fontSize: 12 }}>
+                Este cliente no tiene contratos registrados
+              </div>
+            )}
+
+            {contratos && contratos.length > 0 && (
+              <div style={{ marginTop: 8, border: '1px solid var(--neutral-200)', borderRadius: 6, overflow: 'hidden' }}>
+                {contratos.map((c, i) => {
+                  const st = CONTRACT_STATUS_STYLE[c.status] || { color: 'var(--text-muted)', bg: 'var(--neutral-200)' };
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => navigate(`/contratos/${c.id}`)}
+                      title="Ver detalle del contrato"
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '10px 12px',
+                        border: 'none',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        borderBottom: i < contratos.length - 1 ? '1px solid var(--bg-topbar)' : 'none',
+                        fontFamily: 'inherit',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-topbar)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {c.nombre}
+                          </div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: 10, marginTop: 2 }}>
+                            {contratoIdDisplay(c.id)} · {c.etapa_display}
+                            {c.fecha_vencimiento ? ` · vence ${fmtDate(c.fecha_vencimiento)}` : ''}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: st.color, background: st.bg, padding: '2px 8px', borderRadius: 999 }}>
+                            {c.status_display?.toUpperCase() || c.status}
+                          </span>
+                          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
+                            {fmtMoney(c.monto)}
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         ) : null}
       </div>
 
       {/* Footer */}
       {detail && (
         <div className="cl-detail-footer">
-          <button
-            className="cl-detail-footer-btn secondary"
-            disabled={!detail.contratos_activos?.length}
-            style={!detail.contratos_activos?.length ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
-          >
-            Ver contratos
+          {view === 'info' ? (
+            <button
+              className="cl-detail-footer-btn secondary"
+              disabled={!detail.contratos_count}
+              style={!detail.contratos_count ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+              onClick={() => setView('contratos')}
+            >
+              Ver contratos
+            </button>
+          ) : (
+            <button className="cl-detail-footer-btn secondary" onClick={() => setView('info')}>
+              Volver a la ficha
+            </button>
+          )}
+          <button className="cl-detail-footer-btn primary" onClick={goNuevoContrato}>
+            Nuevo contrato
           </button>
-          <button className="cl-detail-footer-btn primary">Nuevo contrato</button>
         </div>
       )}
     </div>
@@ -340,19 +530,14 @@ function FilterDropdown({ onClose, filters, updateFilter, anchorRef }) {
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function Clientes() {
-  const [ctxIndex, setCtxIndex]         = useState(0);
   const [filterOpen, setFilterOpen]     = useState(false);
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [newClientModalOpen, setNewClientModalOpen] = useState(false);
   const [contextMenuClientId, setContextMenuClientId] = useState(null);
   const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
-  const [confirmDeleteClientId, setConfirmDeleteClientId] = useState(null);
-  const [deletingClientId, setDeletingClientId] = useState(null);
   const [editClientId, setEditClientId] = useState(null);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [lastSelectedIndex, setLastSelectedIndex] = useState(null);
-  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
-  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -366,6 +551,78 @@ export default function Clientes() {
     filters, updateFilter, resetFilters,
     refetch,
   } = useClientes();
+
+  const { confirm, alert: alertModal } = useConfirm();
+
+  const clientesPageRef = useRef(null);
+
+  // Auto-draw SVG icons on page load or loading finished
+  useGSAP(() => {
+    const paths = clientesPageRef.current?.querySelectorAll(
+      'svg.clm-svg path, svg.clm-svg circle, svg.clm-svg rect, svg.clm-svg line, svg.clm-svg polyline'
+    );
+    if (!paths || paths.length === 0) return;
+
+    paths.forEach(path => {
+      try {
+        const length = path.getTotalLength();
+        if (length > 0) {
+          gsap.fromTo(path,
+            { strokeDasharray: length, strokeDashoffset: length },
+            {
+              strokeDashoffset: 0,
+              duration: 1.0,
+              ease: 'power2.inOut',
+              clearProps: 'strokeDasharray,strokeDashoffset'
+            }
+          );
+        }
+      } catch (e) {}
+    });
+  }, { dependencies: [loading], scope: clientesPageRef });
+
+  // Draw SVG icons on hover of interactive elements
+  useGSAP(() => {
+    const handleMouseEnter = (e) => {
+      const paths = e.currentTarget.querySelectorAll(
+        'svg.clm-svg path, svg.clm-svg circle, svg.clm-svg rect, svg.clm-svg line, svg.clm-svg polyline'
+      );
+      paths.forEach(path => {
+        try {
+          const length = path.getTotalLength();
+          if (length > 0) {
+            gsap.fromTo(path,
+              { strokeDasharray: length, strokeDashoffset: length },
+              {
+                strokeDashoffset: 0,
+                duration: 0.8,
+                ease: 'power2.out',
+                clearProps: 'strokeDasharray,strokeDashoffset'
+              }
+            );
+          }
+        } catch (e) {}
+      });
+    };
+
+    const interactiveElements = clientesPageRef.current?.querySelectorAll(
+      '.cl-btn, .cl-filter-btn, .cl-row, .cl-stat-card'
+    );
+
+    if (interactiveElements) {
+      interactiveElements.forEach(el => {
+        el.addEventListener('mouseenter', handleMouseEnter);
+      });
+    }
+
+    return () => {
+      if (interactiveElements) {
+        interactiveElements.forEach(el => {
+          el.removeEventListener('mouseenter', handleMouseEnter);
+        });
+      }
+    };
+  }, { dependencies: [loading], scope: clientesPageRef });
 
   const filterBtnRef  = useRef(null);
   const filterDropRef = useRef(null);
@@ -470,22 +727,21 @@ export default function Clientes() {
     setEditClientId(clientId);
   };
 
-  const handleDeleteClient = (clientId) => {
-    setConfirmDeleteClientId(clientId);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!confirmDeleteClientId) return;
-    setDeletingClientId(confirmDeleteClientId);
-
+  const handleDeleteClient = async (clientId) => {
     try {
-      await deleteCliente(confirmDeleteClientId);
-      setConfirmDeleteClientId(null);
-      setDeletingClientId(null);
-      refetch();
+      const isConfirmed = await confirm({
+        title: "Eliminar cliente",
+        message: `¿Eliminar cliente "${clientes.find(c => c.id === clientId)?.razon_social || clientes.find(c => c.id === clientId)?.nombre_comercial || ''}"? Esta acción no se puede deshacer.`,
+        isDangerous: true,
+        bypassKey: "delete_client",
+        bypassDurationMinutes: 30,
+        action: async () => {
+          await deleteCliente(clientId);
+        }
+      });
+      if (isConfirmed) refetch();
     } catch (err) {
-      alert(`Error al eliminar cliente: ${err.message}`);
-      setDeletingClientId(null);
+      alertModal({ title: "Error al eliminar cliente", message: err.message, isDangerous: true });
     }
   };
 
@@ -500,7 +756,7 @@ export default function Clientes() {
       await updateClienteStatus(clientId, isActive);
       refetch();
     } catch (err) {
-      alert(`Error al cambiar estado: ${err.message}`);
+      alertModal({ title: "Error al cambiar estado", message: err.message, isDangerous: true });
     }
   };
 
@@ -555,16 +811,24 @@ export default function Clientes() {
   };
 
   const handleBulkDelete = async () => {
-    setBulkDeleting(true);
+    if (selectedIds.size === 0) return;
     try {
-      await Promise.all(Array.from(selectedIds).map(id => deleteCliente(id)));
-      setBulkDeleteOpen(false);
-      setBulkDeleting(false);
-      clearSelection();
-      refetch();
+      const isConfirmed = await confirm({
+        title: "Eliminar clientes",
+        message: `¿Eliminar ${selectedIds.size} cliente${selectedIds.size !== 1 ? 's' : ''} seleccionado${selectedIds.size !== 1 ? 's' : ''}? Esta acción no se puede deshacer.`,
+        isDangerous: true,
+        bypassKey: "delete_client_bulk",
+        bypassDurationMinutes: 30,
+        action: async () => {
+          await Promise.all(Array.from(selectedIds).map(id => deleteCliente(id)));
+        }
+      });
+      if (isConfirmed) {
+        clearSelection();
+        refetch();
+      }
     } catch (err) {
-      alert(`Error al eliminar clientes: ${err.message}`);
-      setBulkDeleting(false);
+      alertModal({ title: "Error al eliminar clientes", message: err.message, isDangerous: true });
     }
   };
 
@@ -580,7 +844,7 @@ export default function Clientes() {
   ].filter(Boolean).length;
 
   return (
-    <div className="clientes-page">
+    <div className="clientes-page" ref={clientesPageRef}>
       {/* ── Topbar ── */}
       <div className="cl-topbar">
         <div className="cl-topbar-left">
@@ -590,11 +854,7 @@ export default function Clientes() {
         <div className="cl-topbar-right">
           <span className="cl-topbar-date">{dateDisplay}</span>
           <div className="cl-topbar-divider" />
-          <div className="cl-ctx-badge">
-            <span className="cl-ctx-dot" />
-            {CONTEXTS[ctxIndex]}
-            <Svg paths={['M6 9l6 6 6-6']} color="#2563eb" size={10} strokeWidth={2.5} />
-          </div>
+          <TopbarActions />
         </div>
       </div>
 
@@ -604,7 +864,7 @@ export default function Clientes() {
         <div className="cl-stats-grid">
           <div className="cl-stat-card">
             <div className="cl-stat-icon blue">
-              <Svg paths={['M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2','M23 21v-2a4 4 0 0 0-3-3.87','M16 3.13a4 4 0 0 1 0 7.75']} circles={[{cx:9,cy:7,r:4}]} color="#2563eb" size={18} />
+              <Svg paths={['M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2','M23 21v-2a4 4 0 0 0-3-3.87','M16 3.13a4 4 0 0 1 0 7.75']} circles={[{cx:9,cy:7,r:4}]} color="var(--primary)" size={18} />
             </div>
             <div>
               <p className="cl-stat-label">Total Clientes</p>
@@ -613,7 +873,7 @@ export default function Clientes() {
           </div>
           <div className="cl-stat-card">
             <div className="cl-stat-icon green">
-              <Svg paths={['M22 11.08V12a10 10 0 1 1-5.93-9.14','M22 4 12 14.01l-3-3']} color="#15803d" size={18} />
+              <Svg paths={['M22 11.08V12a10 10 0 1 1-5.93-9.14','M22 4 12 14.01l-3-3']} color="var(--success-deep)" size={18} />
             </div>
             <div>
               <p className="cl-stat-label">Activos</p>
@@ -622,16 +882,16 @@ export default function Clientes() {
           </div>
           <div className="cl-stat-card amber">
             <div className="cl-stat-icon amber">
-              <Svg paths={['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z','M12 6v6l4 2']} color="#d97706" size={18} />
+              <Svg paths={['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z','M12 6v6l4 2']} color="var(--warning-bright)" size={18} />
             </div>
             <div>
-              <p className="cl-stat-label" style={{ color: '#92400e' }}>En Revisión</p>
+              <p className="cl-stat-label" style={{ color: 'var(--warning-deep)' }}>En Revisión</p>
               <p className="cl-stat-value amber">{loading ? '—' : stats.en_revision.toLocaleString('es-CL')}</p>
             </div>
           </div>
           <div className="cl-stat-card">
             <div className="cl-stat-icon gray">
-              <Svg paths={['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z','M4.93 4.93l14.14 14.14']} color="#b0aaa3" size={18} />
+              <Svg paths={['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z','M4.93 4.93l14.14 14.14']} color="var(--text-faint)" size={18} />
             </div>
             <div>
               <p className="cl-stat-label">Inactivos</p>
@@ -646,7 +906,7 @@ export default function Clientes() {
           <div className="cl-toolbar">
             <div className="cl-search-wrapper">
               <div className="cl-search-icon">
-                <Svg paths={['M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z']} color="#b0aaa3" size={14} />
+                <Svg paths={['M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z']} color="var(--text-faint)" size={14} />
               </div>
               <input
                 id="clientes-search"
@@ -660,7 +920,7 @@ export default function Clientes() {
 
             {/* Date Range */}
             <div className="cl-date-range">
-              <Svg paths={['M8 2v4','M16 2v4','M3 10h18','M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z']} color="#b0aaa3" size={13} />
+              <Svg paths={['M8 2v4','M16 2v4','M3 10h18','M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z']} color="var(--text-faint)" size={13} />
               <input
                 type="date"
                 className="cl-date-input"
@@ -684,7 +944,7 @@ export default function Clientes() {
                 className={`cl-filter-btn ${filterOpen ? 'active' : ''}`}
                 onClick={() => setFilterOpen(o => !o)}
               >
-                <Svg paths={['M4 6h16M7 12h10M10 18h4']} color={filterOpen ? '#2563eb' : '#7c7670'} size={14} />
+                <Svg paths={['M4 6h16M7 12h10M10 18h4']} color={filterOpen ? 'var(--primary)' : 'var(--text-muted)'} size={14} />
                 Filtrar
                 {activeFilterCount > 0 && <span className="cl-filter-count">{activeFilterCount}</span>}
               </button>
@@ -709,7 +969,7 @@ export default function Clientes() {
                 className={`cl-btn ${importOpen ? 'active' : ''}`}
                 onClick={() => setImportOpen(o => !o)}
               >
-                <Svg paths={['M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4','M17 8l-5-5-5 5','M12 3v12']} color="#7c7670" size={14} />
+                <Svg paths={['M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4','M17 8l-5-5-5 5','M12 3v12']} color="var(--text-muted)" size={14} />
                 Importar
               </button>
               {importOpen && (
@@ -720,7 +980,7 @@ export default function Clientes() {
                     items={[
                       {
                         label: 'Importar desde Excel',
-                        icon: <Svg paths={['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z','M14 2v6h6']} color="#7c7670" size={14} />,
+                        icon: <Svg paths={['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z','M14 2v6h6']} color="var(--text-muted)" size={14} />,
                         onClick: () => setImportModalOpen(true),
                       },
                     ]}
@@ -736,7 +996,7 @@ export default function Clientes() {
                 onClick={() => setExportOpen(o => !o)}
                 disabled={exporting}
               >
-                <Svg paths={['M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4','M7 10l5 5 5-5','M12 15V3']} color="#7c7670" size={14} />
+                <Svg paths={['M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4','M7 10l5 5 5-5','M12 15V3']} color="var(--text-muted)" size={14} />
                 Exportar
               </button>
               {exportOpen && (
@@ -747,12 +1007,12 @@ export default function Clientes() {
                     items={[
                       {
                         label: 'Exportar a Excel (.xlsx)',
-                        icon: <Svg paths={['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z','M14 2v6h6']} color="#15803d" size={14} />,
+                        icon: <Svg paths={['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z','M14 2v6h6']} color="var(--success-deep)" size={14} />,
                         onClick: () => handleExport('excel'),
                       },
                       {
                         label: 'Exportar a CSV',
-                        icon: <Svg paths={['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z','M14 2v6h6']} color="#7c7670" size={14} />,
+                        icon: <Svg paths={['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z','M14 2v6h6']} color="var(--text-muted)" size={14} />,
                         onClick: () => handleExport('csv'),
                       },
                     ]}
@@ -765,7 +1025,7 @@ export default function Clientes() {
               className="cl-btn-primary"
               onClick={() => setNewClientModalOpen(true)}
             >
-              <Svg paths={['M12 5v14','M5 12h14']} color="#fff" size={14} />
+              <Svg paths={['M12 5v14','M5 12h14']} color="var(--text-on-accent)" size={14} />
               Nuevo Cliente
             </button>
           </div>
@@ -804,8 +1064,8 @@ export default function Clientes() {
             <div className="cl-bulk-bar">
               <span><b>{selectedIds.size}</b> seleccionado{selectedIds.size !== 1 ? 's' : ''}</span>
               <div className="cl-bulk-spacer" />
-              <button className="cl-bulk-btn danger" onClick={() => setBulkDeleteOpen(true)}>
-                <Svg paths={['M19 7l-1 12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 7m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3','M10 11v6','M14 11v6']} color="#dc2626" size={13} />
+              <button className="cl-bulk-btn danger" onClick={handleBulkDelete}>
+                <Svg paths={['M19 7l-1 12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 7m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3','M10 11v6','M14 11v6']} color="var(--danger)" size={13} />
                 Eliminar seleccionados
               </button>
               <button className="cl-bulk-btn" onClick={clearSelection}>
@@ -884,7 +1144,7 @@ export default function Clientes() {
             ) : loading ? (
               Array.from({ length: 10 }).map((_, i) => <SkeletonRow key={i} />)
             ) : clientes.length === 0 ? (
-              <div style={{ padding: '40px 16px', textAlign: 'center', color: '#b0aaa3', fontSize: 13 }}>
+              <div style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--text-faint)', fontSize: 13 }}>
                 No se encontraron clientes con los filtros actuales.
               </div>
             ) : (
@@ -942,7 +1202,7 @@ export default function Clientes() {
                     {/* Contratos */}
                     <div className="cl-cell-contracts">
                       <span className="cl-contract-num">{c.contratos_count}</span>
-                      <Svg paths={['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z']} color="#b0aaa3" size={12} />
+                      <Svg paths={['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z']} color="var(--text-faint)" size={12} />
                     </div>
 
                     {/* Acciones */}
@@ -953,7 +1213,7 @@ export default function Clientes() {
                         id={`clientes-view-${c.id}`}
                         onClick={e => { e.stopPropagation(); setSelectedClientId(c.id); }}
                       >
-                        <Svg paths={['M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z']} circles={[{cx:12,cy:12,r:3}]} color="#7c7670" size={13} />
+                        <Svg paths={['M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z']} circles={[{cx:12,cy:12,r:3}]} color="var(--text-muted)" size={13} />
                       </button>
                       <button
                         className="cl-action-btn"
@@ -961,7 +1221,7 @@ export default function Clientes() {
                         id={`clientes-more-${c.id}`}
                         onClick={e => handleOpenContextMenu(e, c.id)}
                       >
-                        <Svg paths={['M12 5v.01','M12 12v.01','M12 19v.01','M12 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2z','M12 13a1 1 0 1 1 0-2 1 1 0 0 1 0 2z','M12 20a1 1 0 1 1 0-2 1 1 0 0 1 0 2z']} color="#7c7670" size={13} />
+                        <Svg paths={['M12 5v.01','M12 12v.01','M12 19v.01','M12 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2z','M12 13a1 1 0 1 1 0-2 1 1 0 0 1 0 2z','M12 20a1 1 0 1 1 0-2 1 1 0 0 1 0 2z']} color="var(--text-muted)" size={13} />
                       </button>
                     </div>
                   </div>
@@ -1016,29 +1276,6 @@ export default function Clientes() {
         />
       )}
 
-      {/* Confirm Delete Modal */}
-      {confirmDeleteClientId && (
-        <ConfirmModal
-          title="Eliminar cliente"
-          message={`¿Eliminar cliente "${clientes.find(c => c.id === confirmDeleteClientId)?.razon_social || clientes.find(c => c.id === confirmDeleteClientId)?.nombre_comercial || ''}"? Esta acción no se puede deshacer.`}
-          onConfirm={handleConfirmDelete}
-          onCancel={() => setConfirmDeleteClientId(null)}
-          loading={deletingClientId === confirmDeleteClientId}
-          isDangerous
-        />
-      )}
-
-      {/* Bulk Delete Confirm Modal */}
-      {bulkDeleteOpen && (
-        <ConfirmModal
-          title="Eliminar clientes"
-          message={`¿Eliminar ${selectedIds.size} cliente${selectedIds.size !== 1 ? 's' : ''} seleccionado${selectedIds.size !== 1 ? 's' : ''}? Esta acción no se puede deshacer.`}
-          onConfirm={handleBulkDelete}
-          onCancel={() => setBulkDeleteOpen(false)}
-          loading={bulkDeleting}
-          isDangerous
-        />
-      )}
 
       {/* Edit Client Modal */}
       {editClientId && (

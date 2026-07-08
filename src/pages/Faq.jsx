@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
+import TopbarActions from '../components/layout/TopbarActions';
 import './Faq.css';
 
-const Icon = ({ d, color = '#7c7670', w = 14 }) => (
+const Icon = ({ d, color = 'var(--text-muted)', w = 14 }) => (
   <svg width={w} height={w} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     {Array.isArray(d) ? d.map((p, i) => <path key={i} d={p} />) : <path d={d} />}
   </svg>
@@ -42,13 +43,16 @@ export default function Faq() {
           <p className="faq-header-label">Enfoque Platform</p>
           <h1 className="faq-header-title">Preguntas Frecuentes</h1>
         </div>
-        <span className="faq-header-date">Vie 4 jul 2026</span>
+        <div className="topbar-right-group">
+          <span className="faq-header-date">Vie 4 jul 2026</span>
+          <TopbarActions />
+        </div>
       </div>
 
       <div className="faq-content">
         <div className="faq-toolbar">
           <div className="faq-search">
-            <Icon d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" color="#b0aaa3" w={13} />
+            <Icon d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" color="var(--text-faint)" w={13} />
             <input
               type="text"
               placeholder="Buscar en preguntas frecuentes…"
@@ -80,7 +84,7 @@ export default function Faq() {
                 <button className="faq-item-question" onClick={() => setOpenIndex(isOpen ? null : i)}>
                   <span className="faq-item-cat">{f.cat}</span>
                   <span className="faq-item-text">{f.q}</span>
-                  <Icon d="M6 9l6 6 6-6" color="#7c7670" w={13} />
+                  <Icon d="M6 9l6 6 6-6" color="var(--text-muted)" w={13} />
                 </button>
                 {isOpen && <div className="faq-item-answer">{f.a}</div>}
               </div>

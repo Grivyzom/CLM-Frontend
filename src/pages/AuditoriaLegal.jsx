@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import {
   PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid
@@ -9,6 +11,9 @@ import {
   CheckCircle, AlertTriangle, Info, Download, RefreshCw,
   AlertOctagon, ArrowRight, CheckCircle2
 } from 'lucide-react';
+import TopbarActions from '../components/layout/TopbarActions';
+import Svg from '../components/ui/Svg';
+import { getAuditoria } from '../api';
 import './AuditoriaLegal.css';
 
 // Mock Data
@@ -20,9 +25,9 @@ const INITIAL_KPIS = {
 };
 
 const RISK_DISTRIBUTION = [
-  { name: 'Riesgo Bajo', value: 145, color: '#10b981' },
-  { name: 'Riesgo Medio', value: 34, color: '#f59e0b' },
-  { name: 'Riesgo Alto', value: 4, color: '#ef4444' }
+  { name: 'Riesgo Bajo', value: 145, color: 'var(--success-alt)' },
+  { name: 'Riesgo Medio', value: 34, color: 'var(--warning-vivid)' },
+  { name: 'Riesgo Alto', value: 4, color: 'var(--danger-bright)' }
 ];
 
 const AUDIT_LOGS = [
@@ -33,7 +38,6 @@ const AUDIT_LOGS = [
   { id: 5, user: 'Sistema', action: 'Validación de compliance exitosa', target: 'Renovación Omega', date: '2026-07-04T14:10:00', risk: 'low', details: 'El análisis automatizado no encontró desviaciones en las cláusulas obligatorias.', ip: '127.0.0.1', session: 'SYSTEM_JOB' }
 ];
 
-
 const CRITICAL_CONTRACTS = [
   { id: 'C-892', client: 'TechNova Inc.', issue: 'Límite de responsabilidad excede política (>20%)', type: 'SaaS Agreement', status: 'En revisión' },
   { id: 'C-901', client: 'Global Logistics', issue: 'Falta cláusula de rescisión por incumplimiento', type: 'SLA', status: 'Pendiente' },
@@ -42,10 +46,14 @@ const CRITICAL_CONTRACTS = [
 ];
 
 export default function AuditoriaLegal() {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [kpis, setKpis] = useState(INITIAL_KPIS);
+  const [riskDistribution, setRiskDistribution] = useState(RISK_DISTRIBUTION);
+  const [criticalContracts, setCriticalContracts] = useState(CRITICAL_CONTRACTS);
+  const [auditLogs, setAuditLogs] = useState(AUDIT_LOGS);
   const [copied, setCopied] = useState(false);
   const [modalMessage, setModalMessage] = useState(null);
 
@@ -54,7 +62,7 @@ export default function AuditoriaLegal() {
     setTimeout(() => setModalMessage(null), 3000);
   };
 
-  const filteredLogs = AUDIT_LOGS.filter(log => 
+  const filteredLogs = auditLogs.filter(log => 
     log.target.toLowerCase().includes(searchTerm.toLowerCase()) ||
     log.action.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -77,118 +85,275 @@ export default function AuditoriaLegal() {
     showToast('info', `Redirigiendo al detalle técnico (ID: ${selectedEvent.technicalDetailId})...`);
   };
 
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const data = await getAuditoria();
+      setKpis(data.kpis);
+      setRiskDistribution(data.riskDistribution);
+      setCriticalContracts(data.criticalContracts);
+      setAuditLogs(data.auditLogs);
+      setError(null);
+    } catch (err) {
+      console.error(err);
+      setError('Error al cargar datos de auditoría legal');
+      showToast('error', 'No se pudieron sincronizar los datos del servidor');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const pageRef = useRef(null);
+
   useEffect(() => {
-    const interval = setInterval(() => {
-      setKpis(prev => ({
-        complianceScore: Math.min(100, Math.max(85, prev.complianceScore + Math.floor(Math.random() * 3) - 1)),
-        highRiskContracts: Math.max(0, prev.highRiskContracts + Math.floor(Math.random() * 3) - 1),
-        nonStandardClauses: Math.max(5, prev.nonStandardClauses + Math.floor(Math.random() * 3) - 1),
-        pendingAudits: Math.max(0, prev.pendingAudits + Math.floor(Math.random() * 3) - 1)
-      }));
-    }, 4500); // Actualización simulada cada 4.5s
-    return () => clearInterval(interval);
+    fetchData();
   }, []);
 
+  // Entrance and Stagger Animations
+  useGSAP(() => {
+    if (loading) return;
+    
+    const topbar = pageRef.current?.querySelector('.al-topbar');
+    const statCards = pageRef.current?.querySelectorAll('.al-stat-card');
+    const kpiValues = pageRef.current?.querySelectorAll('.al-stat-value');
+    const panels = pageRef.current?.querySelectorAll('.al-panel-card');
+    const activityItems = pageRef.current?.querySelectorAll('.al-activity-item');
+
+    if (!topbar || !statCards || statCards.length === 0) return;
+
+    gsap.killTweensOf([topbar, statCards, kpiValues, panels, activityItems]);
+
+    // Set initial invisible states to prevent FOUC synchronously
+    gsap.set(topbar, { y: -20, opacity: 0 });
+    gsap.set(statCards, { y: 20, opacity: 0, scale: 0.95 });
+    gsap.set(kpiValues, { y: 10, opacity: 0 });
+    gsap.set(panels, { y: 25, opacity: 0 });
+    gsap.set(activityItems, { x: -15, opacity: 0 });
+
+    const tl = gsap.timeline();
+
+    // 1. Topbar drops in
+    tl.to(topbar, {
+      y: 0,
+      opacity: 1,
+      duration: 0.5,
+      ease: 'power3.out',
+      clearProps: 'transform,opacity'
+    });
+
+    // 2. Stat cards spring in
+    tl.to(statCards, {
+      y: 0,
+      opacity: 1,
+      scale: 1,
+      duration: 0.5,
+      stagger: 0.08,
+      ease: 'back.out(1.2)',
+      clearProps: 'transform,opacity,scale'
+    }, '-=0.2');
+
+    // 3. KPI values reveal (Text Reveal effect)
+    tl.to(kpiValues, {
+      y: 0,
+      opacity: 1,
+      duration: 0.4,
+      stagger: 0.05,
+      ease: 'power2.out',
+      clearProps: 'transform,opacity'
+    }, '-=0.35');
+
+    // 4. Main panels slide up
+    tl.to(panels, {
+      y: 0,
+      opacity: 1,
+      duration: 0.6,
+      stagger: 0.1,
+      ease: 'power3.out',
+      clearProps: 'transform,opacity'
+    }, '-=0.4');
+
+    // 5. Activity log items slide in from left
+    tl.to(activityItems, {
+      x: 0,
+      opacity: 1,
+      duration: 0.4,
+      stagger: 0.04,
+      ease: 'power2.out',
+      clearProps: 'transform,opacity'
+    }, '-=0.4');
+
+    // Auto-draw all SVG icons
+    const paths = pageRef.current?.querySelectorAll(
+      'svg.lucide path, svg.lucide polyline, svg.lucide line, svg.lucide circle, svg.lucide rect'
+    );
+    if (paths) {
+      paths.forEach(path => {
+        try {
+          const length = path.getTotalLength();
+          if (length > 0) {
+            gsap.fromTo(path,
+              { strokeDasharray: length, strokeDashoffset: length },
+              {
+                strokeDashoffset: 0,
+                duration: 0.8,
+                ease: 'power2.inOut',
+                clearProps: 'strokeDasharray,strokeDashoffset'
+              }
+            );
+          }
+        } catch (e) {}
+      });
+    }
+  }, { dependencies: [loading], scope: pageRef });
+
+  // Hover Outline Drawings
+  useGSAP(() => {
+    const handleMouseEnter = (e) => {
+      const paths = e.currentTarget.querySelectorAll(
+        'svg.lucide path, svg.lucide polyline, svg.lucide line, svg.lucide circle, svg.lucide rect'
+      );
+      paths.forEach(path => {
+        try {
+          const length = path.getTotalLength();
+          if (length > 0) {
+            gsap.fromTo(path,
+              { strokeDasharray: length, strokeDashoffset: length },
+              {
+                strokeDashoffset: 0,
+                duration: 0.6,
+                ease: 'power2.out',
+                clearProps: 'strokeDasharray,strokeDashoffset'
+              }
+            );
+          }
+        } catch (e) {}
+      });
+    };
+
+    const interactiveElements = pageRef.current?.querySelectorAll(
+      '.al-stat-card, .al-activity-item, .al-btn-primary, .al-icon-btn, .al-btn-secondary, tr'
+    );
+
+    if (interactiveElements) {
+      interactiveElements.forEach(el => el.addEventListener('mouseenter', handleMouseEnter));
+    }
+
+    return () => {
+      if (interactiveElements) {
+        interactiveElements.forEach(el => el.removeEventListener('mouseenter', handleMouseEnter));
+      }
+    };
+  }, { dependencies: [loading, auditLogs, criticalContracts, searchTerm], scope: pageRef });
+
   const handleRefresh = () => {
-    setLoading(true);
-    setTimeout(() => setLoading(false), 800);
+    fetchData();
   };
 
   const getRiskIcon = (risk) => {
     switch (risk) {
-      case 'high': return <AlertOctagon size={16} className="au-badge-high" style={{ padding: 0, background: 'none' }} />;
-      case 'medium': return <AlertTriangle size={16} className="au-badge-medium" style={{ padding: 0, background: 'none' }} />;
-      case 'low': return <CheckCircle2 size={16} className="au-badge-low" style={{ padding: 0, background: 'none' }} />;
-      default: return <Activity size={16} />;
+      case 'high': return <AlertOctagon size={14} />;
+      case 'medium': return <AlertTriangle size={14} />;
+      case 'low': return <CheckCircle2 size={14} />;
+      default: return <Activity size={14} />;
     }
   };
 
   const getRiskClass = (risk) => {
     switch (risk) {
-      case 'high': return 'au-badge-high';
-      case 'medium': return 'au-badge-medium';
-      case 'low': return 'au-badge-low';
-      default: return 'au-badge-info';
+      case 'high': return 'al-badge-high';
+      case 'medium': return 'al-badge-medium';
+      case 'low': return 'al-badge-low';
+      default: return 'al-badge-info';
+    }
+  };
+  
+  const getRiskIconClass = (risk) => {
+    switch (risk) {
+      case 'high': return 'high';
+      case 'medium': return 'medium';
+      case 'low': return 'low';
+      default: return 'info';
     }
   };
 
   return (
-    <div className="au-container">
-      {/* Header */}
-      <div className="au-topbar">
-        <div>
-          <p className="au-topbar-subtitle">Compliance & Riesgos</p>
-          <h1 className="au-topbar-title">Auditoría Legal</h1>
+    <div className="auditoria-page" ref={pageRef}>
+      {/* ── Topbar ── */}
+      <div className="al-topbar">
+        <div className="al-topbar-left">
+          <p>Compliance & Riesgos</p>
+          <h1>Auditoría Legal</h1>
         </div>
-        <div className="au-topbar-actions">
-          <span className="au-date">
+        <div className="al-topbar-right">
+          <span className="al-topbar-date">
             {new Date().toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
           </span>
-          <div className="au-divider"></div>
-          <button className="au-icon-btn" onClick={handleRefresh} title="Actualizar datos">
-            <RefreshCw size={14} className={loading ? 'db-spin' : ''} />
+          <div className="al-topbar-divider"></div>
+          <button className="al-icon-btn" onClick={handleRefresh} title="Actualizar datos">
+            <RefreshCw size={14} className={loading ? 'al-spin' : ''} />
           </button>
-          <button className="au-icon-btn" title="Exportar reporte de auditoría">
+          <button className="al-icon-btn" title="Exportar reporte de auditoría">
             <Download size={14} />
           </button>
+          <TopbarActions />
         </div>
       </div>
 
-      <div className="au-scroll-area">
-        {/* KPIs Premium Strip */}
-        <div className="au-metrics-strip">
-          <div className="au-metric-item">
-            <div className="au-metric-label">
-              <div className="au-status-dot au-dot-emerald"></div> Score Compliance
+      {/* ── Body ── */}
+      <div className="al-body">
+        {/* Stats Grid */}
+        <div className="al-stats-grid">
+          <div className="al-stat-card">
+            <div className="al-stat-icon blue">
+              <ShieldCheck size={18} color="var(--primary)" />
             </div>
-            <div className="au-metric-val">{kpis.complianceScore}%</div>
-            <div className="au-metric-sub">Contratos alineados a políticas</div>
+            <div>
+              <p className="al-stat-label">Score Compliance</p>
+              <p className="al-stat-value blue">{kpis.complianceScore}%</p>
+            </div>
           </div>
-          
-          <div className="au-metric-divider"></div>
-          
-          <div className="au-metric-item">
-            <div className="au-metric-label">
-              <div className="au-status-dot au-dot-red"></div> Riesgo Crítico
+          <div className="al-stat-card">
+            <div className="al-stat-icon red">
+              <ShieldAlert size={18} color="var(--danger)" />
             </div>
-            <div className="au-metric-val">{kpis.highRiskContracts}</div>
-            <div className="au-metric-sub">Requieren atención inmediata</div>
+            <div>
+              <p className="al-stat-label">Riesgo Crítico</p>
+              <p className="al-stat-value red">{kpis.highRiskContracts}</p>
+            </div>
           </div>
-
-          <div className="au-metric-divider"></div>
-
-          <div className="au-metric-item">
-            <div className="au-metric-label">
-              <div className="au-status-dot au-dot-amber"></div> No Estándar
+          <div className="al-stat-card">
+            <div className="al-stat-icon amber">
+              <AlertTriangle size={18} color="var(--warning)" />
             </div>
-            <div className="au-metric-val">{kpis.nonStandardClauses}</div>
-            <div className="au-metric-sub">Desviaciones aprobadas</div>
+            <div>
+              <p className="al-stat-label">No Estándar</p>
+              <p className="al-stat-value amber">{kpis.nonStandardClauses}</p>
+            </div>
           </div>
-
-          <div className="au-metric-divider"></div>
-
-          <div className="au-metric-item">
-            <div className="au-metric-label">
-              <div className="au-status-dot au-dot-blue"></div> Aud. Pendientes
+          <div className="al-stat-card">
+            <div className="al-stat-icon gray">
+              <FileWarning size={18} color="var(--text-faint)" />
             </div>
-            <div className="au-metric-val">{kpis.pendingAudits}</div>
-            <div className="au-metric-sub">Revisiones programadas</div>
+            <div>
+              <p className="al-stat-label">Aud. Pendientes</p>
+              <p className="al-stat-value gray">{kpis.pendingAudits}</p>
+            </div>
           </div>
         </div>
 
-        <div className="au-main-grid">
+        <div className="al-main-grid">
           {/* Columna Principal: Contratos Críticos y Log */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             
-            <div className="au-panel-card-compact">
-              <div className="au-section-header-compact">
+            <div className="al-panel-card">
+              <div className="al-section-header">
                 <div>
-                  <p className="au-section-label">Alertas Activas</p>
-                  <h3 className="au-section-title">Contratos con Desviación Crítica</h3>
+                  <p className="al-section-label">Alertas Activas</p>
+                  <h3 className="al-section-title">Contratos con Desviación Crítica</h3>
                 </div>
               </div>
-              <div className="au-table-wrapper">
-                <table className="au-table">
+              <div className="al-table-wrapper">
+                <table className="al-table">
                   <thead>
                     <tr>
                       <th>ID</th>
@@ -199,14 +364,14 @@ export default function AuditoriaLegal() {
                     </tr>
                   </thead>
                   <tbody>
-                    {CRITICAL_CONTRACTS.map(c => (
+                    {criticalContracts.map(c => (
                       <tr key={c.id}>
-                        <td className="au-td-mono">{c.id}</td>
-                        <td className="au-td-bold">{c.client}</td>
+                        <td className="al-td-mono">{c.id}</td>
+                        <td className="al-td-bold">{c.client}</td>
                         <td>{c.type}</td>
-                        <td style={{ color: '#dc2626', fontWeight: 500 }}>{c.issue}</td>
+                        <td style={{ color: 'var(--danger)', fontWeight: 500 }}>{c.issue}</td>
                         <td>
-                          <span className="au-badge au-badge-high">{c.status}</span>
+                          <span className="al-badge al-badge-high">{c.status}</span>
                         </td>
                       </tr>
                     ))}
@@ -215,89 +380,97 @@ export default function AuditoriaLegal() {
               </div>
             </div>
 
-            <div className="au-panel-card-compact">
-              <div className="au-section-header-compact">
+            <div className="al-panel-card">
+              <div className="al-section-header">
                 <div>
-                  <p className="au-section-label">Trazabilidad Total</p>
-                  <h3 className="au-section-title">Audit Trail</h3>
+                  <h3 className="al-section-title">Trazabilidad Total</h3>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <div style={{ position: 'relative' }}>
-                    <Search size={14} style={{ position: 'absolute', left: '10px', top: '9px', color: '#a8a29e' }} />
+                  <button className="al-btn-primary" onClick={() => showToast('info', 'Redirigiendo al historial completo del software...')}>
+                    Historial del Sistema
+                  </button>
+                  <div className="al-search-wrapper">
+                    <div className="al-search-icon">
+                      <Search size={12} color="var(--text-faint)" />
+                    </div>
                     <input 
                       type="text" 
+                      className="al-search-input"
                       placeholder="Buscar evento..." 
-                      style={{ padding: '6px 12px 6px 30px', borderRadius: '6px', border: '1px solid #eceae4', fontSize: '13px', width: '200px' }}
                       value={searchTerm}
                       onChange={e => setSearchTerm(e.target.value)}
                     />
                   </div>
-                  <button className="au-icon-btn"><Filter size={14} /></button>
+                  <button className="al-icon-btn"><Filter size={12} /></button>
                 </div>
               </div>
-              <ul className="au-activity-list">
-                {AUDIT_LOGS.map(log => (
+              <ul className="al-activity-list">
+                {filteredLogs.map(log => (
                   <li 
                     key={log.id} 
-                    className="au-activity-item" 
+                    className="al-activity-item" 
                     onClick={() => setSelectedEvent(log)}
-                    style={{ cursor: 'pointer' }}
                   >
-                    <div className="au-activity-icon">
+                    <div className={`al-activity-icon ${getRiskIconClass(log.risk)}`}>
                       {getRiskIcon(log.risk)}
                     </div>
-                    <div className="au-activity-content">
-                      <div className="au-activity-text">
+                    <div className="al-activity-content">
+                      <div className="al-activity-text">
                         <strong>{log.user}</strong> {log.action} en <strong>{log.target}</strong>
                       </div>
-                      <div className="au-activity-meta">
+                      <div className="al-activity-meta">
                         <span>{new Date(log.date).toLocaleString('es-CL')}</span>
-                        <span className={`au-badge ${getRiskClass(log.risk)}`} style={{ padding: '2px 6px', fontSize: '10px' }}>
+                        <span className={`al-badge ${getRiskClass(log.risk)}`}>
                           {log.risk.toUpperCase()}
                         </span>
                       </div>
                     </div>
                   </li>
                 ))}
+                {filteredLogs.length === 0 && (
+                  <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
+                    No se encontraron eventos para "{searchTerm}"
+                  </div>
+                )}
               </ul>
             </div>
 
           </div>
 
           {/* Columna Lateral: Gráficos */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div className="au-panel-card-compact">
-              <div className="au-section-header-compact">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div className="al-panel-card">
+              <div className="al-section-header">
                 <div>
-                  <p className="au-section-label">Distribución</p>
-                  <h3 className="au-section-title">Nivel de Riesgo General</h3>
+                  <p className="al-section-label">Distribución</p>
+                  <h3 className="al-section-title">Nivel de Riesgo General</h3>
                 </div>
               </div>
-              <div className="au-chart-container">
+              <div className="al-chart-container">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={RISK_DISTRIBUTION}
+                      data={riskDistribution}
                       cx="50%"
                       cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
+                      innerRadius={50}
+                      outerRadius={70}
                       paddingAngle={5}
                       dataKey="value"
                     >
-                      {RISK_DISTRIBUTION.map((entry, index) => (
+                      {riskDistribution.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
                     <RechartsTooltip 
-                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                      contentStyle={{ borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--surface)', fontSize: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', flexWrap: 'wrap' }}>
-                {RISK_DISTRIBUTION.map((item, idx) => (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#57534e' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                {riskDistribution.map((item, idx) => (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--text-secondary)' }}>
                     <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: item.color }}></div>
                     {item.name} ({item.value})
                   </div>
@@ -305,21 +478,21 @@ export default function AuditoriaLegal() {
               </div>
             </div>
 
-            <div className="au-panel-card-compact" style={{ flex: 1 }}>
-              <div className="au-section-header-compact">
+            <div className="al-panel-card" style={{ flex: 1 }}>
+              <div className="al-section-header">
                 <div>
-                  <p className="au-section-label">Recomendaciones</p>
-                  <h3 className="au-section-title">Acciones Sugeridas</h3>
+                  <p className="al-section-label">Recomendaciones</p>
+                  <h3 className="al-section-title">Acciones Sugeridas</h3>
                 </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ padding: '12px', backgroundColor: '#fef2f2', borderRadius: '8px', border: '1px solid #fca5a5' }}>
-                  <strong style={{ color: '#dc2626', fontSize: '13px', display: 'block', marginBottom: '4px' }}>Estandarizar Límite Responsabilidad</strong>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#7f1d1d' }}>4 contratos recientes superan el cap del 100%. Revisa la plantilla base.</p>
+                <div style={{ padding: '12px', backgroundColor: 'var(--danger-bg)', borderRadius: '6px', border: '1px solid var(--danger-soft)' }}>
+                  <strong style={{ color: 'var(--danger)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Estandarizar Límite Responsabilidad</strong>
+                  <p style={{ margin: 0, fontSize: '11px', color: 'var(--danger-deep)' }}>4 contratos recientes superan el cap del 100%. Revisa la plantilla base.</p>
                 </div>
-                <div style={{ padding: '12px', backgroundColor: '#fffbeb', borderRadius: '8px', border: '1px solid #fcd34d' }}>
-                  <strong style={{ color: '#d97706', fontSize: '13px', display: 'block', marginBottom: '4px' }}>Actualizar Política SLA</strong>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#92400e' }}>La cláusula 4.2 está siendo modificada en el 80% de los nuevos acuerdos.</p>
+                <div style={{ padding: '12px', backgroundColor: 'var(--warning-bg)', borderRadius: '6px', border: '1px solid var(--warning-soft)' }}>
+                  <strong style={{ color: 'var(--warning-bright)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Actualizar Política SLA</strong>
+                  <p style={{ margin: 0, fontSize: '11px', color: 'var(--warning-deep)' }}>La cláusula 4.2 está siendo modificada en el 80% de los nuevos acuerdos.</p>
                 </div>
               </div>
             </div>
@@ -330,20 +503,20 @@ export default function AuditoriaLegal() {
 
       {/* Modal de Detalles del Evento */}
       {selectedEvent && (
-        <div className="au-modal-overlay" onClick={() => { setSelectedEvent(null); setModalMessage(null); setCopied(false); }}>
-          <div className="au-modal-content" onClick={e => e.stopPropagation()}>
-            <div className="au-modal-header">
+        <div className="al-modal-overlay" onClick={() => { setSelectedEvent(null); setModalMessage(null); setCopied(false); }}>
+          <div className="al-modal-content" onClick={e => e.stopPropagation()}>
+            <div className="al-modal-header">
               <div>
-                <p className="au-modal-title">Detalle del Evento</p>
-                <p className="au-modal-subtitle">Información extendida del registro de auditoría</p>
+                <p className="al-modal-title">Detalle del Evento</p>
+                <p className="al-modal-subtitle">Información extendida del registro de auditoría</p>
               </div>
-              <button type="button" className="au-modal-close-icon" onClick={() => { setSelectedEvent(null); setModalMessage(null); setCopied(false); }}>
+              <button type="button" className="al-modal-close-icon" onClick={() => { setSelectedEvent(null); setModalMessage(null); setCopied(false); }}>
                 ×
               </button>
             </div>
             
             {modalMessage && (
-              <div className={`au-modal-toast au-toast-${modalMessage.type}`}>
+              <div className={`al-modal-toast al-toast-${modalMessage.type}`}>
                 {modalMessage.type === 'success' && <CheckCircle size={16} />}
                 {modalMessage.type === 'error' && <AlertTriangle size={16} />}
                 {modalMessage.type === 'info' && <Info size={16} />}
@@ -351,54 +524,54 @@ export default function AuditoriaLegal() {
               </div>
             )}
 
-            <div className="au-modal-body">
-              <div className="au-modal-event-summary">
-                <div className="au-modal-event-icon-wrap" style={{ background: selectedEvent.risk === 'high' ? '#fef2f2' : selectedEvent.risk === 'medium' ? '#fffbeb' : '#ecfdf5' }}>
+            <div className="al-modal-body">
+              <div className="al-modal-event-summary">
+                <div className={`al-modal-event-icon-wrap ${getRiskIconClass(selectedEvent.risk)}`}>
                   {getRiskIcon(selectedEvent.risk)}
                 </div>
-                <div className="au-modal-event-text">
+                <div className="al-modal-event-text">
                   <h4>{selectedEvent.action}</h4>
                   <p>{selectedEvent.target}</p>
                 </div>
               </div>
 
-              <div className="au-modal-details-grid">
-                <div className="au-modal-row">
-                  <span className="au-modal-label">Usuario / Actor</span>
-                  <span className="au-modal-value">{selectedEvent.user}</span>
+              <div className="al-modal-details-grid">
+                <div className="al-modal-row">
+                  <span className="al-modal-label">Usuario / Actor</span>
+                  <span className="al-modal-value">{selectedEvent.user}</span>
                 </div>
-                <div className="au-modal-row">
-                  <span className="au-modal-label">Fecha y Hora</span>
-                  <span className="au-modal-value">{new Date(selectedEvent.date).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                <div className="al-modal-row">
+                  <span className="al-modal-label">Fecha y Hora</span>
+                  <span className="al-modal-value">{new Date(selectedEvent.date).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' })}</span>
                 </div>
-                <div className="au-modal-row">
-                  <span className="au-modal-label">Dirección IP</span>
-                  <span className="au-modal-value-mono">{selectedEvent.ip || 'N/A'}</span>
+                <div className="al-modal-row">
+                  <span className="al-modal-label">Dirección IP</span>
+                  <span className="al-modal-value-mono">{selectedEvent.ip || 'N/A'}</span>
                 </div>
-                <div className="au-modal-row">
-                  <span className="au-modal-label">Sesión / Origen</span>
-                  <span className="au-modal-value">{selectedEvent.session || 'N/A'}</span>
+                <div className="al-modal-row">
+                  <span className="al-modal-label">Sesión / Origen</span>
+                  <span className="al-modal-value">{selectedEvent.session || 'N/A'}</span>
                 </div>
               </div>
 
-              <div className="au-modal-row">
-                <span className="au-modal-label" style={{ marginBottom: '4px' }}>Detalles Técnicos Adicionales</span>
-                <div className="au-modal-extra">
+              <div className="al-modal-row">
+                <span className="al-modal-label" style={{ marginBottom: '4px' }}>Detalles Técnicos Adicionales</span>
+                <div className="al-modal-extra">
                   {selectedEvent.details || 'El sistema no registró anotaciones adicionales para este evento.'}
                 </div>
               </div>
             </div>
 
-            <div className="au-modal-footer">
+            <div className="al-modal-footer">
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button className="au-btn-secondary" onClick={handleCopyInfo}>
+                <button className="al-btn-secondary" onClick={handleCopyInfo}>
                   {copied ? 'Copiado ✓' : 'Copiar info'}
                 </button>
-                <button className="au-btn-secondary" onClick={handleGoToDetail}>
+                <button className="al-btn-secondary" onClick={handleGoToDetail}>
                   Ver Detalle Técnico
                 </button>
               </div>
-              <button className="au-btn-primary" onClick={() => { setSelectedEvent(null); setModalMessage(null); setCopied(false); }}>
+              <button className="al-btn-primary" onClick={() => { setSelectedEvent(null); setModalMessage(null); setCopied(false); }}>
                 Entendido
               </button>
             </div>

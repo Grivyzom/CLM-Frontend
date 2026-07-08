@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import './Contratos.css';
 import { useContratos } from '../hooks/useContratos';
 import { getSoftwareList } from '../api';
@@ -8,33 +8,34 @@ import ExportContratosModal from './ExportContratosModal';
 import SortableHeader from '../components/ui/SortableHeader';
 import Pagination from '../components/ui/Pagination';
 import { fmtMoney, fmtDate, contratoIdDisplay } from '../utils/formatters';
+import TopbarActions from '../components/layout/TopbarActions';
 
 // ─── Paleta de etapas (workflow legal real: EtapaContrato) ────────────────────
 const ETAPA_CFG = {
-  BORRADOR:         { label: 'Borrador',           color: '#b45309', bg: '#fffbeb', border: '#fde68a', dot: '#d97706' },
-  REVISION:         { label: 'En Revisión',        color: '#6d28d9', bg: '#f5f3ff', border: '#ddd6fe', dot: '#7c3aed' },
-  APROBADO:         { label: 'Aprobado',            color: '#0e7490', bg: '#ecfeff', border: '#a5f3fc', dot: '#0891b2' },
-  PENDIENTE_FIRMA:  { label: 'Pendiente de Firma',  color: '#0284c7', bg: '#e0f2fe', border: '#bae6fd', dot: '#0369a1' },
-  ACTIVO:           { label: 'Activo',              color: '#15803d', bg: '#f0fdf4', border: '#bbf7d0', dot: '#16a34a' },
-  ENMENDADO:        { label: 'Enmendado',           color: '#4338ca', bg: '#eef2ff', border: '#c7d2fe', dot: '#4f46e5' },
-  TERMINADO:        { label: 'Terminado',           color: '#7c7670', bg: '#efede8', border: '#d8d4cc', dot: '#b0aaa3' },
+  BORRADOR:         { label: 'Borrador',           color: 'var(--warning)', bg: 'var(--warning-bg)', border: 'var(--warning-border)', dot: 'var(--warning-bright)' },
+  REVISION:         { label: 'En Revisión',        color: 'var(--violet)', bg: 'var(--violet-bg)', border: 'var(--violet-border)', dot: 'var(--violet-bright)' },
+  APROBADO:         { label: 'Aprobado',            color: 'var(--cyan-deep)', bg: 'var(--cyan-bg)', border: 'var(--cyan-border)', dot: 'var(--cyan)' },
+  PENDIENTE_FIRMA:  { label: 'Pendiente de Firma',  color: 'var(--sky)', bg: 'var(--sky-bg)', border: 'var(--sky-border)', dot: 'var(--sky-deep)' },
+  ACTIVO:           { label: 'Activo',              color: 'var(--success-deep)', bg: 'var(--success-bg)', border: 'var(--success-border)', dot: 'var(--success)' },
+  ENMENDADO:        { label: 'Enmendado',           color: 'var(--indigo)', bg: 'var(--indigo-bg)', border: 'var(--indigo-border)', dot: 'var(--indigo-bright)' },
+  TERMINADO:        { label: 'Terminado',           color: 'var(--text-muted)', bg: 'var(--bg-topbar)', border: 'var(--border)', dot: 'var(--text-faint)' },
 };
 const ETAPA_ORDER = ['BORRADOR', 'REVISION', 'APROBADO', 'PENDIENTE_FIRMA', 'ACTIVO', 'ENMENDADO', 'TERMINADO'];
 
 // ─── Estado operativo (EstadoContrato) — solo se muestra si no es el esperado ──
 const STATUS_OP_CFG = {
-  MORA:       { label: 'Mora',        color: '#be123c', bg: '#fff1f2' },
-  GRACIA:     { label: 'En gracia',   color: '#d97706', bg: '#fffbeb' },
-  SUSPENDIDO: { label: 'Suspendido',  color: '#3b3631', bg: '#e5e2da' },
-  VENCIDO:    { label: 'Vencido',     color: '#7c7670', bg: '#efede8' },
+  MORA:       { label: 'Mora',        color: 'var(--rose)', bg: 'var(--rose-bg)' },
+  GRACIA:     { label: 'En gracia',   color: 'var(--warning-bright)', bg: 'var(--warning-bg)' },
+  SUSPENDIDO: { label: 'Suspendido',  color: 'var(--text-primary)', bg: 'var(--neutral-200)' },
+  VENCIDO:    { label: 'Vencido',     color: 'var(--text-muted)', bg: 'var(--bg-topbar)' },
 };
 
 // ─── Colores de software determinísticos (catálogo es dinámico) ───────────────
 const SW_PALETTE = [
-  { color: '#2563eb', bg: '#eff6ff' }, { color: '#059669', bg: '#d1fae5' },
-  { color: '#7c3aed', bg: '#ede9fe' }, { color: '#0891b2', bg: '#cffafe' },
-  { color: '#d97706', bg: '#fffbeb' }, { color: '#dc2626', bg: '#fee2e2' },
-  { color: '#65a30d', bg: '#ecfccb' }, { color: '#db2777', bg: '#fce7f3' },
+  { color: 'var(--primary)', bg: 'var(--primary-bg)' }, { color: 'var(--success-alt)', bg: 'var(--success-tint)' },
+  { color: 'var(--violet-bright)', bg: 'var(--violet-tint)' }, { color: 'var(--cyan)', bg: 'var(--cyan-tint)' },
+  { color: 'var(--warning-bright)', bg: 'var(--warning-bg)' }, { color: 'var(--danger)', bg: 'var(--danger-tint)' },
+  { color: 'var(--lime)', bg: 'var(--lime-tint)' }, { color: 'var(--pink)', bg: 'var(--pink-tint)' },
 ];
 function hashStr(s) {
   let h = 0;
@@ -42,12 +43,12 @@ function hashStr(s) {
   return Math.abs(h);
 }
 function swColor(nombre) {
-  if (!nombre) return { color: '#5c574f', bg: '#e5e2da' };
+  if (!nombre) return { color: 'var(--text-secondary)', bg: 'var(--neutral-200)' };
   return SW_PALETTE[hashStr(nombre) % SW_PALETTE.length];
 }
 
 // ─── SVG Icon ────────────────────────────────────────────────────────────────
-function Icon({ d, color = '#7c7670', w = 14 }) {
+function Icon({ d, color = 'var(--text-muted)', w = 14 }) {
   return (
     <svg width={w} height={w} viewBox="0 0 24 24" fill="none" stroke={color}
       strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block', flexShrink: 0 }}>
@@ -88,11 +89,11 @@ function SoftwareTag({ software }) {
 function StatsStrip({ stats }) {
   const s = stats || {};
   const cards = [
-    { label: 'Contratos Activos', value: s.contratos_activos ?? '—', icon: 'M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z', color: '#15803d', bg: '#f0fdf4' },
-    { label: 'MRR (Recurrentes)', value: stats ? fmtMoney(s.mrr_total) : '—', sub: 'USD/mes', icon: 'M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6', color: '#2563eb', bg: '#eff6ff' },
-    { label: 'ARR Proyectado', value: stats ? fmtMoney(s.arr_total) : '—', sub: 'USD/año', icon: ['M22 12h-4l-3 9L9 3l-3 9H2'], color: '#7c3aed', bg: '#f5f3ff' },
-    { label: 'Por Renovar (60d)', value: s.por_renovar ?? '—', icon: 'M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15', color: '#be123c', bg: '#fff1f2' },
-    { label: 'En Pipeline', value: s.en_pipeline ?? '—', icon: ['M8 6h13', 'M8 12h13', 'M8 18h13', 'M3 6h.01', 'M3 12h.01', 'M3 18h.01'], color: '#d97706', bg: '#fffbeb' },
+    { label: 'Contratos Activos', value: s.contratos_activos ?? '—', icon: 'M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z', color: 'var(--success-deep)', bg: 'var(--success-bg)' },
+    { label: 'MRR (Recurrentes)', value: stats ? fmtMoney(s.mrr_total) : '—', sub: 'USD/mes', icon: 'M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6', color: 'var(--primary)', bg: 'var(--primary-bg)' },
+    { label: 'ARR Proyectado', value: stats ? fmtMoney(s.arr_total) : '—', sub: 'USD/año', icon: ['M22 12h-4l-3 9L9 3l-3 9H2'], color: 'var(--violet-bright)', bg: 'var(--violet-bg)' },
+    { label: 'Por Renovar (60d)', value: s.por_renovar ?? '—', icon: 'M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15', color: 'var(--rose)', bg: 'var(--rose-bg)' },
+    { label: 'En Pipeline', value: s.en_pipeline ?? '—', icon: ['M8 6h13', 'M8 12h13', 'M8 18h13', 'M3 6h.01', 'M3 12h.01', 'M3 18h.01'], color: 'var(--warning-bright)', bg: 'var(--warning-bg)' },
   ];
   return (
     <div className="ct-stats-grid">
@@ -132,7 +133,7 @@ function SlideOver({ contrato, onClose, onOpen }) {
             <h3 className="ct-slideover-title">{contrato.nombre}</h3>
           </div>
           <button className="ct-icon-btn" onClick={onClose} title="Cerrar">
-            <Icon d="M18 6 6 18M6 6l12 12" color="#7c7670" w={16} />
+            <Icon d="M18 6 6 18M6 6l12 12" color="var(--text-muted)" w={16} />
           </button>
         </div>
 
@@ -171,7 +172,7 @@ function SlideOver({ contrato, onClose, onOpen }) {
             </div>
             <div className="ct-slideover-field">
               <p className="ct-field-label">Próxima Renovación</p>
-              <p className="ct-field-value ct-mono" style={{ color: contrato.dias_restantes !== null && contrato.dias_restantes < 30 ? '#be123c' : 'inherit' }}>
+              <p className="ct-field-value ct-mono" style={{ color: contrato.dias_restantes !== null && contrato.dias_restantes < 30 ? 'var(--rose)' : 'inherit' }}>
                 {fmtDate(contrato.fecha_vencimiento)}
                 {contrato.dias_restantes !== null && contrato.dias_restantes < 60 && (
                   <span className="ct-days-warning"> ({contrato.dias_restantes < 0 ? 'Vencido' : `${contrato.dias_restantes}d`})</span>
@@ -182,7 +183,7 @@ function SlideOver({ contrato, onClose, onOpen }) {
 
           {contrato.tiene_documento && (
             <div className="ct-slideover-annexe">
-              <Icon d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" color="#15803d" w={13} />
+              <Icon d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" color="var(--success-deep)" w={13} />
               <span>Documento generado</span>
             </div>
           )}
@@ -192,7 +193,7 @@ function SlideOver({ contrato, onClose, onOpen }) {
           <button className="ct-btn-secondary" onClick={onClose}>Cerrar</button>
           <button className="ct-btn-primary" onClick={() => onOpen(contrato)}>
             Abrir Workspace
-            <Icon d="M5 12h14M12 5l7 7-7 7" color="#fff" w={13} />
+            <Icon d="M5 12h14M12 5l7 7-7 7" color="var(--text-on-accent)" w={13} />
           </button>
         </div>
       </div>
@@ -221,9 +222,9 @@ function KanbanCard({ contrato, onClick }) {
           {contrato.tipo_contrato === 'RECURRENTE' && <span className="ct-kc-mrr-sub">/mes</span>}
         </span>
         {days !== null && days < 60 && (
-          <span className="ct-kc-alert" style={{ color: days < 0 ? '#be123c' : '#d97706' }}>
+          <span className="ct-kc-alert" style={{ color: days < 0 ? 'var(--rose)' : 'var(--warning-bright)' }}>
             <Icon d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
-              color={days < 0 ? '#be123c' : '#d97706'} w={11} />
+              color={days < 0 ? 'var(--rose)' : 'var(--warning-bright)'} w={11} />
             {days < 0 ? 'Vencido' : `${days}d`}
           </span>
         )}
@@ -235,11 +236,22 @@ function KanbanCard({ contrato, onClick }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function Contratos() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [view, setView] = useState('table');
   const [selectedContrato, setSelectedContrato] = useState(null);
   const [showNewModal, setShowNewModal] = useState(false);
+  const [newModalClienteId, setNewModalClienteId] = useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [softwareList, setSoftwareList] = useState([]);
+
+  // Deep-link: /contratos?nuevo=1&cliente=<id> abre el modal Nuevo Contrato
+  // (usado por el sheet de Clientes) y limpia la URL para no reabrirlo.
+  useEffect(() => {
+    if (searchParams.get('nuevo') !== '1') return;
+    setNewModalClienteId(searchParams.get('cliente'));
+    setShowNewModal(true);
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const {
     contratos, stats, totalCount, totalPages, loading, error,
@@ -267,10 +279,7 @@ export default function Contratos() {
         <div className="ct-header-right">
           <span className="ct-header-date">{today}</span>
           <div className="ct-header-divider" />
-          <div className="ct-ctx-badge">
-            <span className="ct-ctx-dot" />
-            Administración Global
-          </div>
+          <TopbarActions />
         </div>
       </div>
 
@@ -279,7 +288,7 @@ export default function Contratos() {
 
         <div className="ct-toolbar">
           <div className="ct-search">
-            <Icon d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" color="#b0aaa3" w={13} />
+            <Icon d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" color="var(--text-faint)" w={13} />
             <input
               type="text"
               placeholder="Buscar por nombre, cliente, software o ID…"
@@ -300,21 +309,21 @@ export default function Contratos() {
 
           <div className="ct-view-toggle">
             <button className={`ct-view-btn ${view === 'table' ? 'active' : ''}`} onClick={() => setView('table')} title="Vista tabla">
-              <Icon d={['M8 6h13', 'M8 12h13', 'M8 18h13', 'M3 6h.01', 'M3 12h.01', 'M3 18h.01']} color={view === 'table' ? '#2563eb' : '#7c7670'} w={14} />
+              <Icon d={['M8 6h13', 'M8 12h13', 'M8 18h13', 'M3 6h.01', 'M3 12h.01', 'M3 18h.01']} color={view === 'table' ? 'var(--primary)' : 'var(--text-muted)'} w={14} />
             </button>
             <button className={`ct-view-btn ${view === 'kanban' ? 'active' : ''}`} onClick={() => setView('kanban')} title="Vista Kanban">
-              <Icon d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z" color={view === 'kanban' ? '#2563eb' : '#7c7670'} w={14} />
+              <Icon d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z" color={view === 'kanban' ? 'var(--primary)' : 'var(--text-muted)'} w={14} />
             </button>
           </div>
 
           <div style={{ flex: 1 }} />
 
           <button className="ct-btn-secondary" onClick={() => setShowExportModal(true)}>
-            <Icon d={['M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4', 'M7 10l5 5 5-5', 'M12 15V3']} color="#7c7670" w={13} />
+            <Icon d={['M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4', 'M7 10l5 5 5-5', 'M12 15V3']} color="var(--text-muted)" w={13} />
             Exportar
           </button>
           <button className="ct-btn-primary" onClick={() => setShowNewModal(true)}>
-            <Icon d={['M12 5v14', 'M5 12h14']} color="#fff" w={13} />
+            <Icon d={['M12 5v14', 'M5 12h14']} color="var(--text-on-accent)" w={13} />
             Nuevo Contrato
           </button>
         </div>
@@ -384,7 +393,7 @@ export default function Contratos() {
 
               {!loading && contratos.length === 0 && (
                 <div className="ct-table-empty">
-                  <Icon d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" color="#d8d4cc" w={28} />
+                  <Icon d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" color="var(--border)" w={28} />
                   <p>No se encontraron contratos con esos filtros</p>
                   {(filters.search || filters.etapa !== 'Todos' || filters.software) && (
                     <button className="ct-btn-secondary" onClick={() => {
@@ -422,7 +431,7 @@ export default function Contratos() {
                     <EtapaBadge etapa={c.etapa} label={c.etapa_display} />
                     <span className="ct-mono ct-mrr-cell">{c.tipo_contrato === 'RECURRENTE' ? fmtMoney(c.mrr) : fmtMoney(c.monto)}</span>
                     <span className="ct-bill-cell">{c.frecuencia_facturacion === 'ANUAL' ? 'Anual' : c.frecuencia_facturacion === 'MENSUAL' ? 'Mensual' : c.tipo_contrato_display}</span>
-                    <span className="ct-date-cell" style={{ color: isExpiring ? (days < 0 ? '#be123c' : '#d97706') : undefined, fontWeight: isExpiring ? 700 : undefined }}>
+                    <span className="ct-date-cell" style={{ color: isExpiring ? (days < 0 ? 'var(--rose)' : 'var(--warning-bright)') : undefined, fontWeight: isExpiring ? 700 : undefined }}>
                       {fmtDate(c.fecha_vencimiento)}
                       {isExpiring && <span className="ct-expiring-tag">{days < 0 ? 'Vencido' : `Renueva en ${days}d`}</span>}
                     </span>
@@ -493,7 +502,8 @@ export default function Contratos() {
 
       {showNewModal && (
         <NewContractModal
-          onClose={() => setShowNewModal(false)}
+          initialClienteId={newModalClienteId}
+          onClose={() => { setShowNewModal(false); setNewModalClienteId(null); }}
           onSuccess={(nuevo) => { refetch(); navigate(`/contratos/${nuevo.id}`); }}
         />
       )}

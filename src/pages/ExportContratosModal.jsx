@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getClientes, exportContratos } from '../api';
+import './Contratos.css';
 
-function Svg({ paths = [], size = 14, color = '#7c7670', strokeWidth = 1.8 }) {
+function Svg({ paths = [], size = 14, color = 'var(--text-muted)', strokeWidth = 1.8 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
       stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"
@@ -11,23 +12,17 @@ function Svg({ paths = [], size = 14, color = '#7c7670', strokeWidth = 1.8 }) {
   );
 }
 
-const inputStyle = {
-  width: '100%',
-  padding: '8px 12px',
-  border: '1px solid #d8d4cc',
-  borderRadius: 5,
-  fontSize: 12,
-  fontFamily: 'inherit',
-  background: '#efede8',
-  color: '#3b3631',
-  outline: 'none',
-  boxSizing: 'border-box',
-};
-
 export default function ExportContratosModal({ onClose }) {
   const [modo, setModo] = useState('cliente'); // 'cliente' | 'codigo'
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Cerrar con Escape (salvo mientras exporta)
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape' && !loading) onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [loading, onClose]);
 
   // Modo cliente: buscador con autocompletado (mismo patrón que NewContractModal)
   const [clienteQuery, setClienteQuery] = useState('');
@@ -101,116 +96,98 @@ export default function ExportContratosModal({ onClose }) {
 
   return (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', zIndex: 40 }} />
-      <div style={{
-        position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-        background: '#fff', borderRadius: 6, border: '1px solid #d8d4cc',
-        boxShadow: '0 20px 25px rgba(0, 0, 0, 0.15)', zIndex: 50,
-        width: '90%', maxWidth: 460, overflow: 'visible',
-      }}>
-        <div style={{ padding: '20px 24px', borderBottom: '1px solid #d8d4cc', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div className="ctm-backdrop" onClick={onClose} />
+      <div className="ctm-panel ctm-panel-sm" role="dialog" aria-modal="true" aria-label="Exportar contratos">
+        <div className="ctm-header">
           <div>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#3b3631' }}>Exportar Contratos</h2>
-            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#7c7670' }}>Por cliente (todos sus contratos) o por nombre/código</p>
+            <h2 className="ctm-title">Exportar Contratos</h2>
+            <p className="ctm-subtitle">Por cliente (todos sus contratos) o por nombre/código</p>
           </div>
-          <button onClick={onClose} style={{ width: 32, height: 32, border: '1px solid #d8d4cc', background: '#efede8', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Svg paths={['M18 6 6 18', 'M6 6l12 12']} color="#b0aaa3" size={13} />
+          <button className="ctm-close" onClick={onClose} title="Cerrar" aria-label="Cerrar">
+            <Svg paths={['M18 6 6 18', 'M6 6l12 12']} color="var(--text-muted)" size={13} />
           </button>
         </div>
 
-        <div style={{ padding: 24 }}>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        <div className="ctm-body ctm-body--pt ctm-body--free">
+          <div className="ctm-mode-row">
             {[
               { value: 'cliente', label: 'Por Cliente' },
               { value: 'codigo', label: 'Por Nombre / Código' },
             ].map(opt => (
-              <button key={opt.value} type="button" onClick={() => { setModo(opt.value); setError(''); }}
-                style={{
-                  flex: 1, padding: '8px 10px', borderRadius: 6,
-                  border: modo === opt.value ? '2px solid #2563eb' : '1px solid #d8d4cc',
-                  background: modo === opt.value ? 'rgba(37, 99, 235, 0.05)' : '#efede8',
-                  cursor: 'pointer', fontSize: 12,
-                  fontWeight: modo === opt.value ? 600 : 500,
-                  color: modo === opt.value ? '#2563eb' : '#5c574f',
-                }}>
+              <button key={opt.value} type="button"
+                className={`ctm-mode-btn${modo === opt.value ? ' active' : ''}`}
+                onClick={() => { setModo(opt.value); setError(''); }}>
                 {opt.label}
               </button>
             ))}
           </div>
 
           {error && (
-            <div style={{ padding: '10px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 6, marginBottom: 14, fontSize: 12, color: '#dc2626' }}>
-              {error}
-            </div>
+            <div className="ct-alert-error ctm-alert" role="alert">{error}</div>
           )}
 
           {modo === 'cliente' ? (
-            <div style={{ position: 'relative' }}>
-              <label style={{ display: 'block', fontSize: 9, fontWeight: 700, color: '#7c7670', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.07em', fontFamily: "'JetBrains Mono', monospace" }}>
-                Cliente
-              </label>
-              <div style={{ position: 'relative' }}>
+            <div className="ctm-rel">
+              <label className="ctm-label">Cliente</label>
+              <div className="ctm-rel">
                 <input
                   type="text"
+                  autoFocus
                   value={clienteQuery}
                   onChange={e => { setClienteQuery(e.target.value); setClienteSelected(null); setClienteOpen(true); setError(''); }}
                   onFocus={() => setClienteOpen(true)}
                   placeholder="Buscar por nombre, razón social o email…"
-                  style={inputStyle}
+                  className="ctm-control"
                 />
                 {clienteSelected && (
-                  <button type="button" onClick={clearCliente} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', cursor: 'pointer', padding: 2 }}>
-                    <Svg paths={['M18 6 6 18', 'M6 6l12 12']} color="#b0aaa3" size={12} />
+                  <button type="button" className="ctm-clear" title="Quitar cliente" aria-label="Quitar cliente" onClick={clearCliente}>
+                    <Svg paths={['M18 6 6 18', 'M6 6l12 12']} color="var(--text-muted)" size={12} />
                   </button>
                 )}
               </div>
               {clienteOpen && !clienteSelected && clienteQuery.trim().length >= 2 && (
-                <div style={{ position: 'absolute', zIndex: 60, top: '100%', left: 0, right: 0, marginTop: 4, background: '#fff', border: '1px solid #d8d4cc', borderRadius: 6, boxShadow: '0 8px 16px rgba(0,0,0,0.1)', maxHeight: 200, overflowY: 'auto' }}>
-                  {clienteLoading && <div style={{ padding: 10, fontSize: 11, color: '#7c7670' }}>Buscando…</div>}
+                <div className="ctm-dropdown">
+                  {clienteLoading && <div className="ctm-dropdown-note">Buscando…</div>}
                   {!clienteLoading && clienteResults.length === 0 && (
-                    <div style={{ padding: 10, fontSize: 11, color: '#7c7670' }}>Sin resultados</div>
+                    <div className="ctm-dropdown-note">Sin resultados</div>
                   )}
                   {!clienteLoading && clienteResults.map(c => (
-                    <div key={c.id} onClick={() => pickCliente(c)}
-                      style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 12, color: '#3b3631', borderBottom: '1px solid #efede8' }}
-                      onMouseEnter={e => e.currentTarget.style.background = '#efede8'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                      <div style={{ fontWeight: 600 }}>{c.nombre_comercial || c.razon_social}</div>
-                      <div style={{ fontSize: 10, color: '#7c7670' }}>{c.email} · {c.id_fiscal} · {c.contratos_count} contrato(s)</div>
+                    <div key={c.id} className="ctm-dropdown-item"
+                      title={c.nombre_comercial || c.razon_social}
+                      onClick={() => pickCliente(c)}>
+                      <div className="ctm-dropdown-item-name">{c.nombre_comercial || c.razon_social}</div>
+                      <div className="ctm-dropdown-item-meta">{c.email} · {c.id_fiscal} · {c.contratos_count} contrato(s)</div>
                     </div>
                   ))}
                 </div>
               )}
-              <p style={{ margin: '8px 0 0', fontSize: 11, color: '#b0aaa3' }}>
+              <p className="ctm-hint">
                 Se exportan todos los contratos vinculados al cliente elegido.
               </p>
             </div>
           ) : (
             <div>
-              <label style={{ display: 'block', fontSize: 9, fontWeight: 700, color: '#7c7670', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.07em', fontFamily: "'JetBrains Mono', monospace" }}>
-                Nombre o código del contrato
-              </label>
+              <label className="ctm-label">Nombre o código del contrato</label>
               <input
                 type="text"
+                autoFocus
                 value={codigoQuery}
                 onChange={e => { setCodigoQuery(e.target.value); setError(''); }}
                 placeholder="ej: CTR-000041, Recurrente, Soft1…"
-                style={inputStyle}
+                className="ctm-control"
               />
-              <p style={{ margin: '8px 0 0', fontSize: 11, color: '#b0aaa3' }}>
+              <p className="ctm-hint">
                 Busca por la nomenclatura estandarizada del contrato (CTR-XXXXXX) o por su nombre (software licenciado / tipo de contrato).
               </p>
             </div>
           )}
         </div>
 
-        <div style={{ padding: '16px 24px', borderTop: '1px solid #d8d4cc', display: 'flex', gap: 8 }}>
-          <button onClick={() => handleExport('csv')} disabled={loading}
-            style={{ flex: 1, padding: '10px', borderRadius: 5, border: '1px solid #d8d4cc', background: '#efede8', color: '#3b3631', fontSize: 12, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
+        <div className="ctm-footer">
+          <button className="ct-btn-secondary ctm-grow" onClick={() => handleExport('csv')} disabled={loading}>
             {loading ? 'Exportando…' : 'CSV'}
           </button>
-          <button onClick={() => handleExport('excel')} disabled={loading}
-            style={{ flex: 1, padding: '10px', borderRadius: 5, border: 'none', background: loading ? '#c9c4bc' : '#2563eb', color: '#fff', fontSize: 12, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
+          <button className="ct-btn-primary ctm-grow" onClick={() => handleExport('excel')} disabled={loading}>
             {loading ? 'Exportando…' : 'Excel'}
           </button>
         </div>

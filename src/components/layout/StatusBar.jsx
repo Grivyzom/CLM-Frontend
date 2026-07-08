@@ -38,19 +38,16 @@ export default function StatusBar({ scrollContainerRef }) {
 
   // Scroll listener for top button
   useEffect(() => {
-    const container = scrollContainerRef?.current;
-    if (!container) return;
-
     const handleScroll = () => {
-      setShowTopBtn(container.scrollTop > 120);
+      setShowTopBtn(window.scrollY > 120);
     };
 
-    container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, [scrollContainerRef]);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const scrollToTop = () => {
-    scrollContainerRef?.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const getLatencyClass = (lat) => {
@@ -80,7 +77,7 @@ export default function StatusBar({ scrollContainerRef }) {
         </div>
 
         {/* Centro: contexto operativo */}
-        <div className="status-section" style={{ borderLeft: '1px solid #d8d4cc' }}>
+        <div className="status-section" style={{ borderLeft: '1px solid var(--border)' }}>
           <div className="status-item">
             <span className="status-label">TZ</span>
             <span className="status-val">UTC-4</span>
@@ -96,7 +93,7 @@ export default function StatusBar({ scrollContainerRef }) {
         </div>
 
         {/* Derecha: versión y entorno */}
-        <div className="status-section status-section-right" style={{ borderLeft: '1px solid #d8d4cc' }}>
+        <div className="status-section status-section-right" style={{ borderLeft: '1px solid var(--border)' }}>
           <div className="status-item">
             <span className="status-label">Build</span>
             <span className="status-val">v1.0.4-prod</span>
@@ -117,7 +114,7 @@ export default function StatusBar({ scrollContainerRef }) {
         }} 
         title="Volver al inicio"
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M18 15l-6-6-6 6"></path>
         </svg>
       </button>

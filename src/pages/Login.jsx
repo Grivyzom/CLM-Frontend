@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { apiLogin } from '../api';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import '../styles/Login.css';
 
 export default function Login() {
@@ -16,6 +18,41 @@ export default function Login() {
   const [showForgotInfo, setShowForgotInfo] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
+
+  const containerRef = useRef(null);
+
+  useGSAP(() => {
+    const tl = gsap.timeline();
+
+    tl.from('.login-header > div > *', {
+      y: -20,
+      opacity: 0,
+      duration: 0.6,
+      stagger: 0.1,
+      ease: 'power3.out',
+    })
+    .from('.login-header-date', {
+      x: 20,
+      opacity: 0,
+      duration: 0.6,
+      ease: 'power3.out',
+    }, '<0.2')
+    .from('.login-card', {
+      y: 40,
+      opacity: 0,
+      scale: 0.95,
+      duration: 0.8,
+      ease: 'power3.out',
+    }, '-=0.4')
+    .from('.login-card-icon, .login-card-badge, .login-card h2, .login-subtitle, .login-form > *', {
+      y: 15,
+      opacity: 0,
+      duration: 0.5,
+      stagger: 0.05,
+      ease: 'power2.out',
+      clearProps: 'all'
+    }, '-=0.4');
+  }, { scope: containerRef });
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -71,7 +108,7 @@ export default function Login() {
   };
 
   return (
-    <div className="login-container">
+    <div className="login-container" ref={containerRef}>
       <div className="login-header">
         <div>
           <p className="login-header-label">Enfoque Platform</p>
@@ -83,7 +120,7 @@ export default function Login() {
       <div className="login-body">
         <div className="login-card">
           <div className="login-card-icon">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5c574f" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <rect x="5" y="11" width="14" height="10" rx="2" />
               <path d="M8 11V7a4 4 0 0 1 8 0v4" />
             </svg>

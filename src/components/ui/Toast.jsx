@@ -3,10 +3,10 @@ import Svg from './Svg';
 
 export default function Toast({ message, type = 'info', onCancel }) {
   const CFG = {
-    info:      { bg: '#eff6ff', border: '#bfdbfe', color: '#1d4ed8' },
-    success:   { bg: '#f0fdf4', border: '#bbf7d0', color: '#15803d' },
-    error:     { bg: '#fef2f2', border: '#fecaca', color: '#dc2626' },
-    cancelled: { bg: '#f4f3ef', border: '#d8d4cc', color: '#5c574f' },
+    info:      { bg: 'var(--primary-bg)', border: 'var(--primary-border)', color: 'var(--primary-hover)' },
+    success:   { bg: 'var(--success-bg)', border: 'var(--success-border)', color: 'var(--success-deep)' },
+    error:     { bg: 'var(--danger-bg)', border: 'var(--danger-border)', color: 'var(--danger)' },
+    cancelled: { bg: 'var(--bg-page)', border: 'var(--border)', color: 'var(--text-secondary)' },
   };
   const c = CFG[type] || CFG.info;
   const cancelable = type === 'info' && !!onCancel;

@@ -36,11 +36,27 @@ async function request(path, options = {}) {
 
   if (!res.ok) {
     let errMsg = `HTTP ${res.status}`;
+    let fields = null;
     try {
       const err = await res.json();
-      errMsg = err.error || err.detail || errMsg;
+      if (err && typeof err === 'object') {
+        errMsg = err.error || err.detail || errMsg;
+        // Errores de validación DRF por campo: { campo: ['msg'] | 'msg', ... }
+        fields = {};
+        for (const [k, v] of Object.entries(err)) {
+          if (k === 'error' || k === 'detail') continue;
+          fields[k] = Array.isArray(v) ? v.join(' ') : String(v);
+        }
+        if (Object.keys(fields).length === 0) fields = null;
+        if (!err.error && !err.detail && fields) {
+          errMsg = Object.entries(fields).map(([k, v]) => `${k}: ${v}`).join(' · ');
+        }
+      }
     } catch (_) {}
-    throw new Error(errMsg);
+    const error = new Error(errMsg);
+    error.status = res.status;
+    if (fields) error.fields = fields;
+    throw error;
   }
 
   // 204 No Content — sin cuerpo
@@ -66,6 +82,15 @@ export async function apiLogin({ username, password, otp_token, remember }) {
  */
 export async function apiLogout() {
   return request('/auth/logout/', { method: 'POST' });
+}
+
+/**
+ * Verifica si hay una sesión Django activa.
+ * @returns {{ username: string, is_staff: boolean }}
+ * @throws {Error} con status 401 si no hay sesión (o expiró).
+ */
+export async function apiMe() {
+  return request('/auth/me/');
 }
 
 // ─── Clientes ─────────────────────────────────────────────────────────────────
@@ -240,6 +265,7 @@ export async function importClientesExcel(file) {
  * @param {string} [params.search]   - Texto libre (ID, cliente, software)
  * @param {string} [params.etapa]    - Valor de EtapaContrato o 'Todos'
  * @param {number} [params.software] - ID del software
+ * @param {number} [params.cliente]  - ID del cliente (todos sus contratos)
  * @param {number} [params.page]
  * @param {number} [params.page_size]
  */
@@ -248,6 +274,7 @@ export async function getContratos(params = {}) {
   if (params.search)                            qs.set('search', params.search);
   if (params.etapa && params.etapa !== 'Todos')  qs.set('etapa', params.etapa);
   if (params.software)                           qs.set('software', params.software);
+  if (params.cliente)                            qs.set('cliente', params.cliente);
   if (params.ordering)                           qs.set('ordering', params.ordering);
   if (params.page)                               qs.set('page', params.page);
   if (params.page_size)                          qs.set('page_size', params.page_size);
@@ -415,6 +442,16 @@ export async function getDashboard() {
   return request('/dashboard/');
 }
 
+// ─── Analytics ────────────────────────────────────────────────────────────────
+
+/**
+ * Métricas históricas y de composición de cartera para la vista /analytics.
+ * @returns {{ kpis, flujo_contratos, vencimientos, por_software, top_clientes, por_tipo, por_sla }}
+ */
+export async function getAnalytics() {
+  return request('/analytics/');
+}
+
 // ─── Plantillas ───────────────────────────────────────────────────────────────
 
 /**
@@ -423,6 +460,8 @@ export async function getDashboard() {
  * @param {Object} params
  * @param {string}  [params.tipo_contrato]  - 'RECURRENTE' | 'PERPETUO' | 'PRO_BONO' | 'INTERNO'
  * @param {number}  [params.software]       - ID del software (filtra plantillas de ese producto)
+ * @param {boolean} [params.incluir_globales] - Junto a `software`, incluye también las plantillas
+ *                                              globales (sin software), que el motor usa como fallback
  * @param {boolean} [params.activa]         - Filtrar por activa/inactiva
  * @param {string}  [params.modo_origen]    - 'archivo' | 'clausulas'
  *
@@ -433,6 +472,7 @@ export async function getPlantillas(params = {}) {
   const qs = new URLSearchParams();
   if (params.tipo_contrato) qs.set('tipo_contrato', params.tipo_contrato);
   if (params.software)      qs.set('software',      params.software);
+  if (params.incluir_globales) qs.set('incluir_globales', 'true');
   if (params.activa !== undefined) qs.set('activa', params.activa ? 'true' : 'false');
   if (params.modo_origen)   qs.set('modo_origen',   params.modo_origen);
   const query = qs.toString() ? `?${qs.toString()}` : '';
@@ -468,6 +508,19 @@ export async function togglePlantillaActiva(id, activa) {
   return request(`/plantillas/plantillas/${id}/`, {
     method: 'PATCH',
     body: JSON.stringify({ activa }),
+  });
+}
+
+/**
+ * Actualiza una plantilla existente.
+ * @param {number} id
+ * @param {FormData|Object} formDataOrData
+ */
+export async function updatePlantilla(id, formDataOrData) {
+  const isFormData = formDataOrData instanceof FormData;
+  return request(`/plantillas/plantillas/${id}/`, {
+    method: 'PATCH',
+    body: isFormData ? formDataOrData : JSON.stringify(formDataOrData),
   });
 }
 
@@ -575,4 +628,15 @@ export async function deleteProducto(id) {
     method: 'DELETE',
   });
 }
+
+// ─── Legal / Auditoria ─────────────────────────────────────────────────────────
+
+/**
+ * Obtiene las métricas de compliance y logs de auditoría para la vista de Auditoría Legal.
+ * @returns {{ kpis, riskDistribution, criticalContracts, auditLogs }}
+ */
+export async function getAuditoria() {
+  return request('/legal/auditoria/');
+}
+
 
