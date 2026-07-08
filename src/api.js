@@ -35,6 +35,9 @@ async function request(path, options = {}) {
   });
 
   if (!res.ok) {
+    if (res.status === 401 || res.status === 403) {
+      window.dispatchEvent(new CustomEvent('auth:logout'));
+    }
     let errMsg = `HTTP ${res.status}`;
     let fields = null;
     try {

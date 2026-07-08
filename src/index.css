@@ -429,3 +429,8 @@ button:focus-visible {
   font-size: 1rem;
   margin-bottom: 2rem;
 }
+
+/* Fallback de Suspense durante la carga de un chunk de ruta */
+.route-fallback {
+  min-height: 60vh;
+}

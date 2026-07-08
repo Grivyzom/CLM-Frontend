@@ -82,7 +82,7 @@ function VencimientosTooltip({ active, payload, label }) {
 
 // ── Exportación CSV ──────────────────────────────────────────────────────────
 
-function downloadAnalyticsCSV({ kpis, salud_cartera, por_software, top_clientes, por_tipo, por_sla }) {
+function downloadAnalyticsCSV({ kpis, salud_cartera, reincidencia_perdonazos, por_software, top_clientes, por_tipo, por_sla }) {
   const rows = [
     ['Sección', 'Concepto', 'Monto', 'Detalle'],
     ['KPI', 'Valor cartera activa', fmtCLP(kpis.valor_cartera.value), `${kpis.valor_cartera.contratos} contratos`],
@@ -93,6 +93,7 @@ function downloadAnalyticsCSV({ kpis, salud_cartera, por_software, top_clientes,
     ['Salud cobranza', '% cartera en riesgo', `${salud_cartera.pct_riesgo}%`, fmtCLP(salud_cartera.monto_riesgo)],
     ...salud_cartera.por_estado.map((e) => ['Salud cobranza', e.label, fmtCLP(e.monto), `${e.count} contrato(s)`]),
     ...salud_cartera.contratos_riesgo.map((c) => ['Contrato en riesgo', `${c.cliente} — ${c.software}`, fmtCLP(c.monto), `${c.estado_label} · ${c.dias_vencido} días vencido`]),
+    ...reincidencia_perdonazos.top_reincidentes.map((r) => ['Perdonazo reincidente', r.cliente, '', `${r.count} perdonazo(s) · ${r.dias_totales} días · ${r.contratos} contrato(s)`]),
     ...por_software.map((s) => ['Software', s.nombre, fmtCLP(s.monto), `${s.count} contrato(s)`]),
     ...top_clientes.map((c) => ['Cliente', c.nombre, fmtCLP(c.monto), `${c.count} contrato(s)`]),
     ...por_tipo.map((t) => ['Tipo contrato', t.label, fmtCLP(t.monto), `${t.count} contrato(s)`]),
@@ -148,12 +149,43 @@ function HBarList({ items, maxValue, color, colorByIndex }) {
   );
 }
 
+// ── Reincidencia de perdonazos (riesgo de churn) ─────────────────────────────
+
+function PerdonazosList({ items }) {
+  const maxDias = Math.max(1, ...items.map((i) => i.dias_totales));
+  return (
+    <div className="db-hbar-list">
+      {items.map((it) => (
+        <div
+          key={it.cliente_id}
+          className="db-hbar-row an-hbar-row"
+          title={`${it.count} perdonazo(s) · ${it.dias_totales} días extendidos · ${it.contratos} contrato(s)`}
+        >
+          <span className="db-hbar-label">{it.cliente}</span>
+          <div className="db-hbar-track">
+            <div
+              className="db-hbar-fill"
+              style={{
+                width: `${(it.dias_totales / maxDias) * 100}%`,
+                backgroundColor: it.reincidente ? 'var(--danger)' : 'var(--warning)',
+              }}
+            ></div>
+          </div>
+          <span className="db-hbar-value">{it.count}</span>
+          <span className="db-hbar-amount">{it.dias_totales}d</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Página ───────────────────────────────────────────────────────────────────
 
 export default function Analytics() {
   const navigate = useNavigate();
   const {
-    kpis, salud_cartera, flujo_contratos, vencimientos, por_software, top_clientes, por_tipo, por_sla,
+    kpis, salud_cartera, reincidencia_perdonazos,
+    flujo_contratos, vencimientos, por_software, top_clientes, por_tipo, por_sla,
     loading, error, refetch,
   } = useAnalytics();
 
@@ -194,7 +226,7 @@ export default function Analytics() {
   const maxClientes = Math.max(1, ...top_clientes.map((c) => c.monto));
   const maxTipo = Math.max(1, ...por_tipo.map((t) => t.monto));
   const maxSla = Math.max(1, ...por_sla.map((s) => s.monto));
-  const datos = { kpis, salud_cartera, por_software, top_clientes, por_tipo, por_sla };
+  const datos = { kpis, salud_cartera, reincidencia_perdonazos, por_software, top_clientes, por_tipo, por_sla };
 
   return (
     <div className="db-container">
@@ -362,6 +394,16 @@ export default function Analytics() {
                     <div className="db-empty"><p>Sin contratos activos registrados.</p></div>
                   ) : (
                     <HBarList items={top_clientes} maxValue={maxClientes} color="var(--violet-bright)" />
+                  )}
+                </div>
+
+                <div className="db-panel-card">
+                  <p className="db-section-label">Riesgo</p>
+                  <h3 className="db-section-title">Clientes con perdonazos recurrentes ({reincidencia_perdonazos.ventana_meses}m)</h3>
+                  {reincidencia_perdonazos.top_reincidentes.length === 0 ? (
+                    <div className="db-empty"><p>Sin perdonazos otorgados en la ventana analizada.</p></div>
+                  ) : (
+                    <PerdonazosList items={reincidencia_perdonazos.top_reincidentes} />
                   )}
                 </div>
               </div>

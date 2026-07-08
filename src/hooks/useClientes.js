@@ -29,6 +29,10 @@ export function useClientes() {
   // Cache para los resultados ya visitados
   const cache = useRef({});
 
+  // Guard contra race conditions: si el usuario cambia filtros rápido, una
+  // respuesta lenta y vieja no debe pisar a la más reciente.
+  const requestSeq = useRef(0);
+
   // Debounce para búsqueda de texto
   const searchTimerRef = useRef(null);
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -63,6 +67,7 @@ export function useClientes() {
       return;
     }
 
+    const seq = ++requestSeq.current;
     setLoading(true);
     setError(null);
     try {
@@ -77,11 +82,13 @@ export function useClientes() {
         page_size: PAGE_SIZE,
       });
       cache.current[cacheKey] = result;
+      if (seq !== requestSeq.current) return;
       setData(result);
     } catch (err) {
+      if (seq !== requestSeq.current) return;
       setError(err.message || 'Error al cargar clientes');
     } finally {
-      setLoading(false);
+      if (seq === requestSeq.current) setLoading(false);
     }
   }, [debouncedSearch, filters.estado, filters.tipo, filters.fecha_desde, filters.fecha_hasta, filters.ordering, page]);
 

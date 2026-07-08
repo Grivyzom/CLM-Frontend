@@ -1,21 +1,28 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/layout/Layout';
 import { AuthProvider } from './contexts/AuthContext';
 import { ConfirmProvider } from './contexts/ConfirmContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
-import Dashboard from './pages/Dashboard';
-import ContractDetail from './pages/ContractDetail';
-import ContractEditor from './pages/ContractEditor';
-import Contratos from './pages/Contratos';
-import Clientes from './pages/Clientes';
-import Catalogo from './pages/Catalogo';
-import Ajustes from './pages/Ajustes';
-import Faq from './pages/Faq';
-import AuditoriaLegal from './pages/AuditoriaLegal';
-import Analytics from './pages/Analytics';
 
-import Login from './pages/Login';
+// Code splitting por ruta: cada página se descarga solo cuando se navega a ella.
+// recharts (Dashboard/Analytics/Auditoría) y Catalogo quedan fuera del bundle inicial.
+const Dashboard      = lazy(() => import('./pages/Dashboard'));
+const ContractDetail = lazy(() => import('./pages/ContractDetail'));
+const ContractEditor = lazy(() => import('./pages/ContractEditor'));
+const Contratos      = lazy(() => import('./pages/Contratos'));
+const Clientes       = lazy(() => import('./pages/Clientes'));
+const Catalogo       = lazy(() => import('./pages/Catalogo'));
+const Ajustes        = lazy(() => import('./pages/Ajustes'));
+const Faq            = lazy(() => import('./pages/Faq'));
+const AuditoriaLegal = lazy(() => import('./pages/AuditoriaLegal'));
+const Analytics      = lazy(() => import('./pages/Analytics'));
+const Login          = lazy(() => import('./pages/Login'));
+
+function RouteFallback() {
+  return <div className="route-fallback" aria-busy="true" />;
+}
 
 function App() {
   return (
@@ -23,23 +30,30 @@ function App() {
       <ThemeProvider>
       <AuthProvider>
         <ConfirmProvider>
-          <Layout>
+          <Suspense fallback={<RouteFallback />}>
             <Routes>
               <Route path="/login" element={<Login />} />
-            <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
-            <Route path="/catalogo" element={<ProtectedRoute><Catalogo /></ProtectedRoute>} />
-            <Route path="/ajustes" element={<ProtectedRoute><Ajustes /></ProtectedRoute>} />
-            <Route path="/faq" element={<ProtectedRoute><Faq /></ProtectedRoute>} />
-            <Route path="/auditoria" element={<ProtectedRoute><AuditoriaLegal /></ProtectedRoute>} />
-            <Route path="/contratos" element={<ProtectedRoute><Contratos /></ProtectedRoute>} />
-            <Route path="/contratos/new" element={<ProtectedRoute><ContractEditor /></ProtectedRoute>} />
-            <Route path="/contratos/:id" element={<ProtectedRoute><ContractDetail /></ProtectedRoute>} />
-            <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
-
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-          </Layout>
+              <Route path="/*" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Routes>
+                      <Route path="/" element={<Dashboard />} />
+                      <Route path="/clientes" element={<Clientes />} />
+                      <Route path="/catalogo" element={<Catalogo />} />
+                      <Route path="/ajustes" element={<Ajustes />} />
+                      <Route path="/faq" element={<Faq />} />
+                      <Route path="/auditoria" element={<AuditoriaLegal />} />
+                      <Route path="/contratos" element={<Contratos />} />
+                      <Route path="/contratos/new" element={<ContractEditor />} />
+                      <Route path="/contratos/:id" element={<ContractDetail />} />
+                      <Route path="/analytics" element={<Analytics />} />
+                      <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                  </Layout>
+                </ProtectedRoute>
+              } />
+            </Routes>
+          </Suspense>
         </ConfirmProvider>
       </AuthProvider>
       </ThemeProvider>

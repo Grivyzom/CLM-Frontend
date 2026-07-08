@@ -10,6 +10,7 @@ const EMPTY = {
     mix_recurrente: { value: 0 },
   },
   salud_cartera: { por_estado: [], pct_riesgo: 0, monto_riesgo: 0, contratos_riesgo: [] },
+  reincidencia_perdonazos: { ventana_meses: 12, total_perdonazos: 0, clientes_afectados: 0, top_reincidentes: [] },
   flujo_contratos: [],
   vencimientos: [],
   por_software: [],
@@ -45,6 +46,7 @@ export function useAnalytics() {
         ...result,
         kpis: { ...EMPTY.kpis, ...(result.kpis || {}) },
         salud_cartera: { ...EMPTY.salud_cartera, ...(result.salud_cartera || {}) },
+        reincidencia_perdonazos: { ...EMPTY.reincidencia_perdonazos, ...(result.reincidencia_perdonazos || {}) },
       };
       cachedAnalyticsData = newData;
       setData(newData);

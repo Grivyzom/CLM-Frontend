@@ -126,113 +126,103 @@ export default function Dashboard() {
 
   const dashboardRef = useRef(null);
 
-  // Coordinate entrance animations and text reveal
+  // La entrada corre en dos fases para que la vista aparezca al instante del click:
+  // fase 1 anima la estructura (existe desde el mount, con placeholders '—') sin
+  // esperar el fetch; fase 2 anima solo el contenido dependiente de datos.
+  const structureAnimatedRef = useRef(false);
+
   useGSAP(() => {
-    if (loading) return;
-
-    // Skip animation if it has already played in this session
     if (sessionStorage.getItem('dashboard_animated') === 'true') return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-    const topbar = dashboardRef.current?.querySelector('.db-topbar');
-    const kpiItems = dashboardRef.current?.querySelectorAll('.db-kpi-item');
-    const kpiValues = dashboardRef.current?.querySelectorAll('.db-kpi-value-compact');
-    const docWarning = dashboardRef.current?.querySelector('.db-doc-warning');
-    const panelCards = dashboardRef.current?.querySelectorAll('.db-table-card, .db-panel-card');
-    
-    // Select the section headers for Text Reveal
-    const sectionLabels = dashboardRef.current?.querySelectorAll('.db-section-label');
-    const sectionTitles = dashboardRef.current?.querySelectorAll('.db-table-title, .db-section-title');
+    const root = dashboardRef.current;
+    if (!root) return;
 
-    const tableRows = dashboardRef.current?.querySelectorAll('tr.db-row-link');
-    const hbarRows = dashboardRef.current?.querySelectorAll('.db-hbar-row');
-    const activityItems = dashboardRef.current?.querySelectorAll('.db-activity-item');
+    if (!structureAnimatedRef.current) {
+      structureAnimatedRef.current = true;
 
-    gsap.killTweensOf([topbar, kpiItems, kpiValues, docWarning, panelCards, sectionLabels, sectionTitles, tableRows, hbarRows, activityItems]);
+      const topbar = root.querySelector('.db-topbar');
+      const kpiItems = root.querySelectorAll('.db-kpi-item');
+      const panelCards = root.querySelectorAll('.db-table-card, .db-panel-card');
+      const sectionLabels = root.querySelectorAll('.db-section-label');
+      const sectionTitles = root.querySelectorAll('.db-table-title, .db-section-title');
 
-    // Initial hidden states (eliminates FOUC synchronously)
-    if (topbar) gsap.set(topbar, { y: -20, opacity: 0 });
-    if (kpiItems) gsap.set(kpiItems, { y: 20, opacity: 0, scale: 0.95 });
-    if (kpiValues) gsap.set(kpiValues, { y: 15, opacity: 0 });
-    if (docWarning) gsap.set(docWarning, { y: 10, opacity: 0 });
-    if (panelCards) gsap.set(panelCards, { y: 25, opacity: 0 });
-    if (sectionLabels) gsap.set(sectionLabels, { y: 10, opacity: 0 });
-    if (sectionTitles) gsap.set(sectionTitles, { y: 15, opacity: 0 });
-    if (tableRows) gsap.set(tableRows, { x: -10, opacity: 0 });
-    if (hbarRows) gsap.set(hbarRows, { x: 15, opacity: 0 });
-    if (activityItems) gsap.set(activityItems, { x: -15, opacity: 0 });
+      const tl = gsap.timeline();
 
-    const tl = gsap.timeline({
-      onComplete: () => {
-        sessionStorage.setItem('dashboard_animated', 'true');
+      if (topbar) {
+        tl.fromTo(topbar, { y: -14, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.3, ease: 'power3.out', clearProps: 'transform,opacity' });
       }
-    });
+      if (kpiItems.length > 0) {
+        tl.fromTo(kpiItems, { y: 14, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.32, stagger: 0.03, ease: 'power3.out', clearProps: 'transform,opacity' }, '-=0.22');
+      }
+      if (panelCards.length > 0) {
+        tl.fromTo(panelCards, { y: 16, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.35, stagger: 0.04, ease: 'power3.out', clearProps: 'transform,opacity' }, '-=0.25');
+      }
+      if (sectionLabels.length > 0) {
+        tl.fromTo(sectionLabels, { y: 8, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.3, stagger: 0.03, ease: 'power2.out', clearProps: 'transform,opacity' }, '-=0.3');
+      }
+      if (sectionTitles.length > 0) {
+        tl.fromTo(sectionTitles, { y: 10, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.3, stagger: 0.03, ease: 'power2.out', clearProps: 'transform,opacity' }, '-=0.28');
+      }
 
-    if (topbar) {
-      tl.to(topbar, { y: 0, opacity: 1, duration: 0.5, ease: 'power3.out', clearProps: 'transform,opacity' });
-    }
-
-    if (kpiItems && kpiItems.length > 0) {
-      tl.to(kpiItems, {
-        y: 0, opacity: 1, scale: 1, duration: 0.5, stagger: 0.06, ease: 'back.out(1.2)', clearProps: 'transform,opacity,scale'
-      }, '-=0.3');
-    }
-
-    // Text Reveal for KPI values
-    if (kpiValues && kpiValues.length > 0) {
-      tl.to(kpiValues, {
-        y: 0, opacity: 1, duration: 0.45, stagger: 0.05, ease: 'power3.out', clearProps: 'transform,opacity'
-      }, '-=0.35');
-    }
-
-    if (docWarning) {
-      tl.to(docWarning, { y: 0, opacity: 1, duration: 0.4, ease: 'power2.out', clearProps: 'transform,opacity' }, '-=0.2');
-    }
-
-    if (panelCards && panelCards.length > 0) {
-      tl.to(panelCards, {
-        y: 0, opacity: 1, duration: 0.6, stagger: 0.08, ease: 'power3.out', clearProps: 'transform,opacity'
-      }, '-=0.3');
-    }
-
-    // Text Reveal for Panel Section Headers
-    if (sectionLabels && sectionLabels.length > 0) {
-      tl.to(sectionLabels, {
-        y: 0, opacity: 1, duration: 0.4, stagger: 0.05, ease: 'power2.out', clearProps: 'transform,opacity'
-      }, '-=0.4');
-    }
-
-    if (sectionTitles && sectionTitles.length > 0) {
-      tl.to(sectionTitles, {
-        y: 0, opacity: 1, duration: 0.5, stagger: 0.05, ease: 'power3.out', clearProps: 'transform,opacity'
-      }, '-=0.35');
-    }
-
-    if (tableRows && tableRows.length > 0) {
-      tl.to(tableRows, { x: 0, opacity: 1, duration: 0.4, stagger: 0.04, ease: 'power2.out', clearProps: 'transform,opacity' }, '-=0.4');
-    }
-    if (hbarRows && hbarRows.length > 0) {
-      tl.to(hbarRows, { x: 0, opacity: 1, duration: 0.4, stagger: 0.04, ease: 'power2.out', clearProps: 'transform,opacity' }, '-=0.3');
-    }
-    if (activityItems && activityItems.length > 0) {
-      tl.to(activityItems, { x: 0, opacity: 1, duration: 0.4, stagger: 0.04, ease: 'power2.out', clearProps: 'transform,opacity' }, '-=0.3');
-    }
-
-    // Auto-draw SVG icons (runs parallel)
-    const paths = dashboardRef.current?.querySelectorAll(
-      'svg.lucide path, svg.lucide line, svg.lucide polyline, svg.lucide circle, svg.lucide rect'
-    );
-    if (paths) {
+      // Auto-draw de iconos SVG: se leen todos los getTotalLength() antes de
+      // escribir estilos para no alternar lectura/escritura de layout.
+      const paths = root.querySelectorAll(
+        'svg.lucide path, svg.lucide line, svg.lucide polyline, svg.lucide circle, svg.lucide rect'
+      );
+      const measured = [];
       paths.forEach(path => {
         try {
           const length = path.getTotalLength();
-          if (length > 0) {
-            gsap.fromTo(path,
-              { strokeDasharray: length, strokeDashoffset: length },
-              { strokeDashoffset: 0, duration: 0.8, ease: 'power2.inOut', clearProps: 'strokeDasharray,strokeDashoffset' }
-            );
-          }
+          if (length > 0) measured.push([path, length]);
         } catch (e) {}
       });
+      measured.forEach(([path, length]) => {
+        gsap.fromTo(path,
+          { strokeDasharray: length, strokeDashoffset: length },
+          { strokeDashoffset: 0, duration: 0.6, ease: 'power2.inOut', clearProps: 'strokeDasharray,strokeDashoffset' }
+        );
+      });
+    }
+
+    if (!loading) {
+      const kpiValues = root.querySelectorAll('.db-kpi-value-compact');
+      const docWarning = root.querySelector('.db-doc-warning');
+      const tableRows = root.querySelectorAll('tr.db-row-link');
+      const hbarRows = root.querySelectorAll('.db-hbar-row');
+      const activityItems = root.querySelectorAll('.db-activity-item');
+
+      const tl = gsap.timeline({
+        onComplete: () => {
+          sessionStorage.setItem('dashboard_animated', 'true');
+        }
+      });
+
+      if (kpiValues.length > 0) {
+        tl.fromTo(kpiValues, { y: 10, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.3, stagger: 0.03, ease: 'power3.out', clearProps: 'transform,opacity' });
+      }
+      if (docWarning) {
+        tl.fromTo(docWarning, { y: 8, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.28, ease: 'power2.out', clearProps: 'transform,opacity' }, '-=0.22');
+      }
+      if (tableRows.length > 0) {
+        tl.fromTo(tableRows, { x: -8, opacity: 0 },
+          { x: 0, opacity: 1, duration: 0.28, stagger: 0.025, ease: 'power2.out', clearProps: 'transform,opacity' }, '-=0.2');
+      }
+      if (hbarRows.length > 0) {
+        tl.fromTo(hbarRows, { x: 10, opacity: 0 },
+          { x: 0, opacity: 1, duration: 0.28, stagger: 0.025, ease: 'power2.out', clearProps: 'transform,opacity' }, '-=0.24');
+      }
+      if (activityItems.length > 0) {
+        tl.fromTo(activityItems, { x: -10, opacity: 0 },
+          { x: 0, opacity: 1, duration: 0.28, stagger: 0.025, ease: 'power2.out', clearProps: 'transform,opacity' }, '-=0.24');
+      }
     }
   }, { dependencies: [loading], scope: dashboardRef });
 

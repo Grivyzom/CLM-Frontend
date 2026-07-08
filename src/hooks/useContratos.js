@@ -32,6 +32,10 @@ export function useContratos({ pageSize = DEFAULT_PAGE_SIZE } = {}) {
 
   const cache = useRef({});
 
+  // Guard contra race conditions: si el usuario cambia filtros rápido, una
+  // respuesta lenta y vieja no debe pisar a la más reciente.
+  const requestSeq = useRef(0);
+
   const searchTimerRef = useRef(null);
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
@@ -62,6 +66,7 @@ export function useContratos({ pageSize = DEFAULT_PAGE_SIZE } = {}) {
       return;
     }
 
+    const seq = ++requestSeq.current;
     setLoading(true);
     setError(null);
     try {
@@ -74,11 +79,13 @@ export function useContratos({ pageSize = DEFAULT_PAGE_SIZE } = {}) {
         page_size: pageSize,
       });
       cache.current[cacheKey] = result;
+      if (seq !== requestSeq.current) return;
       setData(result);
     } catch (err) {
+      if (seq !== requestSeq.current) return;
       setError(err.message || 'Error al cargar contratos');
     } finally {
-      setLoading(false);
+      if (seq === requestSeq.current) setLoading(false);
     }
   }, [debouncedSearch, filters.etapa, filters.software, filters.ordering, page, pageSize]);
 

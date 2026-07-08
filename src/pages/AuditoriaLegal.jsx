@@ -109,100 +109,78 @@ export default function AuditoriaLegal() {
     fetchData();
   }, []);
 
-  // Entrance and Stagger Animations
+  // Entrada en dos fases: la estructura (topbar, stat cards, paneles) existe
+  // desde el mount, así que se anima de inmediato sin esperar el fetch; los
+  // valores y la actividad se animan aparte cuando llegan los datos.
+  const structureAnimatedRef = useRef(false);
+
   useGSAP(() => {
-    if (loading) return;
-    
-    const topbar = pageRef.current?.querySelector('.al-topbar');
-    const statCards = pageRef.current?.querySelectorAll('.al-stat-card');
-    const kpiValues = pageRef.current?.querySelectorAll('.al-stat-value');
-    const panels = pageRef.current?.querySelectorAll('.al-panel-card');
-    const activityItems = pageRef.current?.querySelectorAll('.al-activity-item');
+    if (sessionStorage.getItem('auditoria_animated') === 'true') return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-    if (!topbar || !statCards || statCards.length === 0) return;
+    const root = pageRef.current;
+    if (!root) return;
 
-    gsap.killTweensOf([topbar, statCards, kpiValues, panels, activityItems]);
+    if (!structureAnimatedRef.current) {
+      structureAnimatedRef.current = true;
 
-    // Set initial invisible states to prevent FOUC synchronously
-    gsap.set(topbar, { y: -20, opacity: 0 });
-    gsap.set(statCards, { y: 20, opacity: 0, scale: 0.95 });
-    gsap.set(kpiValues, { y: 10, opacity: 0 });
-    gsap.set(panels, { y: 25, opacity: 0 });
-    gsap.set(activityItems, { x: -15, opacity: 0 });
+      const topbar = root.querySelector('.al-topbar');
+      const statCards = root.querySelectorAll('.al-stat-card');
+      const panels = root.querySelectorAll('.al-panel-card');
 
-    const tl = gsap.timeline();
+      const tl = gsap.timeline();
 
-    // 1. Topbar drops in
-    tl.to(topbar, {
-      y: 0,
-      opacity: 1,
-      duration: 0.5,
-      ease: 'power3.out',
-      clearProps: 'transform,opacity'
-    });
+      if (topbar) {
+        tl.fromTo(topbar, { y: -14, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.3, ease: 'power3.out', clearProps: 'transform,opacity' });
+      }
+      if (statCards.length > 0) {
+        tl.fromTo(statCards, { y: 14, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.32, stagger: 0.04, ease: 'power3.out', clearProps: 'transform,opacity' }, '-=0.22');
+      }
+      if (panels.length > 0) {
+        tl.fromTo(panels, { y: 16, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.35, stagger: 0.05, ease: 'power3.out', clearProps: 'transform,opacity' }, '-=0.25');
+      }
 
-    // 2. Stat cards spring in
-    tl.to(statCards, {
-      y: 0,
-      opacity: 1,
-      scale: 1,
-      duration: 0.5,
-      stagger: 0.08,
-      ease: 'back.out(1.2)',
-      clearProps: 'transform,opacity,scale'
-    }, '-=0.2');
-
-    // 3. KPI values reveal (Text Reveal effect)
-    tl.to(kpiValues, {
-      y: 0,
-      opacity: 1,
-      duration: 0.4,
-      stagger: 0.05,
-      ease: 'power2.out',
-      clearProps: 'transform,opacity'
-    }, '-=0.35');
-
-    // 4. Main panels slide up
-    tl.to(panels, {
-      y: 0,
-      opacity: 1,
-      duration: 0.6,
-      stagger: 0.1,
-      ease: 'power3.out',
-      clearProps: 'transform,opacity'
-    }, '-=0.4');
-
-    // 5. Activity log items slide in from left
-    tl.to(activityItems, {
-      x: 0,
-      opacity: 1,
-      duration: 0.4,
-      stagger: 0.04,
-      ease: 'power2.out',
-      clearProps: 'transform,opacity'
-    }, '-=0.4');
-
-    // Auto-draw all SVG icons
-    const paths = pageRef.current?.querySelectorAll(
-      'svg.lucide path, svg.lucide polyline, svg.lucide line, svg.lucide circle, svg.lucide rect'
-    );
-    if (paths) {
+      // Auto-draw de iconos SVG: todas las lecturas de getTotalLength() antes
+      // de escribir estilos, para evitar layout thrashing en la entrada.
+      const paths = root.querySelectorAll(
+        'svg.lucide path, svg.lucide polyline, svg.lucide line, svg.lucide circle, svg.lucide rect'
+      );
+      const measured = [];
       paths.forEach(path => {
         try {
           const length = path.getTotalLength();
-          if (length > 0) {
-            gsap.fromTo(path,
-              { strokeDasharray: length, strokeDashoffset: length },
-              {
-                strokeDashoffset: 0,
-                duration: 0.8,
-                ease: 'power2.inOut',
-                clearProps: 'strokeDasharray,strokeDashoffset'
-              }
-            );
-          }
+          if (length > 0) measured.push([path, length]);
         } catch (e) {}
       });
+      measured.forEach(([path, length]) => {
+        gsap.fromTo(path,
+          { strokeDasharray: length, strokeDashoffset: length },
+          { strokeDashoffset: 0, duration: 0.6, ease: 'power2.inOut', clearProps: 'strokeDasharray,strokeDashoffset' }
+        );
+      });
+    }
+
+    if (!loading) {
+      const kpiValues = root.querySelectorAll('.al-stat-value');
+      const activityItems = root.querySelectorAll('.al-activity-item');
+
+      const tl = gsap.timeline({
+        onComplete: () => {
+          sessionStorage.setItem('auditoria_animated', 'true');
+        }
+      });
+
+      if (kpiValues.length > 0) {
+        tl.fromTo(kpiValues, { y: 8, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.3, stagger: 0.03, ease: 'power2.out', clearProps: 'transform,opacity' });
+      }
+      if (activityItems.length > 0) {
+        tl.fromTo(activityItems, { x: -10, opacity: 0 },
+          { x: 0, opacity: 1, duration: 0.28, stagger: 0.025, ease: 'power2.out', clearProps: 'transform,opacity' }, '-=0.22');
+      }
     }
   }, { dependencies: [loading], scope: pageRef });
 

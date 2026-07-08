@@ -7,10 +7,10 @@ import { useGSAP } from '@gsap/react';
 import '../styles/Login.css';
 
 export default function Login() {
-  const [username, setUsername] = useState('');
+  const [username, setUsername] = useState(() => localStorage.getItem('clm_saved_username') || '');
   const [password, setPassword] = useState('');
   const [otpToken, setOtpToken] = useState('');
-  const [remember, setRemember] = useState(false);
+  const [remember, setRemember] = useState(() => !!localStorage.getItem('clm_saved_username'));
   const [showPassword, setShowPassword] = useState(false);
   const [step, setStep] = useState(1);
   const [error, setError] = useState('');
@@ -61,6 +61,13 @@ export default function Login() {
 
     try {
       const data = await apiLogin({ username, password, remember });
+      
+      if (remember) {
+        localStorage.setItem('clm_saved_username', username);
+      } else {
+        localStorage.removeItem('clm_saved_username');
+      }
+
       // Login exitoso sin 2FA
       login({
         name: data.username || username,
@@ -94,6 +101,13 @@ export default function Login() {
 
     try {
       const data = await apiLogin({ username, password, otp_token: otpToken, remember });
+      
+      if (remember) {
+        localStorage.setItem('clm_saved_username', username);
+      } else {
+        localStorage.removeItem('clm_saved_username');
+      }
+
       login({
         name: data.username || username,
         role: 'Administrador',

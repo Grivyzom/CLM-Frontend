@@ -121,29 +121,34 @@ function DetailPanel({ clientId, onClose }) {
 
   const goNuevoContrato = () => navigate(`/contratos?nuevo=1&cliente=${clientId}`);
 
-  // Auto-draw SVG icons inside the detail panel on load
+  // Auto-draw SVG icons inside the detail panel on load. Lecturas de
+  // getTotalLength() en lote antes de escribir estilos (evita layout thrashing).
   useGSAP(() => {
     if (loading) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
     const paths = panelRef.current?.querySelectorAll(
       'svg.clm-svg path, svg.clm-svg circle, svg.clm-svg rect, svg.clm-svg line, svg.clm-svg polyline'
     );
     if (!paths || paths.length === 0) return;
 
+    const measured = [];
     paths.forEach(path => {
       try {
         const length = path.getTotalLength();
-        if (length > 0) {
-          gsap.fromTo(path,
-            { strokeDasharray: length, strokeDashoffset: length },
-            {
-              strokeDashoffset: 0,
-              duration: 0.8,
-              ease: 'power2.inOut',
-              clearProps: 'strokeDasharray,strokeDashoffset'
-            }
-          );
-        }
+        if (length > 0) measured.push([path, length]);
       } catch (e) {}
+    });
+    measured.forEach(([path, length]) => {
+      gsap.fromTo(path,
+        { strokeDasharray: length, strokeDashoffset: length },
+        {
+          strokeDashoffset: 0,
+          duration: 0.6,
+          ease: 'power2.inOut',
+          clearProps: 'strokeDasharray,strokeDashoffset'
+        }
+      );
     });
   }, { dependencies: [loading, detail, view], scope: panelRef });
 
@@ -556,28 +561,33 @@ export default function Clientes() {
 
   const clientesPageRef = useRef(null);
 
-  // Auto-draw SVG icons on page load or loading finished
+  // Auto-draw SVG icons on page load or loading finished. Lecturas de
+  // getTotalLength() en lote antes de escribir estilos (evita layout thrashing).
   useGSAP(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
     const paths = clientesPageRef.current?.querySelectorAll(
       'svg.clm-svg path, svg.clm-svg circle, svg.clm-svg rect, svg.clm-svg line, svg.clm-svg polyline'
     );
     if (!paths || paths.length === 0) return;
 
+    const measured = [];
     paths.forEach(path => {
       try {
         const length = path.getTotalLength();
-        if (length > 0) {
-          gsap.fromTo(path,
-            { strokeDasharray: length, strokeDashoffset: length },
-            {
-              strokeDashoffset: 0,
-              duration: 1.0,
-              ease: 'power2.inOut',
-              clearProps: 'strokeDasharray,strokeDashoffset'
-            }
-          );
-        }
+        if (length > 0) measured.push([path, length]);
       } catch (e) {}
+    });
+    measured.forEach(([path, length]) => {
+      gsap.fromTo(path,
+        { strokeDasharray: length, strokeDashoffset: length },
+        {
+          strokeDashoffset: 0,
+          duration: 0.6,
+          ease: 'power2.inOut',
+          clearProps: 'strokeDasharray,strokeDashoffset'
+        }
+      );
     });
   }, { dependencies: [loading], scope: clientesPageRef });
 

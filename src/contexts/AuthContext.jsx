@@ -16,6 +16,12 @@ export function AuthProvider({ children }) {
   // Si expiró o nunca existió, limpia el estado local (localStorage no es
   // fuente de autenticación, solo cache de display).
   useEffect(() => {
+    const handleForceLogout = () => {
+      setUser(null);
+      localStorage.removeItem('clm_user');
+    };
+    window.addEventListener('auth:logout', handleForceLogout);
+
     let cancelled = false;
     apiMe()
       .then((data) => {
@@ -36,7 +42,11 @@ export function AuthProvider({ children }) {
       .finally(() => {
         if (!cancelled) setChecking(false);
       });
-    return () => { cancelled = true; };
+      
+    return () => { 
+      cancelled = true; 
+      window.removeEventListener('auth:logout', handleForceLogout);
+    };
   }, []);
 
   const login = (userData) => {
