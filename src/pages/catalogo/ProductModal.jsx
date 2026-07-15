@@ -26,6 +26,11 @@ export default function ProductModal({ onClose, onSaved, mode = 'create', produc
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  
+  const [showCustomUnit, setShowCustomUnit] = useState(() => {
+    const predefinedUnits = ['/usuario/mes', '/usuario/año', '/mes', '/año', '/licencia', '/dispositivo', '/proyecto', '/hora', ''];
+    return (product?.unit || createForm?.unit || '') && !predefinedUnits.includes(product?.unit || createForm?.unit || '');
+  });
 
   useEffect(() => {
     const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -47,7 +52,27 @@ export default function ProductModal({ onClose, onSaved, mode = 'create', produc
 
   const validateDynamicFields = (cat, extra) => {
     if (cat === 'Software') {
-      return !!extra.tipo_software;
+      const isTipoValido = extra.tipo_software === 'Otro' 
+        ? !!extra.tipo_software_otro?.trim() 
+        : !!extra.tipo_software;
+      
+      let isValid = isTipoValido && 
+             !!extra.mas_informacion?.trim() &&
+             !!extra.modalidad_entrega &&
+             !!extra.nivel_soporte &&
+             !!extra.propiedad_intelectual;
+
+      if (['App Android', 'App iOS', 'App Multiplataforma'].includes(extra.tipo_software)) {
+        isValid = isValid && !!extra.publicacion_tiendas && !!extra.mantenimiento_so;
+      } else if (['App Web', 'Servicio Backend'].includes(extra.tipo_software)) {
+        isValid = isValid && !!extra.alojamiento_datos && !!extra.acuerdos_nivel_servicio_sla && !!extra.limite_usuarios;
+      } else if (['Software Nativo PC', 'Software Nativo Mac'].includes(extra.tipo_software)) {
+        isValid = isValid && !!extra.licenciamiento_equipos && !!extra.distribucion;
+      } else if (extra.tipo_software === 'Otro') {
+        isValid = isValid && !!extra.entregables_especificos?.trim();
+      }
+
+      return isValid;
     }
     if (cat === 'Agente') {
       return !!extra.tipo_agente && !!extra.integracion_llm?.trim();
@@ -218,7 +243,7 @@ export default function ProductModal({ onClose, onSaved, mode = 'create', produc
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
               <div>
-                <label style={labelStyle}>Precio</label>
+                <label style={labelStyle}>Monto a cobrar (Precio)</label>
                 <input
                   type="number"
                   min="0"
@@ -231,25 +256,64 @@ export default function ProductModal({ onClose, onSaved, mode = 'create', produc
                 />
               </div>
               <div>
-                <label style={labelStyle}>Moneda</label>
+                <label style={labelStyle}>Divisa (Moneda)</label>
                 <input
                   style={{ ...inputStyle, backgroundColor: (isView || isFreeLicense) ? 'var(--bg-page)' : 'var(--surface)' }}
                   value={form.currency}
                   onChange={e => setField('currency', e.target.value.toUpperCase())}
                   disabled={isView || isFreeLicense}
-                  placeholder={isFreeLicense ? 'N/A' : 'USD'}
+                  placeholder={isFreeLicense ? 'N/A' : 'Ej: USD, EUR, MXN'}
                   maxLength={8}
                 />
               </div>
               <div>
-                <label style={labelStyle}>Unidad</label>
-                <input
-                  style={{ ...inputStyle, backgroundColor: (isView || isFreeLicense) ? 'var(--bg-page)' : 'var(--surface)' }}
-                  value={form.unit}
-                  onChange={e => setField('unit', e.target.value)}
-                  disabled={isView || isFreeLicense}
-                  placeholder={isFreeLicense ? 'No aplica' : '/usuario/año'}
-                />
+                <label style={labelStyle}>Formato de cobro (Unidad)</label>
+                {showCustomUnit ? (
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      style={{ ...inputStyle, backgroundColor: (isView || isFreeLicense) ? 'var(--bg-page)' : 'var(--surface)', flex: 1 }}
+                      value={form.unit}
+                      onChange={e => setField('unit', e.target.value)}
+                      disabled={isView || isFreeLicense}
+                      placeholder={isFreeLicense ? 'No aplica' : 'Ej: /servidor/mes'}
+                    />
+                    {!isView && !isFreeLicense && (
+                      <button 
+                        type="button" 
+                        onClick={() => { setShowCustomUnit(false); setField('unit', ''); }}
+                        style={{ padding: '0 12px', borderRadius: 6, border: '1px solid var(--neutral-300)', background: 'var(--surface)', cursor: 'pointer' }}
+                        title="Volver a la lista"
+                      >
+                        <Icon d="M6 18L18 6M6 6l12 12" w={14} color="var(--text-muted)" />
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <select
+                    style={{ ...inputStyle, backgroundColor: (isView || isFreeLicense) ? 'var(--bg-page)' : 'var(--surface)' }}
+                    value={form.unit || ''}
+                    onChange={e => {
+                      if (e.target.value === 'Otro') {
+                        setShowCustomUnit(true);
+                        setField('unit', '');
+                      } else {
+                        setField('unit', e.target.value);
+                      }
+                    }}
+                    disabled={isView || isFreeLicense}
+                  >
+                    <option value="">Selecciona una unidad</option>
+                    <option value="/usuario/mes">Por usuario al mes (/usuario/mes)</option>
+                    <option value="/usuario/año">Por usuario al año (/usuario/año)</option>
+                    <option value="/mes">Por mes (/mes)</option>
+                    <option value="/año">Por año (/año)</option>
+                    <option value="/licencia">Por licencia vitalicia (/licencia)</option>
+                    <option value="/dispositivo">Por dispositivo (/dispositivo)</option>
+                    <option value="/proyecto">Por proyecto (/proyecto)</option>
+                    <option value="/hora">Por hora de desarrollo (/hora)</option>
+                    <option value="Otro">Otro ...</option>
+                  </select>
+                )}
               </div>
             </div>
 
@@ -277,20 +341,226 @@ export default function ProductModal({ onClose, onSaved, mode = 'create', produc
               {form.cat === 'Software' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div>
-                    <label style={labelStyle}>Tipo de Software *</label>
+                    <label style={labelStyle}>Plataforma / Formato del Software *</label>
                     <select
                       style={inputStyle}
                       value={form.datos_adicionales?.tipo_software || ''}
-                      onChange={e => setExtraField('tipo_software', e.target.value)}
+                      onChange={e => {
+                        setExtraField('tipo_software', e.target.value);
+                        if (e.target.value !== 'Otro') {
+                          setExtraField('tipo_software_otro', '');
+                        }
+                      }}
                       disabled={isView}
                     >
                       <option value="">Selecciona una opción</option>
                       <option value="App Android">App Android</option>
+                      <option value="App iOS">App iOS</option>
                       <option value="App Multiplataforma">App Multiplataforma</option>
                       <option value="App Web">App Web</option>
                       <option value="Software Nativo PC">Software Nativo PC</option>
+                      <option value="Software Nativo Mac">Software Nativo Mac</option>
+                      <option value="Servicio Backend">Servicio Backend</option>
+                      <option value="Otro">Otro ...</option>
                     </select>
                   </div>
+                  
+                  {form.datos_adicionales?.tipo_software === 'Otro' && (
+                    <div>
+                      <label style={labelStyle}>Describa el software *</label>
+                      <input
+                        style={inputStyle}
+                        value={form.datos_adicionales?.tipo_software_otro || ''}
+                        onChange={e => setExtraField('tipo_software_otro', e.target.value)}
+                        disabled={isView}
+                        placeholder="Ej. Sistema Embebido, Firmware, etc."
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <label style={labelStyle}>Más información del Software *</label>
+                    <textarea
+                      style={{ ...inputStyle, minHeight: '60px', resize: 'vertical' }}
+                      value={form.datos_adicionales?.mas_informacion || ''}
+                      onChange={e => setExtraField('mas_informacion', e.target.value)}
+                      disabled={isView}
+                      placeholder="Detalles sobre el software, funciones principales, tecnologías utilizadas, etc."
+                    />
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>Modalidad de Entrega *</label>
+                    <select
+                      style={inputStyle}
+                      value={form.datos_adicionales?.modalidad_entrega || ''}
+                      onChange={e => setExtraField('modalidad_entrega', e.target.value)}
+                      disabled={isView}
+                    >
+                      <option value="">Selecciona una opción</option>
+                      <option value="SaaS (Cloud)">SaaS (Cloud)</option>
+                      <option value="On-Premise">On-Premise</option>
+                      <option value="Híbrido">Híbrido</option>
+                      <option value="Instalación Local">Instalación Local</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>Nivel de Soporte *</label>
+                    <select
+                      style={inputStyle}
+                      value={form.datos_adicionales?.nivel_soporte || ''}
+                      onChange={e => setExtraField('nivel_soporte', e.target.value)}
+                      disabled={isView}
+                    >
+                      <option value="">Selecciona una opción</option>
+                      <option value="Sin soporte incluido">Sin soporte incluido</option>
+                      <option value="Básico (Email/Tickets)">Básico (Email/Tickets)</option>
+                      <option value="Estándar (Horario Laboral)">Estándar (Horario Laboral)</option>
+                      <option value="Premium (SLA 24/7)">Premium (SLA 24/7)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>Propiedad Intelectual *</label>
+                    <select
+                      style={inputStyle}
+                      value={form.datos_adicionales?.propiedad_intelectual || ''}
+                      onChange={e => setExtraField('propiedad_intelectual', e.target.value)}
+                      disabled={isView}
+                    >
+                      <option value="">Selecciona una opción</option>
+                      <option value="Propiedad del Desarrollador (Licencia de uso)">Propiedad del Desarrollador (Licencia de uso)</option>
+                      <option value="Propiedad del Cliente (Traspaso total)">Propiedad del Cliente (Traspaso total)</option>
+                      <option value="Código Abierto (Open Source)">Código Abierto (Open Source)</option>
+                    </select>
+                  </div>
+
+                  {['App Android', 'App iOS', 'App Multiplataforma'].includes(form.datos_adicionales?.tipo_software) && (
+                    <>
+                      <div>
+                        <label style={labelStyle}>Publicación en Tiendas *</label>
+                        <select
+                          style={inputStyle}
+                          value={form.datos_adicionales?.publicacion_tiendas || ''}
+                          onChange={e => setExtraField('publicacion_tiendas', e.target.value)}
+                          disabled={isView}
+                        >
+                          <option value="">Selecciona una opción</option>
+                          <option value="A cargo del desarrollador">A cargo del desarrollador</option>
+                          <option value="A cargo del cliente">A cargo del cliente</option>
+                          <option value="No aplica / Distribución interna">No aplica / Distribución interna</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={labelStyle}>Mantenimiento de Sistema Operativo *</label>
+                        <select
+                          style={inputStyle}
+                          value={form.datos_adicionales?.mantenimiento_so || ''}
+                          onChange={e => setExtraField('mantenimiento_so', e.target.value)}
+                          disabled={isView}
+                        >
+                          <option value="">Selecciona una opción</option>
+                          <option value="Incluye adaptación a nuevas versiones (1 año)">Incluye adaptación a nuevas versiones (1 año)</option>
+                          <option value="No incluye adaptación">No incluye adaptación</option>
+                          <option value="Mantenimiento continuo (Contrato SLA)">Mantenimiento continuo (Contrato SLA)</option>
+                        </select>
+                      </div>
+                    </>
+                  )}
+
+                  {['App Web', 'Servicio Backend'].includes(form.datos_adicionales?.tipo_software) && (
+                    <>
+                      <div>
+                        <label style={labelStyle}>Alojamiento de Datos *</label>
+                        <select
+                          style={inputStyle}
+                          value={form.datos_adicionales?.alojamiento_datos || ''}
+                          onChange={e => setExtraField('alojamiento_datos', e.target.value)}
+                          disabled={isView}
+                        >
+                          <option value="">Selecciona una opción</option>
+                          <option value="Nube del Desarrollador (SaaS)">Nube del Desarrollador (SaaS)</option>
+                          <option value="Nube del Cliente (On-Premise/Cloud propia)">Nube del Cliente (On-Premise/Cloud propia)</option>
+                          <option value="Tercero / PaaS">Tercero / PaaS</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={labelStyle}>Acuerdos de Nivel de Servicio (SLA) *</label>
+                        <select
+                          style={inputStyle}
+                          value={form.datos_adicionales?.acuerdos_nivel_servicio_sla || ''}
+                          onChange={e => setExtraField('acuerdos_nivel_servicio_sla', e.target.value)}
+                          disabled={isView}
+                        >
+                          <option value="">Selecciona una opción</option>
+                          <option value="Uptime 99.9% (Garantizado)">Uptime 99.9% (Garantizado)</option>
+                          <option value="Uptime 99% (Estándar)">Uptime 99% (Estándar)</option>
+                          <option value="Mejor esfuerzo (Sin SLA estricto)">Mejor esfuerzo (Sin SLA estricto)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={labelStyle}>Límite de Usuarios / Concurrencia *</label>
+                        <select
+                          style={inputStyle}
+                          value={form.datos_adicionales?.limite_usuarios || ''}
+                          onChange={e => setExtraField('limite_usuarios', e.target.value)}
+                          disabled={isView}
+                        >
+                          <option value="">Selecciona una opción</option>
+                          <option value="Ilimitado">Ilimitado</option>
+                          <option value="Por rangos (especificado en contrato)">Por rangos (especificado en contrato)</option>
+                          <option value="Concurrencia limitada">Concurrencia limitada</option>
+                        </select>
+                      </div>
+                    </>
+                  )}
+
+                  {['Software Nativo PC', 'Software Nativo Mac'].includes(form.datos_adicionales?.tipo_software) && (
+                    <>
+                      <div>
+                        <label style={labelStyle}>Licenciamiento por Equipos *</label>
+                        <select
+                          style={inputStyle}
+                          value={form.datos_adicionales?.licenciamiento_equipos || ''}
+                          onChange={e => setExtraField('licenciamiento_equipos', e.target.value)}
+                          disabled={isView}
+                        >
+                          <option value="">Selecciona una opción</option>
+                          <option value="Por dispositivo / MAC Address">Por dispositivo / MAC Address</option>
+                          <option value="Por usuario nominal">Por usuario nominal</option>
+                          <option value="Licencia global / Ilimitada">Licencia global / Ilimitada</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={labelStyle}>Distribución del Software *</label>
+                        <select
+                          style={inputStyle}
+                          value={form.datos_adicionales?.distribucion || ''}
+                          onChange={e => setExtraField('distribucion', e.target.value)}
+                          disabled={isView}
+                        >
+                          <option value="">Selecciona una opción</option>
+                          <option value="Instalador ejecutable (.exe / .dmg)">Instalador ejecutable (.exe / .dmg)</option>
+                          <option value="Tienda oficial (MS Store / Mac App Store)">Tienda oficial (MS Store / Mac App Store)</option>
+                          <option value="Despliegue corporativo (MDM / GPO)">Despliegue corporativo (MDM / GPO)</option>
+                        </select>
+                      </div>
+                    </>
+                  )}
+
+                  {form.datos_adicionales?.tipo_software === 'Otro' && (
+                    <div>
+                      <label style={labelStyle}>Entregables Específicos *</label>
+                      <textarea
+                        style={{ ...inputStyle, minHeight: '60px', resize: 'vertical' }}
+                        value={form.datos_adicionales?.entregables_especificos || ''}
+                        onChange={e => setExtraField('entregables_especificos', e.target.value)}
+                        disabled={isView}
+                        placeholder="Detallar entregables (binarios, código fuente, manuales, hardware, etc.)"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 

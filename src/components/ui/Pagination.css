@@ -204,3 +204,21 @@
   background: var(--neutral-200);
   color: var(--primary-hover);
 }
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .ui-pagination {
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+  .ui-pagination-btns {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .ui-page-btn {
+    width: 32px;
+    height: 32px;
+  }
+}

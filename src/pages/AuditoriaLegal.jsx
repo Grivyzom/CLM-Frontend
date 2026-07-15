@@ -1,71 +1,108 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import {
-  PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid
+  PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer
 } from 'recharts';
-import { 
-  Search, Filter, ShieldCheck, ShieldAlert, 
-  FileWarning, Activity, ChevronRight, X,
+import {
+  Search, ShieldCheck, ShieldAlert,
+  FileWarning, Activity, X,
   CheckCircle, AlertTriangle, Info, Download, RefreshCw,
-  AlertOctagon, ArrowRight, CheckCircle2
+  AlertOctagon, CheckCircle2, History, Inbox
 } from 'lucide-react';
 import TopbarActions from '../components/layout/TopbarActions';
-import Svg from '../components/ui/Svg';
+import { useAuth } from '../contexts/AuthContext';
 import { getAuditoria } from '../api';
 import './AuditoriaLegal.css';
 
-// Mock Data
-const INITIAL_KPIS = {
-  complianceScore: 92,
-  highRiskContracts: 4,
-  nonStandardClauses: 15,
-  pendingAudits: 7
-};
-
-const RISK_DISTRIBUTION = [
-  { name: 'Riesgo Bajo', value: 145, color: 'var(--success-alt)' },
-  { name: 'Riesgo Medio', value: 34, color: 'var(--warning-vivid)' },
-  { name: 'Riesgo Alto', value: 4, color: 'var(--danger-bright)' }
+const RISK_FILTERS = [
+  { id: 'all', label: 'Todos' },
+  { id: 'high', label: 'Alto' },
+  { id: 'medium', label: 'Medio' },
+  { id: 'low', label: 'Bajo' },
 ];
 
-const AUDIT_LOGS = [
-  { id: 1, user: 'Ana Martínez', action: 'Modificó cláusula de Confidencialidad', target: 'Contrato ACME Corp', date: '2026-07-06T10:30:00', risk: 'medium', details: 'Se agregó el párrafo 4.3 eximiendo responsabilidad cruzada.', ip: '190.22.45.12', session: 'WEB_CHROME' },
-  { id: 2, user: 'Sistema', action: 'Alerta: Vencimiento próximo (7 días)', target: 'Licencia SoftTrack Pro', date: '2026-07-06T09:15:00', risk: 'high', details: 'El contrato expira sin renovación automática habilitada. Se notificó a Legal.', ip: '127.0.0.1', session: 'SYSTEM_JOB' },
-  { id: 3, user: 'Carlos Ruiz', action: 'Firmó digitalmente', target: 'NDA GlobalTech', date: '2026-07-05T16:45:00', risk: 'low', details: 'Firma completada vía integración con DocuSign.', ip: '201.55.10.88', session: 'APP_IOS' },
-  { id: 4, user: 'Elena Gómez', action: 'Creó nueva versión (v2)', target: 'Acuerdo Servicios Zeta', date: '2026-07-05T11:20:00', risk: 'medium', details: 'Nueva versión generada a partir de plantilla estándar modificada.', ip: '190.22.45.14', session: 'WEB_SAFARI' },
-  { id: 5, user: 'Sistema', action: 'Validación de compliance exitosa', target: 'Renovación Omega', date: '2026-07-04T14:10:00', risk: 'low', details: 'El análisis automatizado no encontró desviaciones en las cláusulas obligatorias.', ip: '127.0.0.1', session: 'SYSTEM_JOB' }
-];
+const RISK_LABELS = { high: 'ALTO', medium: 'MEDIO', low: 'BAJO' };
 
-const CRITICAL_CONTRACTS = [
-  { id: 'C-892', client: 'TechNova Inc.', issue: 'Límite de responsabilidad excede política (>20%)', type: 'SaaS Agreement', status: 'En revisión' },
-  { id: 'C-901', client: 'Global Logistics', issue: 'Falta cláusula de rescisión por incumplimiento', type: 'SLA', status: 'Pendiente' },
-  { id: 'C-915', client: 'FinCorp', issue: 'Jurisdicción no estándar (Islas Caimán)', type: 'NDA', status: 'Escalado' },
-  { id: 'C-920', client: 'MegaRetail', issue: 'Renovación automática sin preaviso', type: 'Distribución', status: 'Urgente' }
-];
+function csvEscape(value) {
+  const s = String(value ?? '');
+  return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
 
 export default function AuditoriaLegal() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [riskFilter, setRiskFilter] = useState('all');
   const [selectedEvent, setSelectedEvent] = useState(null);
-  const [kpis, setKpis] = useState(INITIAL_KPIS);
-  const [riskDistribution, setRiskDistribution] = useState(RISK_DISTRIBUTION);
-  const [criticalContracts, setCriticalContracts] = useState(CRITICAL_CONTRACTS);
-  const [auditLogs, setAuditLogs] = useState(AUDIT_LOGS);
+  const [kpis, setKpis] = useState(null);
+  const [riskDistribution, setRiskDistribution] = useState([]);
+  const [criticalContracts, setCriticalContracts] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
   const [copied, setCopied] = useState(false);
   const [modalMessage, setModalMessage] = useState(null);
+
+  const navigate = useNavigate();
+  const { user, isModerador, isClienteExterno } = useAuth();
+  const canVerHistorial = isClienteExterno || !!user?.isSuperadmin || isModerador;
+
+  const requestSeq = useRef(0);
 
   const showToast = (type, text) => {
     setModalMessage({ type, text });
     setTimeout(() => setModalMessage(null), 3000);
   };
 
-  const filteredLogs = auditLogs.filter(log => 
-    log.target.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    log.action.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const fetchData = useCallback(async () => {
+    const seq = ++requestSeq.current;
+    setLoading(true);
+    try {
+      const data = await getAuditoria();
+      if (seq !== requestSeq.current) return;
+      setKpis(data.kpis);
+      setRiskDistribution(data.riskDistribution || []);
+      setCriticalContracts(data.criticalContracts || []);
+      setAuditLogs(data.auditLogs || []);
+      setError(null);
+    } catch (err) {
+      if (seq !== requestSeq.current) return;
+      console.error(err);
+      setError('No se pudieron cargar los datos de auditoría legal.');
+    } finally {
+      if (seq === requestSeq.current) setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const closeModal = useCallback(() => {
+    setSelectedEvent(null);
+    setModalMessage(null);
+    setCopied(false);
+  }, []);
+
+  useEffect(() => {
+    if (!selectedEvent) return;
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') closeModal();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [selectedEvent, closeModal]);
+
+  const term = searchTerm.trim().toLowerCase();
+  const filteredLogs = auditLogs.filter(log => {
+    if (riskFilter !== 'all' && log.risk !== riskFilter) return false;
+    if (!term) return true;
+    return (log.target || '').toLowerCase().includes(term) ||
+      (log.action || '').toLowerCase().includes(term) ||
+      (log.user || '').toLowerCase().includes(term);
+  });
+
+  const totalRiskContracts = riskDistribution.reduce((acc, item) => acc + (item.value || 0), 0);
 
   const handleCopyInfo = () => {
     if (!selectedEvent) return;
@@ -77,37 +114,26 @@ export default function AuditoriaLegal() {
     });
   };
 
-  const handleGoToDetail = () => {
-    if (!selectedEvent?.technicalDetailId) {
-      showToast('error', 'No existe detalle técnico para este evento');
-      return;
-    }
-    showToast('info', `Redirigiendo al detalle técnico (ID: ${selectedEvent.technicalDetailId})...`);
-  };
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const data = await getAuditoria();
-      setKpis(data.kpis);
-      setRiskDistribution(data.riskDistribution);
-      setCriticalContracts(data.criticalContracts);
-      setAuditLogs(data.auditLogs);
-      setError(null);
-    } catch (err) {
-      console.error(err);
-      setError('Error al cargar datos de auditoría legal');
-      showToast('error', 'No se pudieron sincronizar los datos del servidor');
-    } finally {
-      setLoading(false);
-    }
+  const handleExport = () => {
+    if (filteredLogs.length === 0) return;
+    const header = ['Fecha', 'Usuario', 'Acción', 'Objetivo', 'Riesgo', 'IP', 'Origen', 'Detalles'];
+    const rows = filteredLogs.map(log => [
+      new Date(log.date).toLocaleString('es-CL'),
+      log.user, log.action, log.target,
+      RISK_LABELS[log.risk] || log.risk,
+      log.ip, log.session, log.details,
+    ].map(csvEscape).join(';'));
+    const csv = '\ufeff' + [header.join(';'), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `auditoria_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const pageRef = useRef(null);
-
-  useEffect(() => {
-    fetchData();
-  }, []);
 
   // Entrada en dos fases: la estructura (topbar, stat cards, paneles) existe
   // desde el mount, así que se anima de inmediato sin esperar el fetch; los
@@ -184,8 +210,10 @@ export default function AuditoriaLegal() {
     }
   }, { dependencies: [loading], scope: pageRef });
 
-  // Hover Outline Drawings
+  // Redibujado del trazo de iconos al hacer hover sobre elementos interactivos
   useGSAP(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
     const handleMouseEnter = (e) => {
       const paths = e.currentTarget.querySelectorAll(
         'svg.lucide path, svg.lucide polyline, svg.lucide line, svg.lucide circle, svg.lucide rect'
@@ -221,11 +249,7 @@ export default function AuditoriaLegal() {
         interactiveElements.forEach(el => el.removeEventListener('mouseenter', handleMouseEnter));
       }
     };
-  }, { dependencies: [loading, auditLogs, criticalContracts, searchTerm], scope: pageRef });
-
-  const handleRefresh = () => {
-    fetchData();
-  };
+  }, { dependencies: [loading, auditLogs, criticalContracts, searchTerm, riskFilter], scope: pageRef });
 
   const getRiskIcon = (risk) => {
     switch (risk) {
@@ -244,7 +268,7 @@ export default function AuditoriaLegal() {
       default: return 'al-badge-info';
     }
   };
-  
+
   const getRiskIconClass = (risk) => {
     switch (risk) {
       case 'high': return 'high';
@@ -254,12 +278,14 @@ export default function AuditoriaLegal() {
     }
   };
 
+  const kpiValue = (v, suffix = '') => (loading || v === null || v === undefined) ? '—' : `${v}${suffix}`;
+
   return (
     <div className="auditoria-page" ref={pageRef}>
       {/* ── Topbar ── */}
       <div className="al-topbar">
         <div className="al-topbar-left">
-          <p>Compliance & Riesgos</p>
+          <p>Compliance &amp; Riesgos</p>
           <h1>Auditoría Legal</h1>
         </div>
         <div className="al-topbar-right">
@@ -267,10 +293,16 @@ export default function AuditoriaLegal() {
             {new Date().toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
           </span>
           <div className="al-topbar-divider"></div>
-          <button className="al-icon-btn" onClick={handleRefresh} title="Actualizar datos">
+          <button className="al-icon-btn" onClick={fetchData} title="Actualizar datos" aria-label="Actualizar datos">
             <RefreshCw size={14} className={loading ? 'al-spin' : ''} />
           </button>
-          <button className="al-icon-btn" title="Exportar reporte de auditoría">
+          <button
+            className="al-icon-btn"
+            title="Exportar registro de auditoría (CSV)"
+            aria-label="Exportar registro de auditoría"
+            onClick={handleExport}
+            disabled={loading || filteredLogs.length === 0}
+          >
             <Download size={14} />
           </button>
           <TopbarActions />
@@ -279,6 +311,14 @@ export default function AuditoriaLegal() {
 
       {/* ── Body ── */}
       <div className="al-body">
+        {error && (
+          <div className="al-error-banner" role="alert">
+            <AlertTriangle size={14} />
+            <span>{error}</span>
+            <button className="al-btn-secondary" onClick={fetchData}>Reintentar</button>
+          </div>
+        )}
+
         {/* Stats Grid */}
         <div className="al-stats-grid">
           <div className="al-stat-card">
@@ -287,7 +327,7 @@ export default function AuditoriaLegal() {
             </div>
             <div>
               <p className="al-stat-label">Score Compliance</p>
-              <p className="al-stat-value blue">{kpis.complianceScore}%</p>
+              <p className="al-stat-value blue">{kpiValue(kpis?.complianceScore, '%')}</p>
             </div>
           </div>
           <div className="al-stat-card">
@@ -296,7 +336,7 @@ export default function AuditoriaLegal() {
             </div>
             <div>
               <p className="al-stat-label">Riesgo Crítico</p>
-              <p className="al-stat-value red">{kpis.highRiskContracts}</p>
+              <p className="al-stat-value red">{kpiValue(kpis?.highRiskContracts)}</p>
             </div>
           </div>
           <div className="al-stat-card">
@@ -305,7 +345,7 @@ export default function AuditoriaLegal() {
             </div>
             <div>
               <p className="al-stat-label">No Estándar</p>
-              <p className="al-stat-value amber">{kpis.nonStandardClauses}</p>
+              <p className="al-stat-value amber">{kpiValue(kpis?.nonStandardClauses)}</p>
             </div>
           </div>
           <div className="al-stat-card">
@@ -314,15 +354,15 @@ export default function AuditoriaLegal() {
             </div>
             <div>
               <p className="al-stat-label">Aud. Pendientes</p>
-              <p className="al-stat-value gray">{kpis.pendingAudits}</p>
+              <p className="al-stat-value gray">{kpiValue(kpis?.pendingAudits)}</p>
             </div>
           </div>
         </div>
 
         <div className="al-main-grid">
           {/* Columna Principal: Contratos Críticos y Log */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            
+          <div className="al-col">
+
             <div className="al-panel-card">
               <div className="al-section-header">
                 <div>
@@ -330,85 +370,118 @@ export default function AuditoriaLegal() {
                   <h3 className="al-section-title">Contratos con Desviación Crítica</h3>
                 </div>
               </div>
-              <div className="al-table-wrapper">
-                <table className="al-table">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Cliente / Contraparte</th>
-                      <th>Tipo</th>
-                      <th>Hallazgo Legal</th>
-                      <th>Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {criticalContracts.map(c => (
-                      <tr key={c.id}>
-                        <td className="al-td-mono">{c.id}</td>
-                        <td className="al-td-bold">{c.client}</td>
-                        <td>{c.type}</td>
-                        <td style={{ color: 'var(--danger)', fontWeight: 500 }}>{c.issue}</td>
-                        <td>
-                          <span className="al-badge al-badge-high">{c.status}</span>
-                        </td>
+              {criticalContracts.length > 0 ? (
+                <div className="al-table-wrapper">
+                  <table className="al-table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Cliente / Contraparte</th>
+                        <th>Tipo</th>
+                        <th>Hallazgo Legal</th>
+                        <th>Estado</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {criticalContracts.map(c => (
+                        <tr key={c.id}>
+                          <td className="al-td-mono">{c.id}</td>
+                          <td className="al-td-bold">{c.client}</td>
+                          <td>{c.type}</td>
+                          <td className="al-td-issue">{c.issue}</td>
+                          <td>
+                            <span className="al-badge al-badge-high">{c.status}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="al-empty-state">
+                  <CheckCircle size={18} />
+                  <p>{loading ? 'Cargando desviaciones…' : 'Sin desviaciones críticas detectadas.'}</p>
+                </div>
+              )}
             </div>
 
             <div className="al-panel-card">
-              <div className="al-section-header">
+              <div className="al-section-header al-section-header-wrap">
                 <div>
+                  <p className="al-section-label">Registro de Eventos</p>
                   <h3 className="al-section-title">Trazabilidad Total</h3>
                 </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button className="al-btn-primary" onClick={() => showToast('info', 'Redirigiendo al historial completo del software...')}>
-                    Historial del Sistema
-                  </button>
+                <div className="al-toolbar">
+                  {canVerHistorial && (
+                    <button className="al-btn-primary" onClick={() => navigate('/historial')}>
+                      <History size={12} />
+                      Historial del Sistema
+                    </button>
+                  )}
                   <div className="al-search-wrapper">
                     <div className="al-search-icon">
                       <Search size={12} color="var(--text-faint)" />
                     </div>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       className="al-search-input"
-                      placeholder="Buscar evento..." 
+                      placeholder="Buscar evento…"
                       value={searchTerm}
                       onChange={e => setSearchTerm(e.target.value)}
                     />
                   </div>
-                  <button className="al-icon-btn"><Filter size={12} /></button>
                 </div>
               </div>
+
+              <div className="al-filter-pills" role="group" aria-label="Filtrar por nivel de riesgo">
+                {RISK_FILTERS.map(f => (
+                  <button
+                    key={f.id}
+                    className={`al-filter-pill ${riskFilter === f.id ? 'active' : ''}`}
+                    aria-pressed={riskFilter === f.id}
+                    onClick={() => setRiskFilter(f.id)}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
               <ul className="al-activity-list">
                 {filteredLogs.map(log => (
-                  <li 
-                    key={log.id} 
-                    className="al-activity-item" 
-                    onClick={() => setSelectedEvent(log)}
-                  >
-                    <div className={`al-activity-icon ${getRiskIconClass(log.risk)}`}>
-                      {getRiskIcon(log.risk)}
-                    </div>
-                    <div className="al-activity-content">
-                      <div className="al-activity-text">
-                        <strong>{log.user}</strong> {log.action} en <strong>{log.target}</strong>
+                  <li key={log.id}>
+                    <button
+                      type="button"
+                      className="al-activity-item"
+                      onClick={() => setSelectedEvent(log)}
+                    >
+                      <div className={`al-activity-icon ${getRiskIconClass(log.risk)}`}>
+                        {getRiskIcon(log.risk)}
                       </div>
-                      <div className="al-activity-meta">
-                        <span>{new Date(log.date).toLocaleString('es-CL')}</span>
-                        <span className={`al-badge ${getRiskClass(log.risk)}`}>
-                          {log.risk.toUpperCase()}
-                        </span>
+                      <div className="al-activity-content">
+                        <div className="al-activity-text">
+                          <strong>{log.user}</strong> {log.action} en <strong>{log.target}</strong>
+                        </div>
+                        <div className="al-activity-meta">
+                          <span>{new Date(log.date).toLocaleString('es-CL')}</span>
+                          <span className={`al-badge ${getRiskClass(log.risk)}`}>
+                            {RISK_LABELS[log.risk] || log.risk}
+                          </span>
+                        </div>
                       </div>
-                    </div>
+                    </button>
                   </li>
                 ))}
                 {filteredLogs.length === 0 && (
-                  <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
-                    No se encontraron eventos para "{searchTerm}"
-                  </div>
+                  <li className="al-empty-state">
+                    <Inbox size={18} />
+                    <p>
+                      {loading
+                        ? 'Cargando eventos…'
+                        : (auditLogs.length === 0
+                          ? 'Aún no hay eventos de auditoría registrados.'
+                          : `No se encontraron eventos${term ? ` para "${searchTerm}"` : ' con este filtro'}.`)}
+                    </p>
+                  </li>
                 )}
               </ul>
             </div>
@@ -416,7 +489,7 @@ export default function AuditoriaLegal() {
           </div>
 
           {/* Columna Lateral: Gráficos */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div className="al-col">
             <div className="al-panel-card">
               <div className="al-section-header">
                 <div>
@@ -424,54 +497,91 @@ export default function AuditoriaLegal() {
                   <h3 className="al-section-title">Nivel de Riesgo General</h3>
                 </div>
               </div>
-              <div className="al-chart-container">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={riskDistribution}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={70}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {riskDistribution.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <RechartsTooltip 
-                      contentStyle={{ borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--surface)', fontSize: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                {riskDistribution.map((item, idx) => (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--text-secondary)' }}>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: item.color }}></div>
-                    {item.name} ({item.value})
+              {totalRiskContracts > 0 ? (
+                <>
+                  <div className="al-chart-container">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={riskDistribution}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={70}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {riskDistribution.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip
+                          contentStyle={{
+                            borderRadius: '6px',
+                            border: '1px solid var(--border)',
+                            background: 'var(--surface)',
+                            fontSize: '12px',
+                            boxShadow: 'var(--shadow-md, 0 4px 12px rgba(0,0,0,0.1))'
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
                   </div>
-                ))}
-              </div>
+                  <div className="al-chart-legend">
+                    {riskDistribution.map((item, idx) => (
+                      <div key={idx} className="al-chart-legend-item">
+                        <span className="al-chart-legend-dot" style={{ backgroundColor: item.color }}></span>
+                        {item.name} ({item.value})
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="al-empty-state al-empty-chart">
+                  <Activity size={18} />
+                  <p>{loading ? 'Cargando distribución…' : 'Sin contratos para clasificar por riesgo.'}</p>
+                </div>
+              )}
             </div>
 
-            <div className="al-panel-card" style={{ flex: 1 }}>
+            <div className="al-panel-card al-panel-grow">
               <div className="al-section-header">
                 <div>
-                  <p className="al-section-label">Recomendaciones</p>
-                  <h3 className="al-section-title">Acciones Sugeridas</h3>
+                  <p className="al-section-label">Resumen</p>
+                  <h3 className="al-section-title">Estado de Cumplimiento</h3>
                 </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ padding: '12px', backgroundColor: 'var(--danger-bg)', borderRadius: '6px', border: '1px solid var(--danger-soft)' }}>
-                  <strong style={{ color: 'var(--danger)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Estandarizar Límite Responsabilidad</strong>
-                  <p style={{ margin: 0, fontSize: '11px', color: 'var(--danger-deep)' }}>4 contratos recientes superan el cap del 100%. Revisa la plantilla base.</p>
-                </div>
-                <div style={{ padding: '12px', backgroundColor: 'var(--warning-bg)', borderRadius: '6px', border: '1px solid var(--warning-soft)' }}>
-                  <strong style={{ color: 'var(--warning-bright)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Actualizar Política SLA</strong>
-                  <p style={{ margin: 0, fontSize: '11px', color: 'var(--warning-deep)' }}>La cláusula 4.2 está siendo modificada en el 80% de los nuevos acuerdos.</p>
-                </div>
+              <div className="al-reco-list">
+                {!loading && kpis?.highRiskContracts > 0 && (
+                  <div className="al-reco al-reco-danger">
+                    <strong>Revisar contratos en riesgo</strong>
+                    <p>{kpis.highRiskContracts} contrato{kpis.highRiskContracts === 1 ? '' : 's'} en mora o suspendido{kpis.highRiskContracts === 1 ? '' : 's'} requieren gestión de cobranza o regularización.</p>
+                  </div>
+                )}
+                {!loading && kpis?.pendingAudits > 0 && (
+                  <div className="al-reco al-reco-warning">
+                    <strong>Auditorías pendientes</strong>
+                    <p>{kpis.pendingAudits} contrato{kpis.pendingAudits === 1 ? '' : 's'} en revisión o aprobación esperan validación legal.</p>
+                  </div>
+                )}
+                {!loading && kpis?.nonStandardClauses > 0 && (
+                  <div className="al-reco al-reco-warning">
+                    <strong>Cláusulas no estándar</strong>
+                    <p>Se registraron {kpis.nonStandardClauses} modificaciones sobre obligaciones SLA. Verifica que sigan la plantilla base.</p>
+                  </div>
+                )}
+                {!loading && kpis && !kpis.highRiskContracts && !kpis.pendingAudits && !kpis.nonStandardClauses && (
+                  <div className="al-reco al-reco-success">
+                    <strong>Todo en orden</strong>
+                    <p>No hay desviaciones de compliance que requieran acción inmediata.</p>
+                  </div>
+                )}
+                {loading && (
+                  <div className="al-empty-state">
+                    <RefreshCw size={16} className="al-spin" />
+                    <p>Evaluando estado de cumplimiento…</p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -481,18 +591,24 @@ export default function AuditoriaLegal() {
 
       {/* Modal de Detalles del Evento */}
       {selectedEvent && (
-        <div className="al-modal-overlay" onClick={() => { setSelectedEvent(null); setModalMessage(null); setCopied(false); }}>
-          <div className="al-modal-content" onClick={e => e.stopPropagation()}>
+        <div className="al-modal-overlay" onClick={closeModal}>
+          <div
+            className="al-modal-content"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Detalle del evento de auditoría"
+            onClick={e => e.stopPropagation()}
+          >
             <div className="al-modal-header">
               <div>
                 <p className="al-modal-title">Detalle del Evento</p>
                 <p className="al-modal-subtitle">Información extendida del registro de auditoría</p>
               </div>
-              <button type="button" className="al-modal-close-icon" onClick={() => { setSelectedEvent(null); setModalMessage(null); setCopied(false); }}>
-                ×
+              <button type="button" className="al-modal-close-icon" aria-label="Cerrar" onClick={closeModal}>
+                <X size={16} />
               </button>
             </div>
-            
+
             {modalMessage && (
               <div className={`al-modal-toast al-toast-${modalMessage.type}`}>
                 {modalMessage.type === 'success' && <CheckCircle size={16} />}
@@ -533,7 +649,7 @@ export default function AuditoriaLegal() {
               </div>
 
               <div className="al-modal-row">
-                <span className="al-modal-label" style={{ marginBottom: '4px' }}>Detalles Técnicos Adicionales</span>
+                <span className="al-modal-label">Detalles Técnicos Adicionales</span>
                 <div className="al-modal-extra">
                   {selectedEvent.details || 'El sistema no registró anotaciones adicionales para este evento.'}
                 </div>
@@ -541,15 +657,10 @@ export default function AuditoriaLegal() {
             </div>
 
             <div className="al-modal-footer">
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button className="al-btn-secondary" onClick={handleCopyInfo}>
-                  {copied ? 'Copiado ✓' : 'Copiar info'}
-                </button>
-                <button className="al-btn-secondary" onClick={handleGoToDetail}>
-                  Ver Detalle Técnico
-                </button>
-              </div>
-              <button className="al-btn-primary" onClick={() => { setSelectedEvent(null); setModalMessage(null); setCopied(false); }}>
+              <button className="al-btn-secondary" onClick={handleCopyInfo}>
+                {copied ? 'Copiado ✓' : 'Copiar info'}
+              </button>
+              <button className="al-btn-primary" onClick={closeModal}>
                 Entendido
               </button>
             </div>

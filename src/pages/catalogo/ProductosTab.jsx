@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import SortableHeader from '../../components/ui/SortableHeader';
 import { Icon } from './ui';
 import { PRODUCTO_CATEGORIAS, formatPrecio } from './helpers';
@@ -18,6 +19,7 @@ export default function ProductosTab({
   ordering, onSort,
   onCreate, onView, onEdit, onDelete,
 }) {
+  const navigate = useNavigate();
   return (
     <div className="catalogo-productos">
       <div className="catalogo-toolbar">
@@ -122,8 +124,8 @@ export default function ProductosTab({
 
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
               <button
-                title="Ver detalle"
-                onClick={(e) => { e.stopPropagation(); onView(p); }}
+                title="Ver workspace del producto"
+                onClick={(e) => { e.stopPropagation(); if (p.id) navigate(`/catalogo/${p.id}`, { state: { producto: p } }); else onView(p); }}
                 style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }}
                 onMouseEnter={e => e.currentTarget.style.color = 'var(--primary)'}
                 onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}

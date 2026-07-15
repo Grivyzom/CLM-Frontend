@@ -65,7 +65,7 @@ export function ActionDropdown({ anchorRef, items, onClose }) {
   );
 }
 
-export function ContextMenu({ pos, onClose, onPreview, onUse, onEdit }) {
+export function ContextMenu({ pos, onClose, onPreview, onUse, onEdit, onRegenerate }) {
   const [menuPos, setMenuPos] = useState({ top: pos.y, left: pos.x });
   const menuRef = useRef(null);
 
@@ -73,7 +73,7 @@ export function ContextMenu({ pos, onClose, onPreview, onUse, onEdit }) {
     if (!menuRef.current) return;
     const rect = menuRef.current.getBoundingClientRect();
     const menuWidth = rect.width || 180;
-    const menuHeight = rect.height || 120;
+    const menuHeight = rect.height || 150;
     const margin = 8;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
@@ -125,6 +125,15 @@ export function ContextMenu({ pos, onClose, onPreview, onUse, onEdit }) {
           Usar plantilla
         </button>
         <div style={{ height: 1, background: 'var(--neutral-200)', margin: '2px 0' }} />
+        <button
+          style={itemStyle()}
+          onClick={() => { onRegenerate?.(); onClose(); }}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-topbar)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'none'}
+        >
+          <Icon d={['M1 4v6h6', 'M23 20v-6h-6', 'M20.49 9A9 9 0 0 0 5.64 5.64L1 10', 'M3.51 15A9 9 0 0 0 18.36 18.36L23 14']} w={14} />
+          Regenerar documento
+        </button>
         <button
           style={itemStyle()}
           onClick={() => { onEdit?.(); onClose(); }}

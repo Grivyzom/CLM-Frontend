@@ -6,12 +6,13 @@ const STATUS_CFG = {
   'Inactivo':    { color: 'var(--text-faint)', bg: 'var(--bg-topbar)', border: 'var(--border)', dot: 'var(--border-strong)' },
 };
 
-export default function StatusBadge({ estado }) {
-  const c = STATUS_CFG[estado] || STATUS_CFG['Inactivo'];
+export default function StatusBadge({ estado, config, label }) {
+  const cfg = config || STATUS_CFG;
+  const c = cfg[estado] || cfg['Inactivo'] || STATUS_CFG['Inactivo'];
   return (
     <span className="cl-status-badge" style={{ background: c.bg, border: `1px solid ${c.border}`, color: c.color }}>
       <span className="cl-status-dot" style={{ background: c.dot }} />
-      {estado}
+      {label || estado}
     </span>
   );
 }

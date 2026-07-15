@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { createCliente } from '../api';
+import React, { useState, useEffect } from 'react';
+import { createCliente, getTenants } from '../api';
+import { useAuth } from '../contexts/AuthContext';
 import { validarRut, validarEmail, validarMaximoRut, validarTelefonoChile, validarEmailDominioLimpio } from '../utils/validators';
 
 function Svg({ paths = [], circles = [], size = 14, color = 'var(--text-muted)', strokeWidth = 1.8 }) {
@@ -46,6 +47,57 @@ function FormField({ label, name, type = 'text', value, onChange, error, placeho
   );
 }
 
+const CATEGORIA_OPTIONS = [
+  { value: 'COBRE', label: 'Cobre' },
+  { value: 'PLATA', label: 'Plata' },
+  { value: 'PLATINO', label: 'Platino' },
+  { value: 'DIAMANTE', label: 'Diamante' },
+  { value: 'OBSIDIANA', label: 'Obsidiana' },
+];
+
+const ESTADO_OPTIONS = [
+  { value: 'ACTIVO', label: 'Activo' },
+  { value: 'GRACIA', label: 'En Periodo de Gracia' },
+  { value: 'SUSPENDIDO', label: 'Suspendido' },
+];
+
+function FormSelect({ label, name, value, onChange, options, required }) {
+  return (
+    <div>
+      <label style={{ display: 'block', fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.07em', fontFamily: "'JetBrains Mono', monospace" }}>
+        {label} {required && <span style={{ color: 'var(--danger)' }}>*</span>}
+      </label>
+      <select
+        name={name}
+        value={value}
+        onChange={onChange}
+        style={{
+          width: '100%',
+          padding: '8px 12px',
+          border: '1px solid var(--border)',
+          borderRadius: 5,
+          fontSize: 12,
+          fontFamily: 'inherit',
+          background: 'var(--bg-topbar)',
+          color: 'var(--text-primary)',
+          outline: 'none',
+          transition: 'border-color 0.15s, background 0.15s',
+          boxSizing: 'border-box',
+          cursor: 'pointer'
+        }}
+        onFocus={e => { e.target.style.borderColor = 'rgba(37, 99, 235, 0.4)'; e.target.style.background = 'var(--surface)'; }}
+        onBlur={e => { e.target.style.borderColor = 'var(--border)'; e.target.style.background = 'var(--bg-topbar)'; }}
+      >
+        {options.map(opt => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 const SectionTitle = ({ icon, title }) => (
   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16 }}>
     <Svg paths={icon} color="var(--text-faint)" size={12} />
@@ -54,9 +106,16 @@ const SectionTitle = ({ icon, title }) => (
 );
 
 export default function NewClientModal({ onClose, onSuccess }) {
+  const { user } = useAuth();
   const [tipo, setTipo] = useState('natural');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [tenants, setTenants] = useState([]);
+
+  useEffect(() => {
+    // Ya no cargamos tenants para mostrarlos en un select, 
+    // porque el backend creará el tenant automáticamente.
+  }, [user]);
 
   const [form, setForm] = useState({
     email_principal: '',
@@ -70,6 +129,9 @@ export default function NewClientModal({ onClose, onSuccess }) {
     contacto_cargo: '',
     contacto_email: '',
     contacto_telefono: '',
+    tenant_id: '',
+    categoria: 'COBRE',
+    estado: 'ACTIVO',
   });
 
   const handleChange = (e) => {
@@ -126,6 +188,7 @@ export default function NewClientModal({ onClose, onSuccess }) {
       }
     }
 
+    // Eliminada la validación de tenant_id porque se crea automáticamente en el backend
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -141,7 +204,8 @@ export default function NewClientModal({ onClose, onSuccess }) {
         email_principal: form.email_principal.trim(),
         telefono_contacto: form.telefono_contacto.trim(),
       };
-
+      
+      // El tenant_id ya no se envía desde el frontend; el backend lo crea.
       if (tipo === 'natural') {
         payload.run = form.run.trim();
         payload.nombre_completo = form.nombre_completo.trim();
@@ -149,6 +213,8 @@ export default function NewClientModal({ onClose, onSuccess }) {
         payload.rut = form.rut.trim();
         payload.razon_social = form.razon_social.trim();
         payload.giro = form.giro.trim();
+        payload.categoria = form.categoria;
+        payload.estado = form.estado;
         if (form.contacto_nombre.trim() || form.contacto_email.trim()) {
           payload.contacto_representante = {
             nombre: form.contacto_nombre.trim(),
@@ -159,8 +225,8 @@ export default function NewClientModal({ onClose, onSuccess }) {
         }
       }
 
-      await createCliente(payload);
-      onSuccess?.();
+      const created = await createCliente(payload);
+      onSuccess?.(created);
       onClose();
     } catch (err) {
       setErrors(e => ({ ...e, submit: err.message }));
@@ -224,7 +290,7 @@ export default function NewClientModal({ onClose, onSuccess }) {
           <p style={{ margin: '0 0 12px', fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', fontFamily: "'JetBrains Mono', monospace" }}>
             Tipo de Cliente
           </p>
-          <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+          <div className="ncm-tipo-row" style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
             {[
               { value: 'natural', label: 'Persona Natural', desc: 'Individuo o profesional', icon: ['M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2', 'M12 3a4 4 0 1 0 0 8 4 4 0 1 0 0-8z'] },
               { value: 'juridica', label: 'Empresa', desc: 'Sociedad o corporación', icon: ['M3 21h18', 'M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16', 'M9 7h6', 'M9 11h6', 'M9 15h6'] },
@@ -266,9 +332,10 @@ export default function NewClientModal({ onClose, onSuccess }) {
           )}
 
           <form id="new-client-form" onSubmit={handleSubmit}>
+            {/* Se eliminó el selector de Asignación de Tenant */}
             <div style={{ marginBottom: 16 }}>
               <SectionTitle icon={['M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0 1 12 2.944a11.955 11.955 0 0 1-8.618 3.04A12.02 12.02 0 0 0 3 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z']} title="Identificación Legal" />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 12px' }}>
+              <div className="ncm-grid">
                 {tipo === 'natural' ? (
                   <>
                     <div style={{ gridColumn: '1 / -1' }}>
@@ -290,7 +357,7 @@ export default function NewClientModal({ onClose, onSuccess }) {
 
             <div style={{ marginBottom: tipo === 'juridica' ? 16 : 0 }}>
               <SectionTitle icon={['M3 8l7.89 5.26a2 2 0 0 0 2.22 0L21 8M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z']} title="Contacto Principal" />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 12px' }}>
+              <div className="ncm-grid">
                 <div style={{ gridColumn: '1 / -1' }}>
                   <FormField label="Email Principal" name="email_principal" type="email" value={form.email_principal} onChange={handleChange} error={errors.email_principal} placeholder="ej: contacto@empresa.com" required />
                 </div>
@@ -299,9 +366,19 @@ export default function NewClientModal({ onClose, onSuccess }) {
             </div>
 
             {tipo === 'juridica' && (
+              <div style={{ marginBottom: 16, padding: '12px 16px', background: 'var(--bg-faint)', borderRadius: 8, border: '1px solid var(--neutral-200)' }}>
+                <SectionTitle icon={['M3 21h18', 'M5 21V7l7-4 7 4v14', 'M9 9h1', 'M9 13h1', 'M14 9h1', 'M14 13h1', 'M10 21v-4h4v4']} title="Suscripción & Plan (Tenant)" />
+                <div className="ncm-grid">
+                  <FormSelect label="Categoría (Plan)" name="categoria" value={form.categoria} onChange={handleChange} options={CATEGORIA_OPTIONS} required />
+                  <FormSelect label="Estado Suscripción" name="estado" value={form.estado} onChange={handleChange} options={ESTADO_OPTIONS} required />
+                </div>
+              </div>
+            )}
+
+            {tipo === 'juridica' && (
               <div style={{ padding: '12px 16px', background: 'var(--bg-faint)', borderRadius: 8, border: '1px solid var(--neutral-200)' }}>
                 <SectionTitle icon={['M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2', 'M12 3a4 4 0 1 0 0 8 4 4 0 1 0 0-8z']} title="Representante Legal (Opcional)" />
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 12px' }}>
+                <div className="ncm-grid">
                   <FormField label="Nombre" name="contacto_nombre" value={form.contacto_nombre} onChange={handleChange} placeholder="ej: Carlos López" />
                   <FormField label="Cargo" name="contacto_cargo" value={form.contacto_cargo} onChange={handleChange} placeholder="ej: Gerente General" />
                   <FormField label="Email" name="contacto_email" type="email" value={form.contacto_email} onChange={handleChange} placeholder="ej: carlos@empresa.com" />
@@ -359,6 +436,15 @@ export default function NewClientModal({ onClose, onSuccess }) {
           @keyframes modalIn {
             from { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
             to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+          }
+          .ncm-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px 12px;
+          }
+          @media (max-width: 520px) {
+            .ncm-grid { grid-template-columns: 1fr; }
+            .ncm-tipo-row { flex-direction: column; }
           }
         `}</style>
       </div>

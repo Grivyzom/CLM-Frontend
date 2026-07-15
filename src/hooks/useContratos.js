@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getContratos, getContratoStats } from '../api';
+import { useActiveView } from '../contexts/ActiveViewContext';
 
 const DEFAULT_FILTERS = {
   search: '',
@@ -23,6 +24,10 @@ const DEFAULT_PAGE_SIZE = 20;
  *   que la tabla para poder repartir tarjetas entre las columnas de etapa).
  */
 export function useContratos({ pageSize = DEFAULT_PAGE_SIZE } = {}) {
+  // Vista activa: con un cliente seleccionado, lista y stats se acotan a él.
+  const { activeCliente } = useActiveView();
+  const clienteId = activeCliente?.id || null;
+
   const [data, setData]       = useState(null);
   const [stats, setStats]     = useState(null);
   const [loading, setLoading] = useState(true);
@@ -55,6 +60,7 @@ export function useContratos({ pageSize = DEFAULT_PAGE_SIZE } = {}) {
       etapa: filters.etapa,
       software: filters.software,
       ordering: filters.ordering,
+      cliente: clienteId,
       page,
       pageSize,
     });
@@ -74,6 +80,7 @@ export function useContratos({ pageSize = DEFAULT_PAGE_SIZE } = {}) {
         search:   debouncedSearch,
         etapa:    filters.etapa,
         software: filters.software,
+        cliente:  clienteId,
         ordering: filters.ordering,
         page,
         page_size: pageSize,
@@ -87,21 +94,21 @@ export function useContratos({ pageSize = DEFAULT_PAGE_SIZE } = {}) {
     } finally {
       if (seq === requestSeq.current) setLoading(false);
     }
-  }, [debouncedSearch, filters.etapa, filters.software, filters.ordering, page, pageSize]);
+  }, [debouncedSearch, filters.etapa, filters.software, filters.ordering, clienteId, page, pageSize]);
 
   const fetchStats = useCallback(async () => {
     try {
-      const result = await getContratoStats();
+      const result = await getContratoStats(clienteId ? { cliente: clienteId } : {});
       setStats(result);
     } catch (err) {
       // Stats son secundarios: no bloquean la vista si fallan.
       setStats(null);
     }
-  }, []);
+  }, [clienteId]);
 
   useEffect(() => {
     setPage(1);
-  }, [pageSize]);
+  }, [pageSize, clienteId]);
 
   useEffect(() => {
     fetchData();

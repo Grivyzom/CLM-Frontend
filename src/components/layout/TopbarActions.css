@@ -6,6 +6,7 @@
 }
 
 .tb-icon-btn {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -22,6 +23,25 @@
 .tb-icon-btn.active {
   color: var(--primary);
   border-color: var(--primary);
+}
+
+.tb-notif-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background-color: var(--danger, #ff4d4f);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  height: 14px;
+  min-width: 14px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  box-shadow: 0 0 0 2px var(--surface);
+  pointer-events: none;
 }
 
 .tb-notif-wrap {
@@ -65,4 +85,107 @@
   margin: 0;
   font-size: 11px;
   color: var(--text-muted);
+}
+
+/* ── Lista de notificaciones (usuario-cliente) ── */
+.tb-notif-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tb-notif-readall {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--primary);
+  cursor: pointer;
+  font-family: 'Inter', system-ui, sans-serif;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.tb-notif-readall:hover { text-decoration: underline; }
+.tb-notif-readall:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+.tb-notif-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.tb-notif-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  border-left: 2px solid var(--primary);
+}
+.tb-notif-item:last-child { border-bottom: none; }
+.tb-notif-item.read { border-left-color: transparent; opacity: 0.72; }
+.tb-notif-item.tipo-AVISO   { border-left-color: var(--warning-bright); }
+.tb-notif-item.tipo-URGENTE { border-left-color: var(--danger); }
+.tb-notif-item.read.tipo-AVISO,
+.tb-notif-item.read.tipo-URGENTE { border-left-color: transparent; }
+
+.tb-notif-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.tb-notif-item-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.tb-notif-item-body {
+  font-size: 10px;
+  color: var(--text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tb-notif-item-meta {
+  font-size: 9px;
+  color: var(--text-faint);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.tb-notif-item-read {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.tb-notif-item-read:hover { color: var(--primary); border-color: var(--primary); }
+.tb-notif-item-read:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+/* ── Móvil ── */
+.tb-menu-btn { display: none; }
+
+@media (max-width: 900px) {
+  .tb-menu-btn { display: flex; }
+  /* Targets táctiles más generosos */
+  .tb-icon-btn {
+    width: 30px;
+    height: 30px;
+  }
+  .tb-notif-popover {
+    width: min(280px, calc(100vw - 24px));
+  }
 }

@@ -4,6 +4,7 @@ import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { getClienteDetail, getContratos, deleteCliente, updateClienteStatus, exportClientes } from '../api';
 import { useClientes } from '../hooks/useClientes';
+import { useAuth } from '../contexts/AuthContext';
 
 gsap.registerPlugin(useGSAP);
 import NewClientModal from './NewClientModal';
@@ -24,12 +25,20 @@ import ContextMenu from '../components/ui/ContextMenu';
 import ActionDropdown from '../components/ui/ActionDropdown';
 import Toast from '../components/ui/Toast';
 import TopbarActions from '../components/layout/TopbarActions';
-import { fmtMoney, fmtDate, contratoIdDisplay } from '../utils/formatters';
+import { fmtMoney, fmtDate, contratoIdDisplay, clienteIdDisplay } from '../utils/formatters';
 
 // ─── Constantes visuales ─────────────────────────────────────────────────────
 const FILTER_ESTADOS  = ['Todos', 'Activo', 'En revisión', 'Inactivo'];
 const FILTER_TIPOS    = ['Todos', 'juridica', 'natural'];
 const FILTER_TIPO_LABELS = { Todos: 'Todos', juridica: 'Empresa', natural: 'Persona Natural' };
+
+const CATEGORIA_META = {
+  COBRE: { label: 'Cobre', color: 'var(--orange)', bg: 'var(--orange-tint)' },
+  PLATA: { label: 'Plata', color: 'var(--text-muted)', bg: 'var(--neutral-200)' },
+  PLATINO: { label: 'Platino', color: 'var(--cyan-deep)', bg: 'var(--cyan-tint)' },
+  DIAMANTE: { label: 'Diamante', color: 'var(--indigo)', bg: 'var(--indigo-bg)' },
+  OBSIDIANA: { label: 'Obsidiana', color: 'var(--violet-deep)', bg: 'var(--violet-tint)' },
+};
 
 // Generar iniciales + color del avatar a partir del nombre/razón social
 function getAvatarStyle(name = '') {
@@ -220,12 +229,16 @@ function DetailPanel({ clientId, onClose }) {
           </div>
           <div>
             {loading
-              ? <div style={{ width: 160, height: 14, background: 'var(--border)', borderRadius: 4, marginBottom: 6 }} />
+              ? <div style={{ width: 160, height: 14, background: 'var(--border)', borderRadius: 'var(--radius-sm)', marginBottom: 6 }} />
               : <h2 className="cl-detail-name">{detail?.razon_social || '—'}</h2>
             }
             {loading
-              ? <div style={{ width: 100, height: 10, background: 'var(--neutral-200)', borderRadius: 4 }} />
-              : <p className="cl-detail-sub">{view === 'contratos' ? 'Contratos del cliente' : (detail?.nombre_comercial || '')}</p>
+              ? <div style={{ width: 100, height: 10, background: 'var(--neutral-200)', borderRadius: 'var(--radius-sm)' }} />
+              : <p className="cl-detail-sub">
+                  {view === 'contratos' 
+                    ? 'Contratos del cliente' 
+                    : (detail?.tipo === 'natural' ? 'Persona Natural' : (detail?.nombre_comercial || ''))}
+                </p>
             }
           </div>
         </div>
@@ -254,110 +267,148 @@ function DetailPanel({ clientId, onClose }) {
         {loading ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {[1,2,3,4,5].map(i => (
-              <div key={i} style={{ height: 12, borderRadius: 4, background: 'var(--neutral-200)', width: `${60 + i * 8}%` }} />
+              <div key={i} style={{ height: 12, borderRadius: 'var(--radius-sm)', background: 'var(--neutral-200)', width: `${60 + i * 8}%` }} />
             ))}
           </div>
         ) : detail && view === 'info' ? (
-          <>
-            {/* Identificación Legal */}
-            <div>
-              <p className="cl-detail-section-title">
-                <Svg paths={['M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0 1 12 2.944a11.955 11.955 0 0 1-8.618 3.04A12.02 12.02 0 0 0 3 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z']} color="var(--text-faint)" size={12} />
-                Identificación Legal
-              </p>
-              <div className="cl-detail-rows">
-                <DetailRow label="Razón Social">
-                  {detail.razon_social ? <CopyableValue value={detail.razon_social} /> : '—'}
-                </DetailRow>
-                <DetailRow label="Nombre Comercial">
-                  {detail.nombre_comercial ? <CopyableValue value={detail.nombre_comercial} /> : '—'}
-                </DetailRow>
-                <DetailRow label={detail.tipo === 'juridica' ? 'RUT' : 'RUN'}>
-                  <CopyableValue value={detail.id_fiscal}>
-                    <span className="cl-rut-value">{detail.id_fiscal}</span>
-                  </CopyableValue>
-                </DetailRow>
-                <DetailRow label="Sector">{detail.sector}</DetailRow>
-                <DetailRow label="Registrado">
-                  {new Date(detail.fecha_registro).toLocaleDateString('es-CL', { year: 'numeric', month: 'short', day: 'numeric' })}
-                </DetailRow>
-                <DetailRow label="Modificado">
-                  {detail.fecha_modificacion
-                    ? new Date(detail.fecha_modificacion).toLocaleDateString('es-CL', { year: 'numeric', month: 'short', day: 'numeric' })
-                    : '—'}
-                </DetailRow>
-              </div>
-            </div>
-
-            {/* Contacto Principal */}
-            <div>
-              <p className="cl-detail-section-title">
-                <Svg paths={['M3 5a2 2 0 0 1 2-2h3.28a1 1 0 0 1 .948.684l1.498 4.493a1 1 0 0 1-.502 1.21l-2.257 1.13a11.042 11.042 0 0 0 5.516 5.516l1.13-2.257a1 1 0 0 1 1.21-.502l4.493 1.498a1 1 0 0 1 .684.949V19a2 2 0 0 1-2 2h-1C9.716 21 3 14.284 3 6V5z']} color="var(--text-faint)" size={12} />
-                Contacto Principal
-              </p>
-              <div className="cl-detail-rows">
-                <DetailRow label="Nombre">
-                  {detail.contacto_principal || detail.razon_social ? <CopyableValue value={detail.contacto_principal || detail.razon_social} /> : '—'}
-                </DetailRow>
-                <DetailRow label="Correo">
-                  {detail.email ? <CopyableValue value={detail.email} /> : '—'}
-                </DetailRow>
-                <DetailRow label="Teléfono">
-                  {detail.telefono || detail.contacto_tel ? <CopyableValue value={detail.telefono || detail.contacto_tel} /> : '—'}
-                </DetailRow>
-                {detail.contactos?.length > 0 && (
-                  <DetailRow label="Cargo">{detail.contactos[0].cargo}</DetailRow>
-                )}
-              </div>
-            </div>
-
-            {/* Contratos */}
-            <div>
-              <p className="cl-detail-section-title">
-                <Svg paths={['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z','M14 2v6h6','M16 13H8','M16 17H8']} color="var(--text-faint)" size={12} />
-                Contratos
-              </p>
-              <div className="cl-contracts-box">
-                <div>
-                  <p className="cl-contracts-num">{detail.contratos_count}</p>
-                  <p className="cl-contracts-label">contratos registrados</p>
+          detail.tipo === 'juridica' ? (
+            <>
+              {/* --- VISTA EMPRESA --- */}
+              {/* Identificación de la Empresa */}
+              <div>
+                <p className="cl-detail-section-title">
+                  <Svg paths={['M3 21h18', 'M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16', 'M9 7h6', 'M9 11h6', 'M9 15h6']} color="var(--text-faint)" size={12} />
+                  Ficha de la Empresa
+                </p>
+                <div className="cl-detail-rows">
+                  <DetailRow label="Razón Social">
+                    {detail.razon_social ? <CopyableValue value={detail.razon_social} /> : '—'}
+                  </DetailRow>
+                  <DetailRow label="Nombre Comercial">
+                    {detail.nombre_comercial ? <CopyableValue value={detail.nombre_comercial} /> : '—'}
+                  </DetailRow>
+                  <DetailRow label="RUT">
+                    <CopyableValue value={detail.id_fiscal}>
+                      <span className="cl-rut-value">{detail.id_fiscal}</span>
+                    </CopyableValue>
+                  </DetailRow>
+                  <DetailRow label="Giro / Sector">{detail.sector}</DetailRow>
+                  {detail.personal_count !== undefined && (
+                    <DetailRow label="Personal Registrado">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <Svg paths={['M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2', 'M16 3.13a4 4 0 0 1 0 7.75']} circles={[{ cx: 9, cy: 7, r: 4 }]} size={11} color="var(--text-muted)" />
+                        <span>{detail.personal_count} {detail.personal_count === 1 ? 'usuario' : 'usuarios'}</span>
+                      </div>
+                    </DetailRow>
+                  )}
+                  <DetailRow label="Registrado">
+                    {new Date(detail.fecha_registro).toLocaleDateString('es-CL', { year: 'numeric', month: 'short', day: 'numeric' })}
+                  </DetailRow>
+                  <DetailRow label="Última Modificación">
+                    {detail.fecha_modificacion
+                      ? new Date(detail.fecha_modificacion).toLocaleDateString('es-CL', { year: 'numeric', month: 'short', day: 'numeric' })
+                      : '—'}
+                  </DetailRow>
                 </div>
               </div>
 
-              {/* Lista de contratos activos */}
-              <div style={{ marginTop: 10, border: '1px solid var(--neutral-200)', borderRadius: 6, overflow: 'hidden' }}>
-                {detail.contratos_activos?.length > 0 ? (
-                  detail.contratos_activos.map((c, i) => (
-                    <div
-                      key={c.id}
-                      style={{
-                        padding: '10px 12px',
-                        borderBottom: i < detail.contratos_activos.length - 1 ? '1px solid var(--bg-topbar)' : 'none',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        fontSize: 12,
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{c.software}</div>
-                        <div style={{ color: 'var(--text-muted)', fontSize: 10, marginTop: 2 }}>
-                          {c.tipo_contrato} · vence {c.fecha_vencimiento ? new Date(c.fecha_vencimiento).toLocaleDateString('es-CL', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}
-                        </div>
-                      </div>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--success-deep)', background: 'var(--success-bg)', padding: '2px 8px', borderRadius: 999 }}>
-                        ACTIVO
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <div style={{ padding: '16px 12px', textAlign: 'center', color: 'var(--text-faint)', fontSize: 12 }}>
-                    No hay contratos activos
+              {/* Suscripción */}
+              {detail.tenant_name && (
+                <div>
+                  <p className="cl-detail-section-title">
+                    <Svg paths={['M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z']} color="var(--text-faint)" size={12} />
+                    Suscripción a la Plataforma
+                  </p>
+                  <div className="cl-detail-rows">
+                    <DetailRow label="Cuenta (Tenant)">{detail.tenant_name}</DetailRow>
+                    {detail.tenant_categoria && (
+                      <DetailRow label="Plan de Suscripción">
+                        <span className="cl-membership-badge" style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          color: CATEGORIA_META[detail.tenant_categoria.toUpperCase()]?.color || 'var(--text-secondary)',
+                          background: CATEGORIA_META[detail.tenant_categoria.toUpperCase()]?.bg || 'var(--neutral-200)',
+                          padding: '2px 8px',
+                          borderRadius: 4,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em'
+                        }}>
+                          {CATEGORIA_META[detail.tenant_categoria.toUpperCase()]?.label || detail.tenant_categoria}
+                        </span>
+                      </DetailRow>
+                    )}
+                    {detail.tenant_estado && (
+                      <DetailRow label="Estado Suscripción">
+                        {detail.tenant_estado.charAt(0) + detail.tenant_estado.slice(1).toLowerCase()}
+                      </DetailRow>
+                    )}
                   </div>
-                )}
+                </div>
+              )}
+
+              {/* Representante / Contacto */}
+              <div>
+                <p className="cl-detail-section-title">
+                  <Svg paths={['M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2']} circles={[{ cx: 9, cy: 7, r: 4 }]} color="var(--text-faint)" size={12} />
+                  Contacto Representante
+                </p>
+                <div className="cl-detail-rows">
+                  <DetailRow label="Nombre">
+                    {detail.contacto_principal ? <CopyableValue value={detail.contacto_principal} /> : '—'}
+                  </DetailRow>
+                  <DetailRow label="Correo Electrónico">
+                    {detail.email ? <CopyableValue value={detail.email} /> : '—'}
+                  </DetailRow>
+                  <DetailRow label="Teléfono de Contacto">
+                    {detail.telefono || detail.contacto_tel ? <CopyableValue value={detail.telefono || detail.contacto_tel} /> : '—'}
+                  </DetailRow>
+                  {detail.contactos?.length > 0 && (
+                    <DetailRow label="Cargo / Rol">{detail.contactos[0].cargo}</DetailRow>
+                  )}
+                </div>
               </div>
-            </div>
-          </>
+
+
+            </>
+          ) : (
+            <>
+              {/* --- VISTA PERSONA --- */}
+              {/* Identificación de la Persona */}
+              <div>
+                <p className="cl-detail-section-title">
+                  <Svg paths={['M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2']} circles={[{ cx: 12, cy: 7, r: 4 }]} color="var(--text-faint)" size={12} />
+                  Ficha de la Persona
+                </p>
+                <div className="cl-detail-rows">
+                  <DetailRow label="Nombre Completo">
+                    {detail.razon_social ? <CopyableValue value={detail.razon_social} /> : '—'}
+                  </DetailRow>
+                  <DetailRow label="RUN">
+                    <CopyableValue value={detail.id_fiscal}>
+                      <span className="cl-rut-value">{detail.id_fiscal}</span>
+                    </CopyableValue>
+                  </DetailRow>
+                  <DetailRow label="Correo Electrónico">
+                    {detail.email ? <CopyableValue value={detail.email} /> : '—'}
+                  </DetailRow>
+                  <DetailRow label="Teléfono de Contacto">
+                    {detail.telefono || detail.contacto_tel ? <CopyableValue value={detail.telefono || detail.contacto_tel} /> : '—'}
+                  </DetailRow>
+                  <DetailRow label="Tipo de Cliente">Persona Natural</DetailRow>
+                  <DetailRow label="Registrado">
+                    {new Date(detail.fecha_registro).toLocaleDateString('es-CL', { year: 'numeric', month: 'short', day: 'numeric' })}
+                  </DetailRow>
+                  <DetailRow label="Última Modificación">
+                    {detail.fecha_modificacion
+                      ? new Date(detail.fecha_modificacion).toLocaleDateString('es-CL', { year: 'numeric', month: 'short', day: 'numeric' })
+                      : '—'}
+                  </DetailRow>
+                </div>
+              </div>
+
+
+            </>
+          )
         ) : detail && view === 'contratos' ? (
           <div>
             <p className="cl-detail-section-title">
@@ -374,7 +425,7 @@ function DetailPanel({ clientId, onClose }) {
             {!contratos && !contratosError && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
                 {[1,2,3].map(i => (
-                  <div key={i} style={{ height: 52, borderRadius: 6, background: 'var(--neutral-200)' }} />
+                  <div key={i} style={{ height: 52, borderRadius: 'var(--radius-lg)', background: 'var(--neutral-200)' }} />
                 ))}
               </div>
             )}
@@ -386,7 +437,7 @@ function DetailPanel({ clientId, onClose }) {
             )}
 
             {contratos && contratos.length > 0 && (
-              <div style={{ marginTop: 8, border: '1px solid var(--neutral-200)', borderRadius: 6, overflow: 'hidden' }}>
+              <div style={{ marginTop: 8, border: '1px solid var(--neutral-200)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
                 {contratos.map((c, i) => {
                   const st = CONTRACT_STATUS_STYLE[c.status] || { color: 'var(--text-muted)', bg: 'var(--neutral-200)' };
                   return (
@@ -453,6 +504,9 @@ function DetailPanel({ clientId, onClose }) {
               Volver a la ficha
             </button>
           )}
+          <button className="cl-detail-footer-btn secondary" onClick={() => navigate(`/clientes/${clientId}`)}>
+            Workspace
+          </button>
           <button className="cl-detail-footer-btn primary" onClick={goNuevoContrato}>
             Nuevo contrato
           </button>
@@ -535,6 +589,8 @@ function FilterDropdown({ onClose, filters, updateFilter, anchorRef }) {
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function Clientes() {
+  const { canWrite, user } = useAuth();
+  const navigate = useNavigate();
   const [filterOpen, setFilterOpen]     = useState(false);
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [newClientModalOpen, setNewClientModalOpen] = useState(false);
@@ -555,6 +611,8 @@ export default function Clientes() {
     page, pageSize, setPage,
     filters, updateFilter, resetFilters,
     refetch,
+    updateClientLocally,
+    addClientLocally,
   } = useClientes();
 
   const { confirm, alert: alertModal } = useConfirm();
@@ -763,8 +821,8 @@ export default function Clientes() {
     const isActive = nuevoEstado === 'Activo';
 
     try {
-      await updateClienteStatus(clientId, isActive);
-      refetch();
+      const updated = await updateClienteStatus(clientId, isActive);
+      updateClientLocally(updated);
     } catch (err) {
       alertModal({ title: "Error al cambiar estado", message: err.message, isDangerous: true });
     }
@@ -1030,14 +1088,16 @@ export default function Clientes() {
                 </div>
               )}
             </div>
-            <button
-              id="clientes-new-btn"
-              className="cl-btn-primary"
-              onClick={() => setNewClientModalOpen(true)}
-            >
-              <Svg paths={['M12 5v14','M5 12h14']} color="var(--text-on-accent)" size={14} />
-              Nuevo Cliente
-            </button>
+            {canWrite && (
+              <button
+                id="clientes-new-btn"
+                className="cl-btn-primary"
+                onClick={() => setNewClientModalOpen(true)}
+              >
+                <Svg paths={['M12 5v14','M5 12h14']} color="var(--text-on-accent)" size={14} />
+                Nuevo Cliente
+              </button>
+            )}
           </div>
 
           {/* Active Filters Bar */}
@@ -1074,19 +1134,23 @@ export default function Clientes() {
             <div className="cl-bulk-bar">
               <span><b>{selectedIds.size}</b> seleccionado{selectedIds.size !== 1 ? 's' : ''}</span>
               <div className="cl-bulk-spacer" />
-              <button className="cl-bulk-btn danger" onClick={handleBulkDelete}>
-                <Svg paths={['M19 7l-1 12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 7m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3','M10 11v6','M14 11v6']} color="var(--danger)" size={13} />
-                Eliminar seleccionados
-              </button>
+              {canWrite && (
+                <button className="cl-bulk-btn danger" onClick={handleBulkDelete}>
+                  <Svg paths={['M19 7l-1 12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 7m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3','M10 11v6','M14 11v6']} color="var(--danger)" size={13} />
+                  Eliminar seleccionados
+                </button>
+              )}
               <button className="cl-bulk-btn" onClick={clearSelection}>
                 Cancelar selección
               </button>
             </div>
           )}
 
-          {/* Table Header */}
-          <div className="cl-thead" role="row">
-            <span className="cl-th-check">
+          {/* Table Container */}
+          <div className="cl-table-wrapper">
+            {/* Table Header */}
+            <div className="cl-thead" role="row">
+              <span className="cl-th-check">
               <IndeterminateCheckbox
                 checked={allPageSelected}
                 indeterminate={somePageSelected}
@@ -1186,8 +1250,40 @@ export default function Clientes() {
                         {avatar.initials}
                       </div>
                       <div style={{ minWidth: 0 }}>
-                        <div className="cl-company-name">{c.razon_social}</div>
-                        <div className="cl-company-sub">{c.nombre_comercial}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                          <span className="cl-company-name">{c.razon_social}</span>
+                          {c.tenant_categoria && (
+                            <span className="cl-membership-badge" style={{
+                              fontSize: 9,
+                              fontWeight: 700,
+                              color: CATEGORIA_META[c.tenant_categoria.toUpperCase()]?.color || 'var(--text-secondary)',
+                              background: CATEGORIA_META[c.tenant_categoria.toUpperCase()]?.bg || 'var(--neutral-200)',
+                              padding: '2px 8px',
+                              borderRadius: 4,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.05em'
+                            }}>
+                              {CATEGORIA_META[c.tenant_categoria.toUpperCase()]?.label || c.tenant_categoria}
+                            </span>
+                          )}
+                        </div>
+                        <div className="cl-company-sub" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span>{clienteIdDisplay(c.id)}</span>
+                          {c.tipo === 'juridica' && (
+                            <>
+                              <span style={{ color: 'var(--text-faint)' }}>•</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-muted)' }}>
+                                <Svg 
+                                  paths={['M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2', 'M16 3.13a4 4 0 0 1 0 7.75']} 
+                                  circles={[{ cx: 9, cy: 7, r: 4 }]} 
+                                  size={11} 
+                                  color="var(--text-muted)" 
+                                />
+                                <span>{c.personal_count ?? 0} {c.personal_count === 1 ? 'miembro' : 'miembros'}</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -1225,19 +1321,22 @@ export default function Clientes() {
                       >
                         <Svg paths={['M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z']} circles={[{cx:12,cy:12,r:3}]} color="var(--text-muted)" size={13} />
                       </button>
-                      <button
-                        className="cl-action-btn"
-                        title="Más opciones"
-                        id={`clientes-more-${c.id}`}
-                        onClick={e => handleOpenContextMenu(e, c.id)}
-                      >
-                        <Svg paths={['M12 5v.01','M12 12v.01','M12 19v.01','M12 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2z','M12 13a1 1 0 1 1 0-2 1 1 0 0 1 0 2z','M12 20a1 1 0 1 1 0-2 1 1 0 0 1 0 2z']} color="var(--text-muted)" size={13} />
-                      </button>
+                      {canWrite && (
+                        <button
+                          className="cl-action-btn"
+                          title="Más opciones"
+                          id={`clientes-more-${c.id}`}
+                          onClick={e => handleOpenContextMenu(e, c.id)}
+                        >
+                          <Svg paths={['M12 5v.01','M12 12v.01','M12 19v.01','M12 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2z','M12 13a1 1 0 1 1 0-2 1 1 0 0 1 0 2z','M12 20a1 1 0 1 1 0-2 1 1 0 0 1 0 2z']} color="var(--text-muted)" size={13} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
               })
             )}
+          </div>
           </div>
 
           {/* Pagination */}
@@ -1266,8 +1365,8 @@ export default function Clientes() {
       {newClientModalOpen && (
         <NewClientModal
           onClose={() => setNewClientModalOpen(false)}
-          onSuccess={() => {
-            refetch();
+          onSuccess={(newClient) => {
+            addClientLocally(newClient);
             setNewClientModalOpen(false);
           }}
         />
@@ -1283,6 +1382,7 @@ export default function Clientes() {
           onDelete={handleDeleteClient}
           onChangeStatus={handleChangeStatus}
           clientEstado={clientes.find(c => c.id === contextMenuClientId)?.estado || 'Activo'}
+          onOpenWorkspace={(id) => navigate(`/clientes/${id}`)}
         />
       )}
 
@@ -1292,8 +1392,8 @@ export default function Clientes() {
         <EditClientModal
           clientId={editClientId}
           onClose={() => setEditClientId(null)}
-          onSuccess={() => {
-            refetch();
+          onSuccess={(updatedClient) => {
+            updateClientLocally(updatedClient);
             setEditClientId(null);
           }}
         />

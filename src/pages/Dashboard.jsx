@@ -11,7 +11,7 @@ import {
 import {
   ChevronUp, ChevronDown, ChevronsUpDown, Download, RefreshCw,
   CheckCircle2, AlertTriangle, FileWarning, ArrowRight,
-  DollarSign, FileText, Users, Calendar, FileQuestion
+  DollarSign, FileText, Users, Calendar, FileQuestion, X
 } from 'lucide-react';
 import { useDashboard } from '../hooks/useDashboard';
 import TopbarActions from '../components/layout/TopbarActions';
@@ -125,6 +125,7 @@ export default function Dashboard() {
   } = useDashboard();
 
   const dashboardRef = useRef(null);
+  const [dismissedDocWarning, setDismissedDocWarning] = useState(false);
 
   // La entrada corre en dos fases para que la vista aparezca al instante del click:
   // fase 1 anima la estructura (existe desde el mount, con placeholders '—') sin
@@ -204,8 +205,31 @@ export default function Dashboard() {
       });
 
       if (kpiValues.length > 0) {
+        tl.addLabel('kpiIn');
         tl.fromTo(kpiValues, { y: 10, opacity: 0 },
-          { y: 0, opacity: 1, duration: 0.3, stagger: 0.03, ease: 'power3.out', clearProps: 'transform,opacity' });
+          { y: 0, opacity: 1, duration: 0.3, stagger: 0.03, ease: 'power3.out', clearProps: 'transform,opacity' }, 'kpiIn');
+
+        // Contador numérico: proxy object animado de 0 → valor real, formateado
+        // en cada frame vía onUpdate (evita re-render de React por frame).
+        const kpiCounters = [
+          { raw: kpis.mrr.value, format: fmtCompact },
+          { raw: kpis.contratos_activos.value, format: (v) => Math.round(v).toLocaleString('es-CL') },
+          { raw: kpis.clientes_activos.value, format: (v) => Math.round(v).toLocaleString('es-CL') },
+          { raw: kpis.renovaciones_30d.value, format: (v) => Math.round(v).toLocaleString('es-CL') },
+          { raw: kpis.requieren_accion.value, format: (v) => Math.round(v).toLocaleString('es-CL') },
+          { raw: kpis.sin_documento.value, format: (v) => Math.round(v).toLocaleString('es-CL') },
+        ];
+        kpiValues.forEach((el, i) => {
+          const counter = kpiCounters[i];
+          if (!counter || typeof counter.raw !== 'number') return;
+          const proxy = { val: 0 };
+          tl.to(proxy, {
+            val: counter.raw,
+            duration: 0.6,
+            ease: 'power2.out',
+            onUpdate: () => { el.textContent = counter.format(proxy.val); },
+          }, `kpiIn+=${i * 0.03}`);
+        });
       }
       if (docWarning) {
         tl.fromTo(docWarning, { y: 8, opacity: 0 },
@@ -407,13 +431,16 @@ export default function Dashboard() {
               ))}
             </div>
 
-            {kpis.sin_documento.value > 0 && (
+            {kpis.sin_documento.value > 0 && !dismissedDocWarning && (
               <div className="db-doc-warning">
                 <FileWarning size={13} />
                 <span>
                   {kpis.sin_documento.value} contrato(s) activo(s) sin documento PDF de respaldo.
                   Genera el documento desde la ficha del contrato para mantener la trazabilidad legal.
                 </span>
+                <button className="db-doc-warning-close" onClick={() => setDismissedDocWarning(true)} title="Cerrar aviso">
+                  <X size={13} />
+                </button>
               </div>
             )}
 

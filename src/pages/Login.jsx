@@ -1,10 +1,17 @@
-import React, { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate, Navigate, Link } from 'react-router-dom';
+import { useAuth, buildUserFromApi } from '../contexts/AuthContext';
 import { apiLogin } from '../api';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import '../styles/Login.css';
+
+function todayLabel() {
+  const s = new Intl.DateTimeFormat('es-CL', {
+    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+  }).format(new Date()).replace(/\./g, '');
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
 export default function Login() {
   const [username, setUsername] = useState(() => localStorage.getItem('clm_saved_username') || '');
@@ -15,43 +22,41 @@ export default function Login() {
   const [step, setStep] = useState(1);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showForgotInfo, setShowForgotInfo] = useState(false);
+  const [capsLock, setCapsLock] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, user, checking } = useAuth();
 
   const containerRef = useRef(null);
+  const totpRef = useRef(null);
 
+  // Al pasar al paso 2, enfocar el código cuando termina el slide
+  useEffect(() => {
+    if (step !== 2) return;
+    const t = setTimeout(() => totpRef.current?.focus(), 420);
+    return () => clearTimeout(t);
+  }, [step]);
+
+  // Mismo lenguaje de entrada que la landing (Inicio.jsx): fromTo cortos,
+  // power3.out, sin scale pop, clearProps al terminar.
   useGSAP(() => {
-    const tl = gsap.timeline();
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
 
-    tl.from('.login-header > div > *', {
-      y: -20,
-      opacity: 0,
-      duration: 0.6,
-      stagger: 0.1,
-      ease: 'power3.out',
-    })
-    .from('.login-header-date', {
-      x: 20,
-      opacity: 0,
-      duration: 0.6,
-      ease: 'power3.out',
-    }, '<0.2')
-    .from('.login-card', {
-      y: 40,
-      opacity: 0,
-      scale: 0.95,
-      duration: 0.8,
-      ease: 'power3.out',
-    }, '-=0.4')
-    .from('.login-card-icon, .login-card-badge, .login-card h2, .login-subtitle, .login-form > *', {
-      y: 15,
-      opacity: 0,
-      duration: 0.5,
-      stagger: 0.05,
-      ease: 'power2.out',
-      clearProps: 'all'
-    }, '-=0.4');
+    tl.fromTo('.login-header > div > *',
+      { y: -10, opacity: 0 },
+      { y: 0, opacity: 1, duration: 0.4, stagger: 0.08, clearProps: 'transform,opacity' })
+      .fromTo('.login-header-date',
+        { opacity: 0 },
+        { opacity: 1, duration: 0.4, clearProps: 'opacity' }, '<0.1')
+      .fromTo('.login-card',
+        { y: 18, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.55, clearProps: 'transform,opacity' }, '-=0.25')
+      .fromTo('.login-card-icon, .login-card-badge, .login-card h2, .login-subtitle, .login-form > *',
+        { y: 12, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.45, stagger: 0.045, clearProps: 'all' }, '-=0.35')
+      .fromTo('.login-footer',
+        { opacity: 0 },
+        { opacity: 1, duration: 0.4, clearProps: 'opacity' }, '-=0.2');
   }, { scope: containerRef });
 
   const handleLogin = async (e) => {
@@ -69,11 +74,7 @@ export default function Login() {
       }
 
       // Login exitoso sin 2FA
-      login({
-        name: data.username || username,
-        role: 'Administrador',
-        initials: (data.username || username).substring(0, 2).toUpperCase(),
-      });
+      login(buildUserFromApi(data));
       navigate('/');
     } catch (err) {
       const msg = err.message || '';
@@ -108,11 +109,7 @@ export default function Login() {
         localStorage.removeItem('clm_saved_username');
       }
 
-      login({
-        name: data.username || username,
-        role: 'Administrador',
-        initials: (data.username || username).substring(0, 2).toUpperCase(),
-      });
+      login(buildUserFromApi(data));
       navigate('/');
     } catch (err) {
       setError(err.message || 'Código 2FA inválido.');
@@ -121,6 +118,12 @@ export default function Login() {
     }
   };
 
+  // Mientras se valida una posible sesión existente, no mostrar el form
+  // (evita el flash). Si ya hay sesión válida, no tiene sentido loguearse
+  // de nuevo — redirige directo a la app.
+  if (checking) return null;
+  if (user) return <Navigate to="/" replace />;
+
   return (
     <div className="login-container" ref={containerRef}>
       <div className="login-header">
@@ -128,10 +131,29 @@ export default function Login() {
           <p className="login-header-label">Enfoque Platform</p>
           <h1 className="login-header-title">Acceso</h1>
         </div>
-        <span className="login-header-date">Vie 4 jul 2026</span>
+        <span className="login-header-date">{todayLabel()}</span>
       </div>
 
       <div className="login-body">
+        {/* Fondo SVG: mismo lenguaje que el hero de la landing (grid + paths + pulsos) */}
+        <svg
+          className="login-bg"
+          viewBox="0 0 1440 900"
+          preserveAspectRatio="xMidYMid slice"
+          aria-hidden="true"
+        >
+          <defs>
+            <pattern id="lg-grid" width="48" height="48" patternUnits="userSpaceOnUse">
+              <path d="M 48 0 L 0 0 0 48" fill="none" stroke="currentColor" strokeOpacity="0.045" strokeWidth="1" />
+            </pattern>
+          </defs>
+          <rect width="1440" height="900" fill="url(#lg-grid)" />
+          <path className="lg-bg-draw" d="M -40 700 C 240 640, 420 760, 720 680 S 1220 560, 1490 640" fill="none" stroke="var(--primary)" strokeOpacity="0.14" strokeWidth="2" strokeDasharray="900" />
+          <path className="lg-bg-dash" d="M -40 770 C 300 710, 520 810, 840 740 S 1260 650, 1490 710" fill="none" stroke="currentColor" strokeOpacity="0.08" strokeWidth="1.5" strokeDasharray="6 8" />
+          <circle className="lg-bg-pulse" cx="240" cy="140" r="3.5" fill="var(--primary)" fillOpacity="0.35" />
+          <circle className="lg-bg-pulse d2" cx="1180" cy="180" r="3" fill="var(--success)" fillOpacity="0.4" />
+          <circle className="lg-bg-pulse d3" cx="1330" cy="420" r="2.5" fill="var(--warning)" fillOpacity="0.35" />
+        </svg>
         <div className="login-card">
           <div className="login-card-icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -149,13 +171,13 @@ export default function Login() {
             {step === 1 ? 'Ingresa tus credenciales para acceder al sistema CLM.' : 'Ingresa el código de 6 dígitos de tu aplicación autenticadora.'}
           </p>
 
-          {error && <div className="login-error">{error}</div>}
+          {error && <div className="login-error" role="alert">{error}</div>}
 
           <div className="form-slider">
             <div className={`slider-content ${step === 2 ? 'slide-left' : ''}`}>
 
               {/* Step 1 Form */}
-              <form className="login-form step-1" onSubmit={handleLogin}>
+              <form className="login-form step-1" onSubmit={handleLogin} inert={step === 2}>
                 <div className="input-group">
                   <label htmlFor="username">Usuario</label>
                   <input
@@ -177,6 +199,8 @@ export default function Login() {
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      onKeyUp={(e) => setCapsLock(e.getModifierState?.('CapsLock') ?? false)}
+                      onBlur={() => setCapsLock(false)}
                       autoComplete="current-password"
                       required
                     />
@@ -200,6 +224,9 @@ export default function Login() {
                       )}
                     </button>
                   </div>
+                  {capsLock && (
+                    <div className="login-caps-hint">Bloq Mayús está activado.</div>
+                  )}
                 </div>
 
                 <div className="login-row">
@@ -211,20 +238,10 @@ export default function Login() {
                     />
                     <span>Recordarme</span>
                   </label>
-                  <button
-                    type="button"
-                    className="login-forgot"
-                    onClick={() => setShowForgotInfo((v) => !v)}
-                  >
+                  <Link to="/recuperar" className="login-forgot">
                     ¿Olvidaste tu contraseña?
-                  </button>
+                  </Link>
                 </div>
-
-                {showForgotInfo && (
-                  <div className="login-forgot-info">
-                    Contacta al administrador del sistema para restablecer tu contraseña.
-                  </div>
-                )}
 
                 <button type="submit" disabled={loading}>
                   {loading ? <span className="spinner"></span> : 'Ingresar'}
@@ -232,16 +249,28 @@ export default function Login() {
               </form>
 
               {/* Step 2 Form (TOTP) */}
-              <form className="login-form step-2" onSubmit={handleTotp}>
+              <form className="login-form step-2" onSubmit={handleTotp} inert={step !== 2}>
+                <div className="login-user-chip">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                  {username}
+                </div>
                 <div className="input-group">
                   <label htmlFor="totp">Código de Autenticador</label>
                   <input
+                    ref={totpRef}
                     type="text"
                     id="totp"
-                    placeholder="123456"
+                    className="otp-input"
+                    placeholder="••••••"
                     maxLength={6}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
                     value={otpToken}
-                    onChange={(e) => setOtpToken(e.target.value)}
+                    onChange={(e) => setOtpToken(e.target.value.replace(/\D/g, ''))}
+                    required
                   />
                 </div>
                 <button type="submit" disabled={loading}>
@@ -259,6 +288,11 @@ export default function Login() {
             </div>
           </div>
         </div>
+
+        <p className="login-footer">
+          <span className="login-footer-dot" />
+          CLM‑Kyo · v1.0.4 · © 2026
+        </p>
       </div>
     </div>
   );

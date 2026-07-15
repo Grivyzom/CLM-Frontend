@@ -26,3 +26,8 @@ export function fmtDateTime(d) {
 export function contratoIdDisplay(id) {
   return `CTR-${String(id).padStart(6, '0')}`;
 }
+
+export function clienteIdDisplay(id) {
+  return `CLI-${String(id).padStart(6, '0')}`;
+}
+

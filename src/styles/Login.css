@@ -23,7 +23,7 @@
 
 .login-header-label {
   margin: 0;
-  font-size: 8px;
+  font-size: 10px;
   color: var(--text-faint);
   font-weight: 700;
   text-transform: uppercase;
@@ -54,23 +54,46 @@
   min-height: 0;
   overflow-y: auto;
   padding: 20px 28px;
+  position: relative;
+  background:
+    radial-gradient(ellipse 75% 55% at 50% -5%,
+      color-mix(in srgb, var(--primary) 4%, transparent),
+      transparent 70%);
 }
+
+/* Fondo SVG: mismo lenguaje y timings que el hero de la landing (Inicio.css) */
+.login-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  color: var(--text-primary);
+}
+
+@keyframes lg-drawPath { from { stroke-dashoffset: 900; } to { stroke-dashoffset: 0; } }
+@keyframes lg-dashFlow { to { stroke-dashoffset: -28; } }
+@keyframes lg-pulseDot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.8); } }
+
+.lg-bg-draw { animation: lg-drawPath 3s ease-out both; }
+.lg-bg-dash { animation: lg-dashFlow 1.6s linear infinite; }
+.lg-bg-pulse { animation: lg-pulseDot 2.6s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+.lg-bg-pulse.d2 { animation-duration: 3.2s; animation-delay: 0.8s; }
+.lg-bg-pulse.d3 { animation-duration: 2.9s; animation-delay: 1.4s; }
 
 .login-card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.03),
+    0 12px 32px -16px rgba(0, 0, 0, 0.1);
   padding: 40px;
   width: 100%;
   max-width: 400px;
   position: relative;
-  animation: cardIn 0.45s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes cardIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  z-index: 1;
 }
 
 .login-card-icon {
@@ -89,8 +112,8 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(37, 99, 235, 0.05);
-  border: 1px solid rgba(37, 99, 235, 0.15);
+  background: var(--primary-bg);
+  border: 1px solid var(--primary-border);
   border-radius: 4px;
   padding: 5px 10px;
   font-size: 10px;
@@ -106,6 +129,7 @@
   border-radius: 50%;
   background: var(--primary);
   flex-shrink: 0;
+  animation: lg-pulseDot 2.6s ease-in-out infinite;
 }
 
 .login-card h2 {
@@ -130,7 +154,7 @@
 
 .input-group label {
   display: block;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   color: var(--text-faint);
   margin-bottom: 6px;
@@ -156,11 +180,15 @@
 .input-group input:focus {
   border-color: var(--primary);
   background: var(--surface);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent);
 }
 
 .input-group input::placeholder {
   color: var(--text-faint);
+}
+
+.input-group input:hover:not(:focus) {
+  border-color: var(--border-strong);
 }
 
 .password-field {
@@ -193,7 +221,7 @@
 
 .login-card .password-toggle:hover {
   color: var(--primary);
-  background: rgba(37, 99, 235, 0.08);
+  background: var(--primary-bg);
 }
 
 .login-row {
@@ -233,21 +261,31 @@
   color: var(--primary);
   cursor: pointer;
   text-align: right;
+  text-decoration: none;
 }
 
 .login-card .login-forgot:hover {
   text-decoration: underline;
 }
 
-.login-forgot-info {
-  background: var(--primary-bg);
-  border: 1px solid rgba(37, 99, 235, 0.2);
-  color: var(--primary-hover);
-  font-size: 11.5px;
-  line-height: 1.5;
-  padding: 9px 11px;
-  border-radius: 5px;
-  margin: -6px 0 18px;
+/* Enlace de retorno bajo el form (vista Recuperar) */
+.login-back-link {
+  display: inline-block;
+  margin-top: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.login-back-link:hover {
+  color: var(--primary);
+}
+
+.login-back-link:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 .login-card button {
@@ -270,6 +308,20 @@
 
 .login-card button:hover {
   background: var(--primary-hover);
+}
+
+.login-card button[type="submit"] {
+  transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.login-card button[type="submit"]:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px -4px color-mix(in srgb, var(--primary) 45%, transparent);
+}
+
+.login-card button[type="submit"]:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: none;
 }
 
 .login-card button:disabled {
@@ -327,7 +379,7 @@
 .spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(255, 255, 255, .4);
+  border: 2px solid color-mix(in srgb, var(--text-on-accent) 40%, transparent);
   border-radius: 50%;
   border-top-color: var(--text-on-accent);
   animation: spin 0.8s ease-in-out infinite;
@@ -335,6 +387,105 @@
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* Chip con el usuario que está verificando 2FA */
+.login-user-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.input-group input.otp-input {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.4em;
+  text-align: center;
+  padding: 10px 12px 10px calc(12px + 0.4em);
+}
+
+.input-group input.otp-input::placeholder {
+  letter-spacing: 0.4em;
+}
+
+.login-caps-hint {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--warning);
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+  border-radius: 4px;
+  padding: 5px 9px;
+}
+
+/* Pie discreto bajo la card, mismo lenguaje que .in-nav-version de la landing */
+.login-footer {
+  position: absolute;
+  bottom: 14px;
+  left: 0;
+  right: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-soft);
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
+
+.login-footer-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--success);
+  flex-shrink: 0;
+}
+
+@media (max-height: 640px) {
+  .login-footer {
+    display: none;
+  }
+}
+
+.login-card button:focus-visible,
+.login-card .password-toggle:focus-visible,
+.login-card .login-forgot:focus-visible,
+.login-remember input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lg-bg-draw,
+  .lg-bg-dash,
+  .lg-bg-pulse,
+  .login-card-badge .login-ctx-dot {
+    animation: none;
+  }
+  .slider-content {
+    transition: none;
+  }
+  .login-card button[type="submit"]:hover:not(:disabled) {
+    transform: none;
+  }
 }
 
 @media (max-width: 480px) {

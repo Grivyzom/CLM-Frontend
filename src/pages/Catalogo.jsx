@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
 import './Catalogo.css';
-import { getPlantillas, getClausulas, getProductos, deleteProducto } from '../api';
+import { getPlantillas, getClausulas, getProductos, deleteProducto, regenerarPreviewPlantilla } from '../api';
 import EditClauseModal from './EditClauseModal';
 import TopbarActions from '../components/layout/TopbarActions';
 import { useConfirm } from '../contexts/ConfirmContext';
@@ -19,6 +19,7 @@ import UseTemplateModal from './catalogo/UseTemplateModal';
 import InsertarClausulaModal from './catalogo/InsertarClausulaModal';
 import ProductModal from './catalogo/ProductModal';
 import NewTemplateModal from './catalogo/NewTemplateModal';
+import ImportClausesModal from './ImportClausesModal';
 
 gsap.registerPlugin(useGSAP);
 
@@ -34,12 +35,14 @@ export default function Catalogo() {
   const [isClauseModalOpen, setIsClauseModalOpen] = useState(false);
   const [clauseToEdit, setClauseToEdit] = useState(null);
   const [isInsertModalOpen, setIsInsertModalOpen] = useState(false);
+  const [isImportClausesModalOpen, setIsImportClausesModalOpen] = useState(false);
 
   // Los modales de cláusulas se renderizan a nivel de página: al cambiar de tab
   // deben cerrarse explícitamente.
   useEffect(() => {
     setIsInsertModalOpen(false);
     setIsClauseModalOpen(false);
+    setIsImportClausesModalOpen(false);
   }, [tab]);
 
   // Cache state for creation modals
@@ -375,12 +378,19 @@ export default function Catalogo() {
     setIsNewTemplateModalOpen(true);
   }, []);
 
+  const handleRegeneratePreview = useCallback(async (template) => {
+    try {
+      await regenerarPreviewPlantilla(template.id);
+      alertModal({ title: 'Éxito', message: 'Se ha forzado la regeneración del documento/vista previa correctamente.' });
+    } catch (err) {
+      alertModal({ title: 'Error', message: 'Error al regenerar: ' + err.message, isDangerous: true });
+    }
+  }, [alertModal]);
+
   const selectedClauseData = apiClausulas.find(c => c.id === selectedClause) || apiClausulas[0];
   const selectedAlt = selectedClauseData ? (selectedClauseData.versions[clauseAlt] || selectedClauseData.versions[0]) : null;
 
-  const totalClausePages = Math.ceil(apiClausulas.length / CLAUSES_PER_PAGE);
-  const paginatedClausulas = apiClausulas.slice((clausePage - 1) * CLAUSES_PER_PAGE, clausePage * CLAUSES_PER_PAGE);
-  const clauseCategories = Array.from(new Set(paginatedClausulas.map(c => c.cat)));
+  const allClauseCategories = Array.from(new Set(apiClausulas.map(c => c.cat)));
 
   return (
     <div className="catalogo-container" ref={catalogoContainerRef}>
@@ -433,13 +443,10 @@ export default function Catalogo() {
 
         {tab === 'clausulas' && (
           <ClausulasTab
+            apiClausulas={apiClausulas}
+            allClauseCategories={allClauseCategories}
             loading={loadingClausulas}
             error={errorClausulas}
-            paginatedClausulas={paginatedClausulas}
-            clauseCategories={clauseCategories}
-            clausePage={clausePage}
-            setClausePage={setClausePage}
-            totalClausePages={totalClausePages}
             selectedClause={selectedClause}
             setSelectedClause={setSelectedClause}
             clauseAlt={clauseAlt}
@@ -449,6 +456,15 @@ export default function Catalogo() {
             onNewClause={() => { setClauseToEdit(null); setIsClauseModalOpen(true); }}
             onEditClause={(clause) => { setClauseToEdit(clause); setIsClauseModalOpen(true); }}
             onInsert={() => setIsInsertModalOpen(true)}
+            onImport={() => setIsImportClausesModalOpen(true)}
+            onExport={async () => {
+              try {
+                const { exportClausulas } = await import('../api');
+                await exportClausulas();
+              } catch (e) {
+                alertModal({ title: 'Error', message: 'No se pudo exportar: ' + e.message, isDangerous: true });
+              }
+            }}
           />
         )}
 
@@ -478,6 +494,7 @@ export default function Catalogo() {
           onClose={() => setContextMenuTarget(null)}
           onPreview={() => { setPreviewTemplate(contextMenuTarget); setContextMenuTarget(null); }}
           onUse={() => { setUseTemplate(contextMenuTarget); setContextMenuTarget(null); }}
+          onRegenerate={() => { handleRegeneratePreview(contextMenuTarget); setContextMenuTarget(null); }}
           onEdit={() => {
             setEditingTemplate(contextMenuTarget);
             setTemplateFormCache({
@@ -486,7 +503,8 @@ export default function Catalogo() {
                version_codigo: contextMenuTarget.version,
                software_id: contextMenuTarget.software_id || '',
                modo_origen: contextMenuTarget.modo_origen,
-               archivo_docx: null
+               archivo_docx: null,
+               ruta_plantilla_html: contextMenuTarget.ruta_plantilla_html || ''
             });
             setIsNewTemplateModalOpen(true);
             setContextMenuTarget(null);
@@ -555,6 +573,16 @@ export default function Catalogo() {
           onClose={() => setIsClauseModalOpen(false)}
           onSuccess={() => {
             setIsClauseModalOpen(false);
+            fetchClausulasData();
+          }}
+        />
+      )}
+
+      {isImportClausesModalOpen && (
+        <ImportClausesModal
+          onClose={() => setIsImportClausesModalOpen(false)}
+          onSuccess={() => {
+            setIsImportClausesModalOpen(false);
             fetchClausulasData();
           }}
         />

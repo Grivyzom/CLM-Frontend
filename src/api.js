@@ -35,7 +35,11 @@ async function request(path, options = {}) {
   });
 
   if (!res.ok) {
-    if (res.status === 401 || res.status === 403) {
+    // Solo 401 (sesión inválida/expirada) fuerza logout. Un 403 significa
+    // "autenticado pero sin permiso sobre esto" (rol, plan, cliente no
+    // concedido...) — tratarlo como logout expulsaba a roles restringidos
+    // (Trabajador, Auditor) cada vez que tocaban algo fuera de su alcance.
+    if (res.status === 401) {
       window.dispatchEvent(new CustomEvent('auth:logout'));
     }
     let errMsg = `HTTP ${res.status}`;
@@ -43,6 +47,13 @@ async function request(path, options = {}) {
     try {
       const err = await res.json();
       if (err && typeof err === 'object') {
+        // Excepción al criterio de arriba: el 403 CLIENTE_BLOQUEADO significa
+        // que la cuenta del cliente fue bloqueada — su sesión ya no sirve.
+        if (res.status === 403 && err.code === 'CLIENTE_BLOQUEADO') {
+          window.dispatchEvent(new CustomEvent('auth:logout', {
+            detail: { reason: 'CLIENTE_BLOQUEADO', message: err.error },
+          }));
+        }
         errMsg = err.error || err.detail || errMsg;
         // Errores de validación DRF por campo: { campo: ['msg'] | 'msg', ... }
         fields = {};
@@ -81,6 +92,37 @@ export async function apiLogin({ username, password, otp_token, remember }) {
 }
 
 /**
+ * Registro de un nuevo cliente a partir del enlace del correo de bienvenida.
+ */
+export async function apiRegisterCliente({ email, password }) {
+  return request('/auth/register-cliente/', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+/**
+ * Solicita el correo de restablecimiento de contraseña.
+ * Acepta usuario o correo; la respuesta es genérica exista o no la cuenta.
+ */
+export async function apiPasswordReset({ identifier }) {
+  return request('/auth/password-reset/', {
+    method: 'POST',
+    body: JSON.stringify({ identifier }),
+  });
+}
+
+/**
+ * Confirma el restablecimiento: uid + token del enlace del correo + nueva contraseña.
+ */
+export async function apiPasswordResetConfirm({ uid, token, password }) {
+  return request('/auth/password-reset/confirm/', {
+    method: 'POST',
+    body: JSON.stringify({ uid, token, password }),
+  });
+}
+
+/**
  * Cierra sesión en el backend.
  */
 export async function apiLogout() {
@@ -94,6 +136,19 @@ export async function apiLogout() {
  */
 export async function apiMe() {
   return request('/auth/me/');
+}
+
+// ─── Tenants ─────────────────────────────────────────────────────────────────
+
+export async function getTenants() {
+  return request('/tenants/');
+}
+
+export async function createTenant(data) {
+  return request('/tenants/', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 }
 
 // ─── Clientes ─────────────────────────────────────────────────────────────────
@@ -260,6 +315,43 @@ export async function importClientesExcel(file) {
   });
 }
 
+/**
+ * Importa cláusulas desde un archivo Excel (.xls/.xlsx).
+ * @param {File} file
+ */
+export async function importClausulasExcel(file) {
+  const formData = new FormData();
+  formData.append('archivo', file);
+  return request('/documentos/importar/clausulas/excel/', {
+    method: 'POST',
+    body: formData,
+  });
+}
+
+/**
+ * Descarga las cláusulas en formato Excel (.xlsx).
+ */
+export async function exportClausulas() {
+  const res = await fetch(`${BASE}/documentos/exportar/clausulas/excel/`, {
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    throw new Error('Error al exportar cláusulas');
+  }
+
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.style.display = 'none';
+  a.href = url;
+  a.download = `clausulas_export.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+}
+
 // ─── Contratos ────────────────────────────────────────────────────────────────
 
 /**
@@ -285,9 +377,16 @@ export async function getContratos(params = {}) {
   return request(`/contratos/${query}`);
 }
 
-/** KPIs para el StatsStrip de Contratos. */
-export async function getContratoStats() {
-  return request('/contratos/stats/');
+/**
+ * KPIs para el StatsStrip de Contratos.
+ * @param {Object} [params]
+ * @param {number} [params.cliente] - Acota los KPIs a un cliente (Vista activa)
+ */
+export async function getContratoStats(params = {}) {
+  const qs = new URLSearchParams();
+  if (params.cliente) qs.set('cliente', params.cliente);
+  const query = qs.toString() ? `?${qs.toString()}` : '';
+  return request(`/contratos/stats/${query}`);
 }
 
 /** Detalle completo de un contrato: historial, documentos, anexos, obligaciones SLA. */
@@ -439,10 +538,15 @@ export async function generarDocumentoContrato(data) {
 
 /**
  * KPIs, series históricas (6 meses) y contratos por vencer para la vista general.
+ * @param {Object} [params]
+ * @param {number} [params.cliente] - Acota las métricas a un cliente (Vista activa)
  * @returns {{ kpis, chart_area, chart_bar, urgent_contracts }}
  */
-export async function getDashboard() {
-  return request('/dashboard/');
+export async function getDashboard(params = {}) {
+  const qs = new URLSearchParams();
+  if (params.cliente) qs.set('cliente', params.cliente);
+  const query = qs.toString() ? `?${qs.toString()}` : '';
+  return request(`/dashboard/${query}`);
 }
 
 // ─── Analytics ────────────────────────────────────────────────────────────────
@@ -456,6 +560,14 @@ export async function getAnalytics() {
 }
 
 // ─── Plantillas ───────────────────────────────────────────────────────────────
+
+/**
+ * Obtiene las rutas relativas de plantillas HTML disponibles en el backend.
+ * @returns {Array<string>}
+ */
+export async function getAvailableHtmlTemplates() {
+  return request('/plantillas/html-templates/');
+}
 
 /**
  * Lista de plantillas de documentos registradas en el catálogo.
@@ -500,6 +612,13 @@ export async function createPlantilla(formData) {
  */
 export async function getPlantillaDetail(id) {
   return request(`/plantillas/plantillas/${id}/`);
+}
+
+/**
+ * Fuerza la regeneración de la vista previa de una plantilla.
+ */
+export async function regenerarPreviewPlantilla(id) {
+  return request(`/plantillas/plantillas/${id}/regenerar-preview/`, { method: 'POST' });
 }
 
 /**
@@ -603,6 +722,14 @@ export async function getProductos(params = {}) {
 }
 
 /**
+ * Obtiene el detalle de un producto/tarifa por su ID.
+ * @param {number|string} id
+ */
+export async function getProducto(id) {
+  return request(`/catalogo/productos/${id}/`);
+}
+
+/**
  * Crea un nuevo producto/tarifa en el catálogo.
  * @param {Object} data - { sku, name, desc, cat, price, currency, unit, status }
  */
@@ -642,4 +769,206 @@ export async function getAuditoria() {
   return request('/legal/auditoria/');
 }
 
+// ─── Incidencias ───────────────────────────────────────────────────────────────
+
+/**
+ * Lista paginada de incidencias, scoped por rol (CLIENTE ve solo las suyas).
+ * @param {Object} params
+ * @param {string} [params.search]
+ * @param {string} [params.estado]     - ABIERTO | EN_PROGRESO | RESUELTO | CERRADO
+ * @param {string} [params.severidad]  - BAJA | MEDIA | ALTA | CRITICA
+ * @param {number} [params.contrato]
+ * @param {number} [params.asignado_a]
+ * @param {number} [params.page]
+ * @param {number} [params.page_size]
+ */
+export async function getIncidencias(params = {}) {
+  const qs = new URLSearchParams();
+  if (params.search)      qs.set('search', params.search);
+  if (params.estado)      qs.set('estado', params.estado);
+  if (params.severidad)   qs.set('severidad', params.severidad);
+  if (params.contrato)    qs.set('contrato', params.contrato);
+  if (params.asignado_a)  qs.set('asignado_a', params.asignado_a);
+  if (params.page)        qs.set('page', params.page);
+  if (params.page_size)   qs.set('page_size', params.page_size);
+  const query = qs.toString() ? `?${qs.toString()}` : '';
+  return request(`/incidencias/${query}`);
+}
+
+/** Agregados de incidencias (solo staff) para badge/header de la bandeja. */
+export async function getIncidenciaStats() {
+  return request('/incidencias/stats/');
+}
+
+/** Detalle completo de una incidencia: comentarios, historial, adjuntos, SLA. */
+export async function getIncidenciaDetail(id) {
+  return request(`/incidencias/${id}/`);
+}
+
+/**
+ * Crea una incidencia. Siempre FormData (soporta adjuntos incluso sin archivos).
+ * @param {FormData} formData - titulo, descripcion, severidad, contrato_id?, software_id?,
+ *                               cliente_id (solo si el autor es staff reportando en nombre de otro), adjuntos[]
+ */
+export async function createIncidencia(formData) {
+  return request('/incidencias/', {
+    method: 'POST',
+    body: formData,
+  });
+}
+
+/** Cambiar estado/asignado_a/severidad (requiere staff interno). */
+export async function updateIncidencia(id, data) {
+  return request(`/incidencias/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+/** Lista de comentarios de una incidencia. */
+export async function getComentarios(incidenciaId) {
+  return request(`/incidencias/${incidenciaId}/comentarios/`);
+}
+
+/**
+ * Agrega un comentario/respuesta. Siempre FormData (soporta adjuntos).
+ * @param {number} incidenciaId
+ * @param {FormData} formData - mensaje, es_interno? (solo staff), adjuntos[]
+ */
+export async function createComentario(incidenciaId, formData) {
+  return request(`/incidencias/${incidenciaId}/comentarios/`, {
+    method: 'POST',
+    body: formData,
+  });
+}
+
+// ─── Workspace de cliente ──────────────────────────────────────────────────────
+
+/**
+ * Payload agregado del workspace: perfil, contratos, incidencias,
+ * usuarios_cuenta (solo staff/tenant), membresía y actividad.
+ */
+export async function getClienteWorkspace(id) {
+  return request(`/clientes/${id}/workspace/`);
+}
+
+/**
+ * Timeline derivado de facturación (solo lectura): eventos desde contratos y
+ * perdonazos — no son pagos confirmados.
+ */
+export async function getClienteTimelinePagos(id) {
+  return request(`/clientes/${id}/timeline-pagos/`);
+}
+
+/** Historial de correos enviados al cliente (incluye intentos fallidos). */
+export async function getCorreosCliente(id) {
+  return request(`/clientes/${id}/correos/`);
+}
+
+/**
+ * Envía un correo al cliente y lo registra en el historial.
+ * @param {Object} data - { asunto, cuerpo, destinatario? }
+ */
+export async function enviarCorreoCliente(id, data) {
+  return request(`/clientes/${id}/enviar-correo/`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+// ─── Notificaciones ────────────────────────────────────────────────────────────
+
+/**
+ * Lista de notificaciones dentro del alcance del usuario.
+ * @param {Object} params - { cliente?, solo_no_leidas?, limit? }
+ */
+export async function getNotificaciones(params = {}) {
+  const qs = new URLSearchParams();
+  if (params.cliente)        qs.set('cliente', params.cliente);
+  if (params.solo_no_leidas) qs.set('solo_no_leidas', '1');
+  if (params.limit)          qs.set('limit', params.limit);
+  const query = qs.toString() ? `?${qs.toString()}` : '';
+  return request(`/notificaciones/${query}`);
+}
+
+/**
+ * Crea una notificación in-app para un cliente (solo staff/tenant).
+ * @param {Object} data - { cliente_id, titulo, cuerpo, tipo? INFO|AVISO|URGENTE }
+ */
+export async function createNotificacion(data) {
+  return request('/notificaciones/', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+/** Marca una notificación como leída. */
+export async function marcarNotificacionLeida(id) {
+  return request(`/notificaciones/${id}/leer/`, { method: 'POST' });
+}
+
+/** Marca todas las notificaciones del alcance como leídas. */
+export async function marcarNotificacionesLeidas() {
+  return request('/notificaciones/leer-todas/', { method: 'POST' });
+}
+
+/** Conteo de no leídas para el badge de la campana. */
+export async function getNotificacionesUnreadCount() {
+  return request('/notificaciones/unread-count/');
+}
+
+// ─── Toma de Requerimientos ─────────────────────────────────────────────────
+
+/**
+ * Lista de Requerimientos, filtrable por cliente o contrato.
+ * @param {Object} params - { cliente?, contrato? }
+ */
+export async function getRequerimientos(params = {}) {
+  const qs = new URLSearchParams();
+  if (params.cliente)  qs.set('cliente', params.cliente);
+  if (params.contrato) qs.set('contrato', params.contrato);
+  const query = qs.toString() ? `?${qs.toString()}` : '';
+  return request(`/requerimientos/${query}`);
+}
+
+/** Detalle de un Requerimiento (incluye la plantilla de preguntas usada). */
+export async function getRequerimientoDetail(id) {
+  return request(`/requerimientos/${id}/`);
+}
+
+/**
+ * Crea un Requerimiento nuevo.
+ * @param {Object} data - { cliente_id, contrato_id?, categoria_producto? }
+ */
+export async function createRequerimiento(data) {
+  return request('/requerimientos/', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+/** Guarda (parcialmente) las respuestas de un Requerimiento en BORRADOR. */
+export async function updateRequerimientoRespuestas(id, respuestas) {
+  return request(`/requerimientos/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify({ respuestas }),
+  });
+}
+
+/** Plantilla de preguntas activa para una categoría de Producto. */
+export async function getPlantillaRequerimientoActiva(categoria) {
+  return request(`/requerimientos/plantillas/?categoria=${encodeURIComponent(categoria)}`);
+}
+
+/**
+ * Genera el documento (docx+pdf) final de un Requerimiento.
+ * @param {number} id
+ * @param {Object} [opts] - { forzar? }
+ */
+export async function generarRequerimientoDocumento(id, opts = {}) {
+  return request(`/requerimientos/${id}/generar/`, {
+    method: 'POST',
+    body: JSON.stringify(opts),
+  });
+}
 

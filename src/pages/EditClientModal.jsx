@@ -121,8 +121,8 @@ export default function EditClientModal({ clientId, onClose, onSuccess }) {
         payload.giro = form.giro.trim();
       }
 
-      await updateCliente(clientId, payload);
-      onSuccess?.();
+      const updated = await updateCliente(clientId, payload);
+      onSuccess?.(updated);
       onClose();
     } catch (err) {
       setErrors(e => ({ ...e, submit: err.message }));

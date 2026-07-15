@@ -9,6 +9,7 @@ import SortableHeader from '../components/ui/SortableHeader';
 import Pagination from '../components/ui/Pagination';
 import { fmtMoney, fmtDate, contratoIdDisplay } from '../utils/formatters';
 import TopbarActions from '../components/layout/TopbarActions';
+import { useAuth } from '../contexts/AuthContext';
 
 // ─── Paleta de etapas (workflow legal real: EtapaContrato) ────────────────────
 const ETAPA_CFG = {
@@ -243,6 +244,9 @@ export default function Contratos() {
   const [newModalClienteId, setNewModalClienteId] = useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [softwareList, setSoftwareList] = useState([]);
+  
+  const { user, isModerador } = useAuth();
+  const canCreateContrato = user && (user.isSuperadmin || isModerador || user.rawRole === 'TENANT_ADMIN');
 
   // Deep-link: /contratos?nuevo=1&cliente=<id> abre el modal Nuevo Contrato
   // (usado por el sheet de Clientes) y limpia la URL para no reabrirlo.
@@ -322,10 +326,12 @@ export default function Contratos() {
             <Icon d={['M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4', 'M7 10l5 5 5-5', 'M12 15V3']} color="var(--text-muted)" w={13} />
             Exportar
           </button>
-          <button className="ct-btn-primary" onClick={() => setShowNewModal(true)}>
-            <Icon d={['M12 5v14', 'M5 12h14']} color="var(--text-on-accent)" w={13} />
-            Nuevo Contrato
-          </button>
+          {canCreateContrato && (
+            <button className="ct-btn-primary" onClick={() => setShowNewModal(true)}>
+              <Icon d={['M12 5v14', 'M5 12h14']} color="var(--text-on-accent)" w={13} />
+              Nuevo Contrato
+            </button>
+          )}
         </div>
 
         {error && (

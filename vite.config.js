@@ -18,6 +18,7 @@ export default defineConfig({
     },
   },
   server: {
+    allowedHosts: ['clm.grivyzom.com', '144.217.10.38'],
     host: '0.0.0.0',
     port: 5173,
     proxy: {

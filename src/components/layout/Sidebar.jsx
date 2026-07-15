@@ -4,7 +4,8 @@ import { Pin, PinOff } from 'lucide-react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiLogout } from '../../api';
+import { useActiveView } from '../../contexts/ActiveViewContext';
+import { apiLogout, getClientes, getContratoStats, getAuditoria, getIncidencias, getIncidenciaStats } from '../../api';
 import './Sidebar.css';
 
 gsap.registerPlugin(useGSAP);
@@ -12,15 +13,43 @@ gsap.registerPlugin(useGSAP);
 const prefersReducedMotion = () =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-const CONTEXTS = ['Administración Global', 'SoftTrack Pro v3', 'ContaLite v2.1'];
+// Etiqueta del modo global de la "Vista activa" (sin cliente seleccionado).
+const GLOBAL_VIEW_LABEL = 'Administración Global';
 
+// `feature` = clave de la matriz de planes (tenants/plans.py del backend).
+// El sidebar oculta los módulos que el plan del tenant no incluye; el
+// backend igual rechaza el acceso directo por URL (gating real).
 const NAV = [
-  { id: 'dashboard', path: '/', label: 'Dashboard', paths: ['M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z'] },
-  { id: 'clientes', path: '/clientes', label: 'Clientes', paths: ['M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2','M23 21v-2a4 4 0 0 0-3-3.87','M16 3.13a4 4 0 0 1 0 7.75'], circles: [{ cx: 9, cy: 7, r: 4 }] },
-  { id: 'catalogo', path: '/catalogo', label: 'Catálogo', paths: ['M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z','M3.27 6.96 12 12.01l8.73-5.05','M12 22.08V12'] },
-  { id: 'contratos', path: '/contratos', label: 'Contratos', paths: ['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z','M14 2v6h6','M8 13h8'], badge: { n: 3, type: 'warning' } },
-  { id: 'auditoria', path: '/auditoria', label: 'Auditoría Legal', paths: ['M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z','M9 12l2 2 4-4'], badge: { n: 12, type: 'danger' } },
-  { id: 'analytics', path: '/analytics', label: 'Analytics (BI)', paths: ['M3 3v18h18', 'M18 17V9', 'M13 17V5', 'M8 17v-3'] },
+  { id: 'inicio', path: '/inicio', label: 'Inicio', paths: ['M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', 'M9 22V12h6v10'] },
+  { id: 'dashboard', path: '/', label: 'Dashboard', feature: 'contratos', paths: ['M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z'] },
+  { id: 'historial', path: '/historial', label: 'Historial', feature: 'contratos', paths: ['M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'] },
+  { 
+    id: 'membresias', 
+    path: '/membresias', 
+    label: 'Membresías', 
+    feature: 'membresias', 
+    paths: ['M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'],
+    subItems: [
+      { id: 'beneficio', path: '/membresias/beneficio', label: 'Beneficio' }
+    ]
+  },
+  { id: 'novedades', path: '/novedades', label: 'Novedades', feature: 'contratos', paths: ['M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4', 'M14 2v4a2 2 0 0 0 2 2h4', 'M3 15h6', 'M3 19h6'] },
+  { id: 'tarifas', path: '/tarifas', label: 'Tarifas', feature: 'membresias', paths: ['M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z', 'M5 12h14', 'M12 5v14'] },
+  { id: 'clientes', path: '/clientes', label: 'Clientes', feature: 'clientes', paths: ['M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2','M23 21v-2a4 4 0 0 0-3-3.87','M16 3.13a4 4 0 0 1 0 7.75'], circles: [{ cx: 9, cy: 7, r: 4 }] },
+  { id: 'catalogo', path: '/catalogo', label: 'Catálogo', feature: 'catalogo', paths: ['M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z','M3.27 6.96 12 12.01l8.73-5.05','M12 22.08V12'] },
+  { id: 'contratos', path: '/contratos', label: 'Contratos', feature: 'contratos', paths: ['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z','M14 2v6h6','M8 13h8'] },
+  { 
+    id: 'gestion', 
+    path: '#', 
+    label: 'Gestión', 
+    paths: ['M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z'],
+    subItems: [
+      { id: 'auditoria', path: '/auditoria', label: 'Auditoría', feature: 'legal' },
+      { id: 'reportes', path: '/reportes', label: 'Reporte', feature: 'incidencias' },
+      { id: 'analytics', path: '/analytics', label: 'Analytics', feature: 'analytics' },
+      { id: 'usuarios', path: '/usuarios', label: 'Usuarios' }
+    ]
+  },
 ];
 
 const Icon = ({ paths = [], circles = [], className = '' }) => (
@@ -44,21 +73,146 @@ export default function Sidebar() {
     return saved !== null ? JSON.parse(saved) : false;
   });
   const [isHovered, setIsHovered] = useState(false);
+  // Drawer móvil: abierto/cerrado vía botón de menú del topbar
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const [contratosBadge, setContratosBadge] = useState(() => {
+    const saved = localStorage.getItem('clm_contratos_badge');
+    return saved !== null ? parseInt(saved, 10) : 0;
+  });
+
+  const [auditoriaBadge, setAuditoriaBadge] = useState(() => {
+    const saved = localStorage.getItem('clm_auditoria_badge');
+    return saved !== null ? parseInt(saved, 10) : 0;
+  });
+
+  const [incidenciasBadge, setIncidenciasBadge] = useState(() => {
+    const saved = localStorage.getItem('clm_incidencias_badge');
+    return saved !== null ? parseInt(saved, 10) : 0;
+  });
   
-  const { user, logout } = useAuth();
+  const { user, logout, hasFeature, canAccessClientes, isClienteExterno } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [ctxIndex, setCtxIndex] = useState(0);
+  // Vista activa: Administración Global o un cliente puntual. La lista de
+  // clientes se carga perezosamente la primera vez que se abre el selector.
+  const { activeCliente, setClienteView, setGlobalView } = useActiveView();
+  const [ctxClientes, setCtxClientes] = useState(null); // null = aún no cargado
+  const [ctxLoading, setCtxLoading] = useState(false);
+  const [ctxSearch, setCtxSearch] = useState('');
   const [dropOpen, setDropOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [openSubmenus, setOpenSubmenus] = useState({});
   
   const dropdownRef = useRef(null);
   const userMenuRef = useRef(null);
   const sidebarRef = useRef(null);
 
-  const isExpanded = isPinned || isHovered;
+  const isExpanded = isPinned || isHovered || mobileOpen;
   const collapsed = !isExpanded;
+
+  // El botón hamburguesa del topbar (TopbarActions) emite este evento global
+  useEffect(() => {
+    const toggle = () => setMobileOpen(o => !o);
+    window.addEventListener('clm:toggle-sidebar', toggle);
+    return () => window.removeEventListener('clm:toggle-sidebar', toggle);
+  }, []);
+
+  // Cerrar drawer al navegar a otra ruta
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
+
+  // Con drawer abierto: Escape cierra y se bloquea el scroll de fondo
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e) => { if (e.key === 'Escape') setMobileOpen(false); };
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [mobileOpen]);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchBadge = async () => {
+      if (hasFeature('contratos') || isClienteExterno) {
+        try {
+          const stats = await getContratoStats();
+          const count = stats.contratos_activos || 0;
+          setContratosBadge(count);
+          localStorage.setItem('clm_contratos_badge', count.toString());
+        } catch (err) {}
+      }
+
+      if (hasFeature('legal') && !isClienteExterno) {
+        try {
+          const audData = await getAuditoria();
+          const audCount = (audData.kpis?.pendingAudits || 0) + (audData.kpis?.highRiskContracts || 0);
+          setAuditoriaBadge(audCount);
+          localStorage.setItem('clm_auditoria_badge', audCount.toString());
+        } catch (err) {}
+      }
+
+      if (hasFeature('incidencias') || isClienteExterno) {
+        try {
+          let count;
+          if (isClienteExterno) {
+            const abiertas = await getIncidencias({ estado: 'ABIERTO', page_size: 1 });
+            const enProgreso = await getIncidencias({ estado: 'EN_PROGRESO', page_size: 1 });
+            count = (abiertas.count || 0) + (enProgreso.count || 0);
+          } else {
+            const incStats = await getIncidenciaStats();
+            count = (incStats.abiertas || 0) + (incStats.en_progreso || 0);
+          }
+          setIncidenciasBadge(count);
+          localStorage.setItem('clm_incidencias_badge', count.toString());
+        } catch (err) {}
+      }
+    };
+
+    fetchBadge();
+    const intervalId = setInterval(fetchBadge, 30000);
+    return () => clearInterval(intervalId);
+  }, [user, hasFeature, isClienteExterno]);
+
+  // Carga de clientes para el selector de Vista activa (solo al abrirlo).
+  useEffect(() => {
+    if (!dropOpen || ctxClientes !== null || ctxLoading) return;
+    let cancelled = false;
+    setCtxLoading(true);
+    getClientes({ page_size: 100, ordering: 'razon_social' })
+      .then((res) => {
+        if (cancelled) return;
+        setCtxClientes((res.results || []).map((c) => ({
+          id: c.id,
+          nombre: c.razon_social || c.nombre_comercial || `Cliente #${c.id}`,
+        })));
+      })
+      .catch(() => { if (!cancelled) setCtxClientes([]); })
+      .finally(() => { if (!cancelled) setCtxLoading(false); });
+    return () => { cancelled = true; };
+  }, [dropOpen, ctxClientes, ctxLoading]);
+
+  const activeViewLabel = activeCliente?.nombre || GLOBAL_VIEW_LABEL;
+  const ctxFiltered = (ctxClientes || []).filter((c) =>
+    !ctxSearch.trim() || c.nombre.toLowerCase().includes(ctxSearch.trim().toLowerCase())
+  );
+
+  const selectGlobalView = () => {
+    setGlobalView();
+    setDropOpen(false);
+    setCtxSearch('');
+  };
+
+  const selectClienteView = (cliente) => {
+    setClienteView(cliente);
+    setDropOpen(false);
+    setCtxSearch('');
+  };
 
   // Entrada inicial: stagger sutil de los items de navegación
   useGSAP(() => {
@@ -133,6 +287,41 @@ export default function Sidebar() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  useEffect(() => {
+    // Si navegamos y algún item con submenu está activo, lo abrimos automáticamente.
+    const activeItem = NAV.find(item => item.path === location.pathname || (item.path !== '/' && location.pathname.startsWith(item.path)));
+    if (activeItem && activeItem.subItems) {
+      setOpenSubmenus(prev => ({ ...prev, [activeItem.id]: true }));
+    } else {
+      // Check in subItems too
+      NAV.forEach(item => {
+        if (item.subItems) {
+          const activeSub = item.subItems.find(sub => sub.path === location.pathname || location.pathname.startsWith(sub.path));
+          if (activeSub) {
+            setOpenSubmenus(prev => ({ ...prev, [item.id]: true }));
+          }
+        }
+      });
+    }
+  }, [location.pathname]);
+
+  const checkVisibility = (item) => {
+    if (!user && item.id !== 'inicio') return false;
+    if (user && item.id === 'inicio') return false;
+
+    if (user && isClienteExterno) {
+      // El cliente externo solo puede ver Dashboard, Contratos, Membresias, Historial, Novedades, Tarifas, Reporte y Gestión
+      if (!['dashboard', 'contratos', 'historial', 'membresias', 'novedades', 'tarifas', 'reportes', 'gestion'].includes(item.id) && item.id !== 'beneficio') return false;
+    } else if (user) {
+      // Usuarios normales/internos:
+      if (['historial', 'novedades', 'membresias', 'tarifas'].includes(item.id)) return false;
+      if (item.id === 'clientes' && !canAccessClientes) return false;
+      if (item.id === 'tenants' && !user.isSuperadmin) return false;
+      if (item.id !== 'clientes' && item.id !== 'tenants' && item.feature && item.feature !== 'membresias' && !hasFeature(item.feature)) return false;
+    }
+    return true;
+  };
+
   const handleSidebarClick = () => {
     if (!isPinned && window.innerWidth >= 1024) {
       setIsPinned(true);
@@ -192,9 +381,16 @@ export default function Sidebar() {
           onMouseEnter={() => setIsHovered(true)}
         />
       )}
+      {mobileOpen && (
+        <div
+          className="sb-mobile-overlay"
+          onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
+        />
+      )}
       <div
         ref={sidebarRef}
-        className={`sidebar-proto ${collapsed ? 'collapsed' : 'expanded'}`}
+        className={`sidebar-proto ${collapsed ? 'collapsed' : 'expanded'} ${mobileOpen ? 'mobile-open' : ''}`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onClick={handleSidebarClick}
@@ -223,15 +419,15 @@ export default function Sidebar() {
           </button>
         </div>
 
-        {user && (
+        {user && !isClienteExterno && canAccessClientes && (
           <div className="sb-context-wrapper" ref={dropdownRef}>
             <button
               onClick={() => setDropOpen(!dropOpen)}
               className={`sb-context-btn ${dropOpen ? 'open' : ''}`}
-              title={CONTEXTS[ctxIndex]}
+              title={activeViewLabel}
               aria-haspopup="listbox"
               aria-expanded={dropOpen}
-              aria-label="Seleccionar contexto activo"
+              aria-label="Seleccionar vista activa"
             >
               <div className="sb-context-icon-container">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -242,7 +438,7 @@ export default function Sidebar() {
               </div>
               <div className="sb-context-info">
                 <div className="sb-context-label">Vista activa</div>
-                <div className="sb-context-value">{CONTEXTS[ctxIndex]}</div>
+                <div className="sb-context-value">{activeViewLabel}</div>
               </div>
               <svg className="sb-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M6 9l6 6 6-6"/>
@@ -250,22 +446,54 @@ export default function Sidebar() {
             </button>
 
             {dropOpen && (
-              <div 
+              <div
                 className={`sb-context-dropdown ${collapsed ? 'dropdown-collapsed' : ''}`}
                 role="listbox"
               >
-                {CONTEXTS.map((c, i) => (
-                  <button
-                    key={i}
-                    role="option"
-                    aria-selected={i === ctxIndex}
-                    onClick={() => { setCtxIndex(i); setDropOpen(false); }}
-                    className={`sb-dropdown-item ${i === ctxIndex ? 'active' : ''}`}
-                    title={c}
-                  >
-                    {collapsed ? c.charAt(0) : c}
-                  </button>
-                ))}
+                <button
+                  role="option"
+                  aria-selected={!activeCliente}
+                  onClick={selectGlobalView}
+                  className={`sb-dropdown-item ${!activeCliente ? 'active' : ''}`}
+                  title={GLOBAL_VIEW_LABEL}
+                >
+                  {collapsed ? GLOBAL_VIEW_LABEL.charAt(0) : GLOBAL_VIEW_LABEL}
+                </button>
+
+                {!collapsed && (ctxClientes?.length || 0) > 6 && (
+                  <input
+                    type="search"
+                    className="sb-dropdown-search"
+                    placeholder="Buscar cliente…"
+                    value={ctxSearch}
+                    onChange={(e) => setCtxSearch(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label="Buscar cliente"
+                  />
+                )}
+
+                <div className="sb-dropdown-list">
+                  {ctxLoading && (
+                    <div className="sb-dropdown-empty">Cargando clientes…</div>
+                  )}
+                  {!ctxLoading && ctxClientes !== null && ctxFiltered.length === 0 && (
+                    <div className="sb-dropdown-empty">
+                      {ctxSearch ? 'Sin coincidencias' : 'Sin clientes registrados'}
+                    </div>
+                  )}
+                  {!ctxLoading && ctxFiltered.map((c) => (
+                    <button
+                      key={c.id}
+                      role="option"
+                      aria-selected={activeCliente?.id === c.id}
+                      onClick={() => selectClienteView(c)}
+                      className={`sb-dropdown-item ${activeCliente?.id === c.id ? 'active' : ''}`}
+                      title={c.nombre}
+                    >
+                      {collapsed ? c.nombre.charAt(0).toUpperCase() : c.nombre}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -276,39 +504,127 @@ export default function Sidebar() {
         <span>Módulos</span>
       </div>
 
-      {/* Navegación Principal */}
       <nav className="sb-nav-container" aria-label="Menú principal">
         {NAV.map((item) => {
-          if (!user && item.id !== 'dashboard') return null;
+          if (!checkVisibility(item)) return null;
 
-          const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
+          let visibleSubItems = [];
+          if (item.subItems) {
+            visibleSubItems = item.subItems.filter(sub => checkVisibility(sub));
+            if (visibleSubItems.length === 0 && item.id === 'gestion') return null;
+          }
+
+          const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path)) || (visibleSubItems.some(sub => location.pathname.startsWith(sub.path)));
+          const hasSub = visibleSubItems.length > 0;
+          const isSubOpen = openSubmenus[item.id];
+
+          let currentBadge = item.badge;
+          if (item.id === 'contratos' && contratosBadge > 0) {
+            currentBadge = { n: contratosBadge, type: 'warning' };
+          } else if (item.id === 'gestion') {
+            const sum = auditoriaBadge + incidenciasBadge;
+            if (sum > 0) {
+              currentBadge = { n: sum, type: 'warning' };
+            }
+          }
+
           return (
-            <Link
-              key={item.id}
-              to={item.path}
-              className={`sb-nav-item ${isActive ? 'active' : ''}`}
-              title={collapsed ? item.label : ''}
-              aria-current={isActive ? 'page' : undefined}
-            >
-              <div className="sb-icon-container">
-                <Icon paths={item.paths} circles={item.circles} />
-                {user && item.badge && (
-                  <span className={`sb-badge-floating sb-badge-${item.badge.type} ${isActive ? 'badge-active' : ''}`}>
-                    {item.badge.n}
+            <div key={item.id} className="sb-nav-item-wrapper">
+              {hasSub ? (
+                <div
+                  className={`sb-nav-item ${isActive ? 'active' : ''}`}
+                  title={collapsed ? item.label : ''}
+                  onClick={() => {
+                    setOpenSubmenus(prev => ({ ...prev, [item.id]: !prev[item.id] }));
+                    if (collapsed) {
+                      handleSidebarClick();
+                    }
+                  }}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div className="sb-icon-container">
+                    <Icon paths={item.paths} circles={item.circles} />
+                    {user && currentBadge && (
+                      <span className={`sb-badge-floating sb-badge-${currentBadge.type} ${isActive ? 'badge-active' : ''}`}>
+                        {currentBadge.n}
+                      </span>
+                    )}
+                  </div>
+                  
+                  <span className="sb-nav-label" style={{ flex: 1 }}>
+                    {item.label}
                   </span>
-                )}
-              </div>
-              
-              <span className="sb-nav-label">
-                {item.label}
-              </span>
 
-              {user && item.badge && (
-                <span className={`sb-badge sb-badge-${item.badge.type} ${isActive ? 'badge-active' : ''}`}>
-                  {item.badge.n}
-                </span>
+                  {!collapsed && (
+                    <svg className="sb-chevron" style={{ transform: isSubOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', width: 14, opacity: 0.5 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M6 9l6 6 6-6"/>
+                    </svg>
+                  )}
+                </div>
+              ) : (
+                <Link
+                  to={item.path}
+                  className={`sb-nav-item ${isActive ? 'active' : ''}`}
+                  title={collapsed ? item.label : ''}
+                  aria-current={isActive ? 'page' : undefined}
+                >
+                  <div className="sb-icon-container">
+                    <Icon paths={item.paths} circles={item.circles} />
+                    {user && currentBadge && (
+                      <span className={`sb-badge-floating sb-badge-${currentBadge.type} ${isActive ? 'badge-active' : ''}`}>
+                        {currentBadge.n}
+                      </span>
+                    )}
+                  </div>
+                  
+                  <span className="sb-nav-label">
+                    {item.label}
+                  </span>
+
+                  {user && currentBadge && (
+                    <span className={`sb-badge sb-badge-${currentBadge.type} ${isActive ? 'badge-active' : ''}`}>
+                      {currentBadge.n}
+                    </span>
+                  )}
+                </Link>
               )}
-            </Link>
+
+              {/* Renderizar Submenús */}
+              {hasSub && isSubOpen && !collapsed && (
+                <div className="sb-submenu-container" style={{ paddingLeft: '32px', marginTop: '4px', marginBottom: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {visibleSubItems.map(sub => {
+                    const isSubActive = location.pathname === sub.path || location.pathname.startsWith(sub.path);
+                    return (
+                      <Link 
+                        key={sub.id} 
+                        to={sub.path} 
+                        className={`sb-submenu-item ${isSubActive ? 'active' : ''}`}
+                        style={{
+                          fontSize: '13px',
+                          color: isSubActive ? 'var(--primary)' : 'var(--text-muted)',
+                          textDecoration: 'none',
+                          padding: '6px 8px',
+                          borderRadius: '6px',
+                          background: isSubActive ? 'var(--primary-bg)' : 'transparent',
+                          transition: 'all 0.2s',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <span>{sub.label}</span>
+                        {user && sub.id === 'auditoria' && auditoriaBadge > 0 && (
+                           <span className="sb-badge sb-badge-danger" style={{ position: 'static', transform: 'none', padding: '2px 6px', fontSize: '10px' }}>{auditoriaBadge}</span>
+                        )}
+                        {user && sub.id === 'reportes' && incidenciasBadge > 0 && (
+                           <span className="sb-badge sb-badge-warning" style={{ position: 'static', transform: 'none', padding: '2px 6px', fontSize: '10px' }}>{incidenciasBadge}</span>
+                        )}
+                      </Link>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
           );
         })}
       </nav>
@@ -381,7 +697,7 @@ export default function Sidebar() {
               </div>
             )}
           </div>
-        ) : (
+        ) : location.pathname !== '/login' && (
           <button className="sb-login-btn" onClick={() => navigate('/login')} title="Iniciar Sesión">
             <svg className="sb-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>

@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+  <style>
+    @keyframes floatY { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+    @keyframes floatYSlow { 0%,100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-9px) rotate(1deg); } }
+    @keyframes pulseDot { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .5; transform: scale(.8); } }
+    @keyframes barGrowX { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    @keyframes barGrowY { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+    @keyframes drawPath { from { stroke-dashoffset: 900; } to { stroke-dashoffset: 0; } }
+    @keyframes dashFlow { to { stroke-dashoffset: -28; } }
+    @keyframes spinSlow { to { transform: rotate(360deg); } }
+    @keyframes ringPulse { 0% { transform: scale(1); opacity: .55; } 100% { transform: scale(1.55); opacity: 0; } }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes tickerUp { 0%, 28% { transform: translateY(0); } 33%, 61% { transform: translateY(-100%); } 66%, 94% { transform: translateY(-200%); } 100% { transform: translateY(-200%); } }
+    body { margin: 0; text-wrap: pretty; }
+    a { color: inherit; text-decoration: none; }
+    ::selection { background: #bfdbfe; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+  </style>
+  <script src="./image-slot.js"></script>
+</helmet>
+
+<div style="--bg-page:#f4f3ef; --bg-topbar:#efede8; --bg-subtle:#f7f6f2; --bg-inset:#eceae4; --surface:#ffffff; --text-heading:#292524; --text-primary:#3b3631; --text-secondary:#5c574f; --text-muted:#7c7670; --text-faint:#b0aaa3; --border:#d8d4cc; --border-strong:#c9c4bc; --primary:#2563eb; --primary-hover:#1d4ed8; --primary-bright:#3b82f6; --primary-border:#bfdbfe; --primary-tint:#dbeafe; --primary-bg:#eff6ff; --success:#16a34a; --success-tint:#d1fae5; --success-border:#bbf7d0; --warning:#b45309; --warning-tint:#fef3c7; --warning-border:#fde68a; --font:'Inter',system-ui,sans-serif; --mono:'JetBrains Mono',monospace; background: var(--bg-page); color: var(--text-primary); font-family: var(--font); min-height: 100vh; overflow-x: hidden;">
+
+  <!-- ══════════ NAV ══════════ -->
+  <header style="{{ navStyle }}">
+    <div style="{{ navInnerStyle }}">
+      <a href="#" style="display: flex; align-items: center; gap: 10px;">
+        <div style="width: 34px; height: 34px; border-radius: 8px; background: var(--primary); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 13px; font-family: var(--mono); box-shadow: 0 4px 12px rgba(37,99,235,0.28);">CK</div>
+        <div>
+          <p style="margin: 0; font-size: 8px; color: var(--text-faint); font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; font-family: var(--mono);">Gestión de contratos</p>
+          <p style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text-heading); letter-spacing: -0.02em;">CLM‑Kyo</p>
+        </div>
+      </a>
+
+      <nav style="{{ navPillStyle }}">
+        <a href="#funcionamiento" style="padding: 7px 16px; border-radius: 9999px; font-size: 13px; font-weight: 600; color: var(--text-secondary); transition: color .15s ease, background-color .15s ease;" style-hover="color: var(--text-heading); background: var(--bg-inset);">Funcionamiento</a>
+        <a href="#noticias" style="padding: 7px 16px; border-radius: 9999px; font-size: 13px; font-weight: 600; color: var(--text-secondary); transition: color .15s ease, background-color .15s ease;" style-hover="color: var(--text-heading); background: var(--bg-inset);">Noticias</a>
+        <a href="#equipo" style="padding: 7px 16px; border-radius: 9999px; font-size: 13px; font-weight: 600; color: var(--text-secondary); transition: color .15s ease, background-color .15s ease;" style-hover="color: var(--text-heading); background: var(--bg-inset);">Equipo</a>
+      </nav>
+
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <span style="{{ navVersionStyle }}"><span style="width: 6px; height: 6px; border-radius: 50%; background: var(--success); animation: pulseDot 2s ease-in-out infinite;"></span>v1.0.4</span>
+        <button style="padding: 9px 20px; border-radius: 9999px; background: var(--primary); color: #fff; font-size: 13px; font-weight: 700; font-family: var(--font); border: none; cursor: pointer; box-shadow: 0 4px 14px rgba(37,99,235,0.25); transition: background-color .2s ease, transform .15s ease, box-shadow .2s ease;" style-hover="background: var(--primary-hover); transform: translateY(-1px); box-shadow: 0 8px 20px rgba(37,99,235,0.32);" style-active="transform: translateY(0px) scale(0.97);">Iniciar sesión →</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══════════ HERO ══════════ -->
+  <section style="position: relative; overflow: hidden;">
+    <!-- SVG fondo: grid + trayectorias animadas del ciclo de contrato -->
+    <svg viewBox="0 0 1440 700" preserveAspectRatio="xMidYMid slice" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;" aria-hidden="true">
+      <defs>
+        <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+          <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#292524" stroke-opacity="0.045" stroke-width="1"></path>
+        </pattern>
+      </defs>
+      <rect width="1440" height="700" fill="url(#grid)"></rect>
+      <path d="M -40 560 C 240 500, 420 610, 720 540 S 1220 430, 1490 500" fill="none" stroke="#2563eb" stroke-opacity="0.14" stroke-width="2" stroke-dasharray="900" style="animation: drawPath 3s ease-out both;"></path>
+      <path d="M -40 620 C 300 570, 520 660, 840 600 S 1260 520, 1490 570" fill="none" stroke="#292524" stroke-opacity="0.08" stroke-width="1.5" stroke-dasharray="6 8" style="animation: dashFlow 1.6s linear infinite;"></path>
+      <circle cx="240" cy="120" r="3.5" fill="#2563eb" fill-opacity="0.35" style="animation: pulseDot 2.6s ease-in-out infinite;"></circle>
+      <circle cx="1180" cy="150" r="3" fill="#16a34a" fill-opacity="0.4" style="animation: pulseDot 3.2s ease-in-out infinite 0.8s;"></circle>
+      <circle cx="1330" cy="330" r="2.5" fill="#b45309" fill-opacity="0.35" style="animation: pulseDot 2.9s ease-in-out infinite 1.4s;"></circle>
+    </svg>
+
+    <div style="{{ heroGridStyle }}">
+      <div style="animation: fadeUp .8s cubic-bezier(0.16,1,0.3,1) both;">
+        <div style="display: inline-flex; align-items: center; gap: 7px; background: rgba(37,99,235,0.05); border: 1px solid rgba(37,99,235,0.15); border-radius: 5px; padding: 6px 12px; font-size: 11px; color: var(--primary); font-weight: 700; font-family: var(--mono); margin-bottom: 22px;">
+          <span style="width: 6px; height: 6px; border-radius: 50%; background: var(--primary); animation: pulseDot 1.8s ease-in-out infinite;"></span>
+          GESTIÓN DE CONTRATOS · IA INTEGRADA
+        </div>
+
+        <h1 style="{{ heroTitleStyle }}">Bienvenido seas a<br>CLM‑Kyo</h1>
+
+        <p style="margin: 0 0 34px; font-size: 17px; line-height: 1.6; color: var(--text-secondary); max-width: 460px;">La plataforma que automatiza el ciclo de vida completo de tus contratos: redacción por cláusulas, seguimiento, análisis y firma — todo en un solo lugar.</p>
+
+        <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+          <button onclick="{{ scrollToWorks }}" style="padding: 13px 26px; border-radius: 7px; background: var(--primary); color: #fff; font-size: 14.5px; font-weight: 700; font-family: var(--font); border: none; cursor: pointer; box-shadow: 0 8px 20px rgba(37,99,235,0.25); transition: background-color .2s ease, transform .15s ease, box-shadow .2s ease;" style-hover="background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 12px 26px rgba(37,99,235,0.32);" style-active="transform: translateY(0px) scale(0.98);">Ver cómo funciona ↓</button>
+          <button style="padding: 13px 22px; border-radius: 7px; background: transparent; color: var(--text-secondary); font-size: 14.5px; font-weight: 600; font-family: var(--font); border: 1px solid var(--border); cursor: pointer; transition: background-color .2s ease, border-color .2s ease;" style-hover="background: var(--bg-topbar); border-color: var(--border-strong);">Iniciar sesión</button>
+        </div>
+      </div>
+
+      <!-- Mockup fiel del dashboard "Vista General" -->
+      <div style="{{ heroMockWrapStyle }}">
+        <div style="position: absolute; inset: 0; margin: auto; width: 100%; max-width: 560px; height: 430px; background: var(--bg-page); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 30px 70px rgba(41,37,36,0.16); overflow: hidden; animation: floatY 6s ease-in-out infinite; font-family: var(--mono);">
+          <!-- topbar del dashboard -->
+          <div style="padding: 12px 16px 10px; display: flex; align-items: flex-end; justify-content: space-between; border-bottom: 1px solid var(--border); background: var(--bg-page);">
+            <div>
+              <p style="margin: 0 0 2px; font-size: 7px; color: var(--text-faint); font-weight: 700; letter-spacing: .12em;">GESTIÓN DE CONTRATOS</p>
+              <p style="margin: 0; font-size: 13px; font-weight: 700; color: var(--text-heading); font-family: var(--font); letter-spacing: -0.01em;">Vista General</p>
+            </div>
+            <p style="margin: 0; font-size: 8px; color: var(--text-muted);">vie, 10 jul 2026</p>
+          </div>
+
+          <!-- fila KPI -->
+          <div style="{{ mockKpiStyle }}">
+            <div style="padding: 10px 12px; border-right: 1px solid var(--border);">
+              <p style="margin: 0 0 4px; font-size: 7px; color: var(--text-faint); font-weight: 700; letter-spacing: .1em;">MRR</p>
+              <p style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text-heading);">$500</p>
+              <p style="margin: 2px 0 0; font-size: 7px; color: var(--success);">↑ +100% vs mes ant.</p>
+            </div>
+            <div style="padding: 10px 12px; border-right: 1px solid var(--border);">
+              <p style="margin: 0 0 4px; font-size: 7px; color: var(--text-faint); font-weight: 700; letter-spacing: .1em;">CONTRATOS</p>
+              <p style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text-heading);">1</p>
+              <p style="margin: 2px 0 0; font-size: 7px; color: var(--success);">+1 este mes</p>
+            </div>
+            <div style="padding: 10px 12px; border-right: 1px solid var(--border);">
+              <p style="margin: 0 0 4px; font-size: 7px; color: var(--text-faint); font-weight: 700; letter-spacing: .1em;">CLIENTES</p>
+              <p style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text-heading);">1</p>
+              <p style="margin: 2px 0 0; font-size: 7px; color: var(--success);">+3 nuevos</p>
+            </div>
+            <div style="padding: 10px 12px;">
+              <p style="margin: 0 0 4px; font-size: 7px; color: var(--text-faint); font-weight: 700; letter-spacing: .1em;">REQ. ACCIÓN</p>
+              <p style="margin: 0; font-size: 15px; font-weight: 700; color: var(--success);">0</p>
+              <p style="margin: 2px 0 0; font-size: 7px; color: var(--text-muted);">mora · gracia</p>
+            </div>
+          </div>
+
+          <!-- cuerpo: pipeline + MRR chart -->
+          <div style="{{ mockBodyStyle }}">
+            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px;">
+              <p style="margin: 0 0 2px; font-size: 7px; color: var(--text-faint); font-weight: 700; letter-spacing: .12em;">CICLO DE VIDA</p>
+              <p style="margin: 0 0 10px; font-size: 10.5px; font-weight: 700; color: var(--text-heading); font-family: var(--font);">Pipeline por etapa</p>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px;"><span style="width: 52px; font-size: 6.5px; color: var(--text-muted); letter-spacing: .08em;">BORRADOR</span><div style="flex: 1; height: 7px; background: var(--bg-inset); border-radius: 3px; overflow: hidden;"><div style="width: 92%; height: 100%; background: var(--primary-bright); border-radius: 3px; transform-origin: left; animation: barGrowX 1s ease-out .4s both;"></div></div><span style="font-size: 7px; color: var(--text-heading); font-weight: 700;">1</span></div>
+                <div style="display: flex; align-items: center; gap: 8px;"><span style="width: 52px; font-size: 6.5px; color: var(--text-muted); letter-spacing: .08em;">REVISIÓN</span><div style="flex: 1; height: 7px; background: var(--bg-inset); border-radius: 3px; overflow: hidden;"><div style="width: 4%; height: 100%; background: var(--border-strong); border-radius: 3px; transform-origin: left; animation: barGrowX 1s ease-out .5s both;"></div></div><span style="font-size: 7px; color: var(--text-muted);">0</span></div>
+                <div style="display: flex; align-items: center; gap: 8px;"><span style="width: 52px; font-size: 6.5px; color: var(--text-muted); letter-spacing: .08em;">APROBADO</span><div style="flex: 1; height: 7px; background: var(--bg-inset); border-radius: 3px; overflow: hidden;"><div style="width: 4%; height: 100%; background: var(--border-strong); border-radius: 3px; transform-origin: left; animation: barGrowX 1s ease-out .6s both;"></div></div><span style="font-size: 7px; color: var(--text-muted);">0</span></div>
+                <div style="display: flex; align-items: center; gap: 8px;"><span style="width: 52px; font-size: 6.5px; color: var(--text-muted); letter-spacing: .08em;">P. FIRMA</span><div style="flex: 1; height: 7px; background: var(--bg-inset); border-radius: 3px; overflow: hidden;"><div style="width: 4%; height: 100%; background: var(--border-strong); border-radius: 3px; transform-origin: left; animation: barGrowX 1s ease-out .7s both;"></div></div><span style="font-size: 7px; color: var(--text-muted);">0</span></div>
+                <div style="display: flex; align-items: center; gap: 8px;"><span style="width: 52px; font-size: 6.5px; color: var(--text-muted); letter-spacing: .08em;">ACTIVO</span><div style="flex: 1; height: 7px; background: var(--bg-inset); border-radius: 3px; overflow: hidden;"><div style="width: 4%; height: 100%; background: var(--border-strong); border-radius: 3px; transform-origin: left; animation: barGrowX 1s ease-out .8s both;"></div></div><span style="font-size: 7px; color: var(--text-muted);">0</span></div>
+              </div>
+            </div>
+
+            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; flex-direction: column;">
+              <div style="display: flex; align-items: flex-start; justify-content: space-between;">
+                <div>
+                  <p style="margin: 0 0 2px; font-size: 7px; color: var(--text-faint); font-weight: 700; letter-spacing: .12em;">INGRESOS RECURRENTES</p>
+                  <p style="margin: 0; font-size: 10.5px; font-weight: 700; color: var(--text-heading); font-family: var(--font);">MRR últimos 6 meses</p>
+                </div>
+                <span style="font-size: 8px; color: var(--success); font-weight: 700;">↑ +100%</span>
+              </div>
+              <div style="flex: 1; display: flex; align-items: flex-end; gap: 9px; padding: 12px 4px 4px;">
+                <div style="flex: 1; height: 6%; background: var(--bg-inset); border-radius: 2px 2px 0 0;"></div>
+                <div style="flex: 1; height: 6%; background: var(--bg-inset); border-radius: 2px 2px 0 0;"></div>
+                <div style="flex: 1; height: 6%; background: var(--bg-inset); border-radius: 2px 2px 0 0;"></div>
+                <div style="flex: 1; height: 6%; background: var(--bg-inset); border-radius: 2px 2px 0 0;"></div>
+                <div style="flex: 1; height: 6%; background: var(--bg-inset); border-radius: 2px 2px 0 0;"></div>
+                <div style="flex: 1; height: 88%; background: var(--primary); border-radius: 2px 2px 0 0; transform-origin: bottom; animation: barGrowY 1s cubic-bezier(0.16,1,0.3,1) .9s both;"></div>
+              </div>
+              <div style="display: flex; gap: 9px; padding: 0 4px;">
+                <span style="flex: 1; text-align: center; font-size: 6px; color: var(--text-faint);">Feb</span>
+                <span style="flex: 1; text-align: center; font-size: 6px; color: var(--text-faint);">Mar</span>
+                <span style="flex: 1; text-align: center; font-size: 6px; color: var(--text-faint);">Abr</span>
+                <span style="flex: 1; text-align: center; font-size: 6px; color: var(--text-faint);">May</span>
+                <span style="flex: 1; text-align: center; font-size: 6px; color: var(--text-faint);">Jun</span>
+                <span style="flex: 1; text-align: center; font-size: 6px; color: var(--text-faint);">Jul</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- statusbar -->
+          <div style="position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 12px; padding: 6px 16px; border-top: 1px solid var(--border); background: var(--bg-topbar);">
+            <span style="display: flex; align-items: center; gap: 4px; font-size: 7px; color: var(--text-muted);"><span style="width: 5px; height: 5px; border-radius: 50%; background: var(--success); animation: pulseDot 2s ease-in-out infinite;"></span>DB Operativo</span>
+            <span style="font-size: 7px; color: var(--text-faint);">LATENCIA 27 ms</span>
+            <span style="font-size: 7px; color: var(--text-faint);">TZ UTC-4</span>
+            <span style="margin-left: auto; font-size: 7px; color: var(--text-faint);">BUILD v1.0.4-prod</span>
+          </div>
+        </div>
+
+        <!-- floaters -->
+        <div style="position: absolute; top: -4px; right: -10px; background: var(--surface); border: 1px solid var(--success-border); border-radius: 9px; padding: 9px 13px; box-shadow: 0 12px 28px rgba(41,37,36,0.12); animation: floatYSlow 4.5s ease-in-out infinite; display: flex; align-items: center; gap: 8px; z-index: 2;">
+          <span style="position: relative; width: 8px; height: 8px; flex-shrink: 0;"><span style="position: absolute; inset: 0; border-radius: 50%; background: var(--success);"></span><span style="position: absolute; inset: 0; border-radius: 50%; background: var(--success); animation: ringPulse 1.8s ease-out infinite;"></span></span>
+          <span style="font-size: 12px; font-weight: 700; color: var(--text-heading);">Contrato firmado</span>
+        </div>
+        <div style="position: absolute; bottom: 4px; left: -16px; background: var(--surface); border: 1px solid var(--warning-border); border-radius: 9px; padding: 9px 13px; box-shadow: 0 12px 28px rgba(41,37,36,0.12); animation: floatYSlow 5.5s ease-in-out infinite 1s; font-size: 11.5px; font-weight: 700; color: var(--warning); font-family: var(--mono); z-index: 2;">IA analizando cláusula...</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ FUNCIONAMIENTO ══════════ -->
+  <section id="funcionamiento" ref="{{ setWorksRef }}" style="{{ worksStyle }}">
+    <div style="{{ sectionPad }}">
+      <div style="text-align: center; max-width: 620px; margin: 0 auto 48px;">
+        <p style="margin: 0 0 10px; font-size: 11px; font-weight: 700; color: var(--primary); font-family: var(--mono); text-transform: uppercase; letter-spacing: .1em;">Cómo funciona</p>
+        <h2 style="margin: 0 0 14px; font-size: 34px; font-weight: 800; color: var(--text-heading); letter-spacing: -0.02em;">Míralo en acción</h2>
+        <p style="margin: 0; font-size: 15.5px; color: var(--text-secondary); line-height: 1.6;">De la redacción a la firma, sin salir de la plataforma.</p>
+      </div>
+
+      <div style="max-width: 880px; margin: 0 auto;">
+        <x-import component-from-global-scope="ChromeWindow" from="./browser-window.jsx" width="880" height="500" url="app.clmkyo.com/dashboard" hint-size="880px,500px">
+          <div style="width: 100%; height: 100%; background: var(--bg-subtle);">
+            <image-slot id="works-demo" shape="rect" placeholder="Arrastra aquí tu video o GIF de demostración" style="width: 100%; height: 100%;"></image-slot>
+          </div>
+        </x-import>
+      </div>
+
+      <div style="{{ featureGridStyle }}">
+        <div style="text-align: center; padding: 4px;">
+          <p style="margin: 0 0 6px; font-size: 15px; font-weight: 700; color: var(--text-heading);">Redacción por cláusulas</p>
+          <p style="margin: 0; font-size: 13px; color: var(--text-muted); line-height: 1.5;">Arma contratos combinando bloques predefinidos y validados.</p>
+        </div>
+        <div style="text-align: center; padding: 4px;">
+          <p style="margin: 0 0 6px; font-size: 15px; font-weight: 700; color: var(--text-heading);">Análisis en tiempo real</p>
+          <p style="margin: 0; font-size: 13px; color: var(--text-muted); line-height: 1.5;">Panel BI para seguir el estado y valor de tu cartera de contratos.</p>
+        </div>
+        <div style="text-align: center; padding: 4px;">
+          <p style="margin: 0 0 6px; font-size: 15px; font-weight: 700; color: var(--text-heading);">Firma y seguimiento</p>
+          <p style="margin: 0; font-size: 13px; color: var(--text-muted); line-height: 1.5;">Notificaciones automáticas de vencimientos y renovaciones.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ NOTICIAS — changelog timeline ══════════ -->
+  <section id="noticias" ref="{{ setNewsRef }}" style="{{ newsStyle }}">
+    <div style="{{ newsWrapStyle }}">
+      <div style="{{ newsGridStyle }}">
+        <div style="{{ newsAsideStyle }}">
+          <p style="margin: 0 0 10px; font-size: 11px; font-weight: 700; color: var(--primary); font-family: var(--mono); text-transform: uppercase; letter-spacing: .1em;">Últimas noticias</p>
+          <h2 style="margin: 0 0 14px; font-size: 32px; font-weight: 800; color: var(--text-heading); letter-spacing: -0.02em; line-height: 1.15;">CLM‑Kyo sigue creciendo</h2>
+          <p style="margin: 0 0 20px; font-size: 14.5px; color: var(--text-secondary); line-height: 1.6;">Cada versión suma capacidades reales. Este es el registro de lo más reciente.</p>
+          <span style="display: inline-flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 700; color: var(--text-muted); font-family: var(--mono);"><span style="width: 6px; height: 6px; border-radius: 50%; background: var(--success); animation: pulseDot 2s ease-in-out infinite;"></span>v1.0.4‑prod · en desarrollo activo</span>
+        </div>
+
+        <div style="position: relative; display: flex; flex-direction: column;">
+          <div style="position: absolute; left: 7px; top: 12px; bottom: 12px; width: 2px; background: linear-gradient(to bottom, var(--primary-border), var(--border) 60%, transparent);"></div>
+          <sc-for list="{{ newsItems }}" as="item" hint-placeholder-count="3">
+            <div style="position: relative; padding: 0 0 36px 40px;">
+              <span style="position: absolute; left: 0; top: 4px; width: 16px; height: 16px; border-radius: 50%; background: var(--bg-page); border: 2px solid var(--primary); box-sizing: border-box; display: flex; align-items: center; justify-content: center;"><span style="width: 6px; height: 6px; border-radius: 50%; background: var(--primary);"></span></span>
+              <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                <span style="{{ item.badgeStyle }}">{{ item.badgeLabel }}</span>
+                <span style="font-size: 11px; color: var(--text-faint); font-family: var(--mono);">{{ item.date }}</span>
+              </div>
+              <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 22px; box-shadow: 0 2px 6px rgba(41,37,36,0.03); transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;" style-hover="transform: translateX(4px); box-shadow: 0 12px 26px rgba(41,37,36,0.08); border-color: var(--primary-border);">
+                <h3 style="margin: 0 0 7px; font-size: 16.5px; font-weight: 700; color: var(--text-heading); letter-spacing: -0.01em;">{{ item.title }}</h3>
+                <p style="margin: 0; font-size: 13.5px; color: var(--text-muted); line-height: 1.55;">{{ item.description }}</p>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ EQUIPO ══════════ -->
+  <footer id="equipo" style="background: var(--bg-topbar); border-top: 1px solid var(--border); padding: 72px 20px 40px;">
+    <div style="max-width: 1200px; margin: 0 auto; text-align: center;">
+      <p style="margin: 0 0 10px; font-size: 11px; font-weight: 700; color: var(--primary); font-family: var(--mono); text-transform: uppercase; letter-spacing: .1em;">Quién lo construye</p>
+      <h2 style="margin: 0 0 40px; font-size: 26px; font-weight: 800; color: var(--text-heading); letter-spacing: -0.02em;">El equipo detrás de CLM‑Kyo</h2>
+
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 14px;">
+        <div style="position: relative; width: 128px; height: 128px;">
+          <span style="position: absolute; inset: -6px; border-radius: 50%; border: 1.5px dashed var(--primary-border); animation: spinSlow 24s linear infinite;"></span>
+          <div style="width: 128px; height: 128px; border-radius: 50%; overflow: hidden; border: 3px solid var(--surface); box-shadow: 0 12px 30px rgba(41,37,36,0.14); background: var(--primary-tint);">
+            <image-slot id="team-francisco" shape="circle" placeholder="Foto" style="width: 100%; height: 100%;"></image-slot>
+          </div>
+        </div>
+        <div>
+          <p style="margin: 0 0 3px; font-size: 17px; font-weight: 700; color: var(--text-heading); letter-spacing: -0.01em;">Francisco Fuentelba</p>
+          <p style="margin: 0; font-size: 12.5px; font-weight: 600; color: var(--text-muted); font-family: var(--mono); text-transform: uppercase; letter-spacing: .08em;">Developer</p>
+        </div>
+      </div>
+
+      <p style="margin: 56px 0 0; font-size: 11px; color: var(--text-faint); font-family: var(--mono);">© 2026 Grivyzom — hecho con dedicación, una línea de código a la vez.</p>
+    </div>
+  </footer>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    worksVisible: false,
+    newsVisible: false,
+    scrolled: false,
+    vw: typeof window !== 'undefined' ? window.innerWidth : 1280,
+  };
+
+  newsData = [
+    {
+      badgeLabel: 'NUEVO',
+      date: '02 JUL 2026',
+      title: 'Generación de contratos por cláusulas',
+      description: 'Arma contratos combinando bloques legales predefinidos y validados por nuestro equipo jurídico.',
+      badgeStyle: 'display:inline-flex;align-items:center;padding:3px 9px;border-radius:9999px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:rgba(59,130,246,0.13);color:#2563eb;border:1px solid rgba(59,130,246,0.2);font-family:JetBrains Mono,monospace;',
+    },
+    {
+      badgeLabel: 'BETA',
+      date: '24 JUN 2026',
+      title: 'Nuevo panel de Análisis BI',
+      description: 'Un panel de inteligencia de negocio pensado para clientes expertos: tendencias, riesgos y valor de cartera.',
+      badgeStyle: 'display:inline-flex;align-items:center;padding:3px 9px;border-radius:9999px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:rgba(234,179,8,0.13);color:#b45309;border:1px solid rgba(234,179,8,0.2);font-family:JetBrains Mono,monospace;',
+    },
+    {
+      badgeLabel: 'MEJORA',
+      date: '11 JUN 2026',
+      title: 'Modo claro / oscuro',
+      description: 'Toda la plataforma ahora se adapta a tu preferencia de tema, con la misma calidez de siempre.',
+      badgeStyle: 'display:inline-flex;align-items:center;padding:3px 9px;border-radius:9999px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:rgba(34,197,94,0.13);color:#16a34a;border:1px solid rgba(34,197,94,0.2);font-family:JetBrains Mono,monospace;',
+    },
+  ];
+
+  componentDidMount() {
+    this._mounted = true;
+    this._onScroll = () => {
+      const scrolled = window.scrollY > 12;
+      if (scrolled !== this.state.scrolled) this.setState({ scrolled });
+    };
+    window.addEventListener('scroll', this._onScroll, { passive: true });
+    this._onResize = () => {
+      if (window.innerWidth !== this.state.vw) this.setState({ vw: window.innerWidth });
+    };
+    window.addEventListener('resize', this._onResize);
+    this._trySetupObserver();
+    this._fallback = setTimeout(() => {
+      if (this._mounted) this.setState({ worksVisible: true, newsVisible: true });
+    }, 1500);
+  }
+
+  _trySetupObserver() {
+    if (this.observer || !window.IntersectionObserver) return;
+    if (!this.worksEl && !this.newsEl) {
+      this._retry = setTimeout(() => this._trySetupObserver(), 150);
+      return;
+    }
+    this.observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        if (entry.target === this.worksEl) this.setState({ worksVisible: true });
+        if (entry.target === this.newsEl) this.setState({ newsVisible: true });
+      });
+    }, { threshold: 0.15 });
+
+    if (this.worksEl) this.observer.observe(this.worksEl);
+    if (this.newsEl) this.observer.observe(this.newsEl);
+  }
+
+  componentWillUnmount() {
+    this._mounted = false;
+    if (this._onScroll) window.removeEventListener('scroll', this._onScroll);
+    if (this._onResize) window.removeEventListener('resize', this._onResize);
+    if (this.observer) this.observer.disconnect();
+    if (this._fallback) clearTimeout(this._fallback);
+    if (this._retry) clearTimeout(this._retry);
+  }
+
+  renderVals() {
+    const reveal = (visible, delay) =>
+      `opacity:${visible ? 1 : 0};transform:translateY(${visible ? 0 : 24}px);transition:opacity .7s cubic-bezier(0.16,1,0.3,1) ${delay}s, transform .7s cubic-bezier(0.16,1,0.3,1) ${delay}s;`;
+
+    const vw = this.state.vw;
+    const mobile = vw < 720;     // 1 columna, nav compacto
+    const tablet = vw < 1024;    // hero apilado
+
+    return {
+      navPillStyle: mobile
+        ? 'display: none;'
+        : 'display: flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.55); border: 1px solid var(--border); border-radius: 9999px; padding: 4px;',
+      navVersionStyle: mobile
+        ? 'display: none;'
+        : 'display: inline-flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 700; color: var(--text-muted); font-family: var(--mono);',
+      navInnerStyle: `max-width: 1200px; margin: 0 auto; padding: 0 ${mobile ? 16 : 32}px; height: 62px; display: flex; align-items: center; justify-content: space-between; gap: ${mobile ? 12 : 24}px;`,
+      heroGridStyle: tablet
+        ? `position: relative; max-width: 640px; margin: 0 auto; padding: ${mobile ? '48px 20px 64px' : '64px 32px 80px'}; display: grid; grid-template-columns: 1fr; gap: 48px; align-items: center;`
+        : 'position: relative; max-width: 1200px; margin: 0 auto; padding: 84px 32px 100px; display: grid; grid-template-columns: 0.95fr 1.05fr; gap: 52px; align-items: center;',
+      heroTitleStyle: `margin: 0 0 18px; font-size: ${mobile ? 36 : tablet ? 44 : 54}px; line-height: 1.06; font-weight: 800; color: var(--text-heading); letter-spacing: -0.03em;`,
+      heroMockWrapStyle: `position: relative; height: ${mobile ? 400 : 480}px; animation: fadeUp .9s cubic-bezier(0.16,1,0.3,1) 0.15s both; ${mobile ? 'margin: 0 -4px;' : ''}`,
+      mockKpiStyle: `display: grid; grid-template-columns: repeat(${mobile ? 2 : 4}, 1fr); border-bottom: 1px solid var(--border); background: var(--surface);`,
+      mockBodyStyle: `display: grid; grid-template-columns: ${mobile ? '1fr' : '1fr 1fr'}; gap: 12px; padding: 12px 16px;`,
+      sectionPad: `max-width: 1200px; margin: 0 auto; padding: ${mobile ? '64px 20px' : '100px 32px'};`,
+      featureGridStyle: `display: grid; grid-template-columns: ${mobile ? '1fr' : 'repeat(3, 1fr)'}; gap: 24px; max-width: 880px; margin: 48px auto 0;`,
+      newsWrapStyle: `max-width: 880px; margin: 0 auto; padding: ${mobile ? '64px 20px' : '96px 32px'};`,
+      newsGridStyle: tablet
+        ? 'display: grid; grid-template-columns: 1fr; gap: 40px; align-items: start;'
+        : 'display: grid; grid-template-columns: 300px 1fr; gap: 56px; align-items: start;',
+      newsAsideStyle: tablet ? 'position: static;' : 'position: sticky; top: 96px;',
+      scrollToWorks: () => {
+        const el = document.getElementById('funcionamiento');
+        if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 70, behavior: 'smooth' });
+      },
+      setNavRef: (el) => { this.navEl = el; },
+      navStyle: this.state.scrolled
+        ? 'background: rgba(239,237,232,0.92); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); box-shadow: 0 6px 24px rgba(41,37,36,0.08); position: sticky; top: 0; z-index: 30; transition: background-color .25s ease, box-shadow .25s ease, border-color .25s ease;'
+        : 'background: transparent; backdrop-filter: blur(0px); border-bottom: 1px solid transparent; box-shadow: none; position: sticky; top: 0; z-index: 30; transition: background-color .25s ease, box-shadow .25s ease, border-color .25s ease;',
+      setWorksRef: (el) => { this.worksEl = el; },
+      setNewsRef: (el) => { this.newsEl = el; },
+      worksStyle: `background: var(--bg-subtle); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); ${reveal(this.state.worksVisible, 0)}`,
+      newsStyle: reveal(this.state.newsVisible, 0.05),
+      newsItems: this.newsData,
+    };
+  }
+}
+
+</script>
+</body>
+</html>

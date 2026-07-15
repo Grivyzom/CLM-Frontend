@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Svg from './Svg';
 
-export default function ContextMenu({ clientId, pos, onClose, onEdit, onDelete, onChangeStatus, clientEstado }) {
+export default function ContextMenu({ clientId, pos, onClose, onEdit, onDelete, onChangeStatus, clientEstado, onOpenWorkspace }) {
   const [menuPos, setMenuPos] = useState({ top: pos.y, left: pos.x });
   const menuRef = useRef(null);
 
@@ -62,6 +62,32 @@ export default function ContextMenu({ clientId, pos, onClose, onEdit, onDelete, 
           animation: 'dropIn 0.15s ease-out',
         }}
       >
+        {onOpenWorkspace && (
+          <button
+            onClick={() => { onOpenWorkspace(clientId); onClose(); }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              width: '100%',
+              padding: '10px 12px',
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              fontSize: 12,
+              color: 'var(--text-secondary)',
+              textAlign: 'left',
+              fontFamily: 'inherit',
+              borderBottom: '1px solid var(--neutral-200)',
+              transition: 'background 0.12s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-topbar)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'none'}
+          >
+            <Svg paths={['M3 3h7v7H3z','M14 3h7v7h-7z','M14 14h7v7h-7z','M3 14h7v7H3z']} color="var(--text-muted)" size={14} />
+            Abrir workspace
+          </button>
+        )}
         <button
           onClick={() => { onEdit(clientId); onClose(); }}
           style={{

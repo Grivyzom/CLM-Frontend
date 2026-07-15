@@ -107,6 +107,66 @@ export function useClientes() {
     setPage(1);
   }, []);
 
+  const updateClientLocally = useCallback((updatedClient) => {
+    if (!updatedClient) return;
+    setData(prev => {
+      if (!prev) return prev;
+      const oldClient = prev.results?.find(c => c.id === updatedClient.id);
+      const updatedResults = prev.results?.map(c => c.id === updatedClient.id ? { ...c, ...updatedClient } : c) ?? [];
+
+      let nextStats = prev.stats;
+      if (oldClient && prev.stats && oldClient.estado !== updatedClient.estado) {
+        nextStats = { ...prev.stats };
+        // Decrement old state
+        if (oldClient.estado === 'Activo') nextStats.activos = Math.max(0, nextStats.activos - 1);
+        else if (oldClient.estado === 'En revisión') nextStats.en_revision = Math.max(0, nextStats.en_revision - 1);
+        else if (oldClient.estado === 'Inactivo') nextStats.inactivos = Math.max(0, nextStats.inactivos - 1);
+
+        // Increment new state
+        if (updatedClient.estado === 'Activo') nextStats.activos = (nextStats.activos || 0) + 1;
+        else if (updatedClient.estado === 'En revisión') nextStats.en_revision = (nextStats.en_revision || 0) + 1;
+        else if (updatedClient.estado === 'Inactivo') nextStats.inactivos = (nextStats.inactivos || 0) + 1;
+      }
+
+      return {
+        ...prev,
+        results: updatedResults,
+        stats: nextStats,
+      };
+    });
+    cache.current = {};
+  }, []);
+
+  const addClientLocally = useCallback((newClient) => {
+    if (!newClient) return;
+    setData(prev => {
+      if (!prev) return prev;
+      const updatedResults = [newClient, ...(prev.results ?? [])];
+      if (updatedResults.length > PAGE_SIZE) {
+        updatedResults.pop();
+      }
+
+      let nextStats = prev.stats;
+      if (prev.stats) {
+        nextStats = {
+          ...prev.stats,
+          total: (prev.stats.total || 0) + 1,
+        };
+        if (newClient.estado === 'Activo') nextStats.activos = (nextStats.activos || 0) + 1;
+        else if (newClient.estado === 'En revisión') nextStats.en_revision = (nextStats.en_revision || 0) + 1;
+        else if (newClient.estado === 'Inactivo') nextStats.inactivos = (nextStats.inactivos || 0) + 1;
+      }
+
+      return {
+        ...prev,
+        count: (prev.count ?? 0) + 1,
+        results: updatedResults,
+        stats: nextStats,
+      };
+    });
+    cache.current = {};
+  }, []);
+
   return {
     // Datos
     clientes:   data?.results ?? [],
@@ -126,5 +186,8 @@ export function useClientes() {
     resetFilters,
     // Refetch manual
     refetch: () => fetchData({ force: true }),
+    // Actualizaciones locales
+    updateClientLocally,
+    addClientLocally,
   };
 }

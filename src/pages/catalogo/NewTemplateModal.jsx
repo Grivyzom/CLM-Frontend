@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getClausulas, createPlantilla, updatePlantilla } from '../../api';
+import { getClausulas, createPlantilla, updatePlantilla, getAvailableHtmlTemplates } from '../../api';
 import { Icon } from './ui';
 import { TEMPLATE_VACIO } from './helpers';
 
@@ -14,8 +14,10 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
   const filteredSoft = (softwareList || []).filter(s => (s.name || s.nombre || '').toLowerCase().includes(searchSoft.toLowerCase()));
 
   const [clausulasOpciones, setClausulasOpciones] = useState([]);
+  const [htmlTemplatesOpciones, setHtmlTemplatesOpciones] = useState([]);
   useEffect(() => {
     getClausulas().then(setClausulasOpciones).catch(() => {});
+    getAvailableHtmlTemplates().then(setHtmlTemplatesOpciones).catch(() => {});
   }, []);
 
   const setField = (field, value) => setCreateForm(prev => ({ ...prev, [field]: value }));
@@ -28,6 +30,10 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
     }
     if (!isEdit && createForm.modo_origen === 'archivo' && !createForm.archivo_docx) {
       setError('Debes subir un archivo .docx para el modo "Documento propio".');
+      return;
+    }
+    if (createForm.modo_origen === 'html' && !createForm.ruta_plantilla_html?.trim()) {
+      setError('Debes seleccionar una plantilla HTML del listado.');
       return;
     }
 
@@ -43,6 +49,9 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
       if (createForm.archivo_docx) fd.append('archivo_docx', createForm.archivo_docx);
       if (createForm.modo_origen === 'clausulas') {
         fd.append('clausulas_seleccionadas', JSON.stringify(createForm.clausulas_seleccionadas || []));
+      }
+      if (createForm.modo_origen === 'html') {
+        fd.append('ruta_plantilla_html', createForm.ruta_plantilla_html || '');
       }
 
       if (isEdit) {
@@ -220,6 +229,16 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
                   Generar con cláusulas
                 </span>
               </button>
+              <button
+                type="button"
+                style={modeBtn(createForm.modo_origen === 'html')}
+                onClick={() => setField('modo_origen', 'html')}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <Icon d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" w={14} color={createForm.modo_origen === 'html' ? 'var(--primary)' : 'var(--text-muted)'} />
+                  Código HTML
+                </span>
+              </button>
             </div>
           </div>
 
@@ -287,6 +306,23 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
                   {clausulasOpciones.length === 0 && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Cargando cláusulas...</div>}
                 </div>
               </div>
+            </div>
+          )}
+
+          {createForm.modo_origen === 'html' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={labelStyle}>Plantilla HTML en backend *</label>
+              <select
+                style={inputStyle}
+                value={createForm.ruta_plantilla_html || ''}
+                onChange={e => setField('ruta_plantilla_html', e.target.value)}
+                required
+              >
+                <option value="">-- Seleccionar archivo HTML --</option>
+                {htmlTemplatesOpciones.map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
             </div>
           )}
 

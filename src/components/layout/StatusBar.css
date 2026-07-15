@@ -89,3 +89,15 @@
   z-index: 50;
 }
 .top-btn:hover { transform: translateY(-1px); }
+
+/* ── Móvil: solo lo esencial (estado DB + latencia + entorno) ── */
+@media (max-width: 900px) {
+  .status-bar { overflow: hidden; }
+  /* Sección TZ / IP / Hora */
+  .status-section:nth-child(2) { display: none; }
+  /* Pool de conexiones */
+  .status-section:first-child .status-item:nth-child(3) { display: none; }
+  /* Build (queda el chip de entorno) */
+  .status-section-right .status-item:first-child { display: none; }
+  .status-item { padding: 0 6px; }
+}
