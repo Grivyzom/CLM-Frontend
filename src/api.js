@@ -151,6 +151,55 @@ export async function createTenant(data) {
   });
 }
 
+// ─── Usuarios (vista global de plataforma) ────────────────────────────────────
+
+/**
+ * Lista paginada de TODAS las cuentas de la plataforma (staff global,
+ * usuarios de cualquier tenant y clientes externos).
+ *
+ * @param {Object} params
+ * @param {string} params.search       - Texto libre (usuario, correo, nombre, empresa)
+ * @param {string} params.tipo_cuenta  - 'TODOS' | 'PLATAFORMA' | 'EMPRESA' | 'CLIENTE'
+ * @param {string} params.estado       - 'TODOS' | 'ACTIVO' | 'INACTIVO'
+ * @param {string} params.ordering     - 'username' | '-username' | 'date_joined' | '-date_joined'
+ * @param {number} params.page
+ * @param {number} params.page_size
+ *
+ * @returns {{ count, page, page_size, total_pages, stats, results }}
+ */
+export async function getUsuariosPlataforma(params = {}) {
+  const qs = new URLSearchParams();
+  if (params.search)                             qs.set('search', params.search);
+  if (params.tipo_cuenta && params.tipo_cuenta !== 'TODOS') qs.set('tipo_cuenta', params.tipo_cuenta);
+  if (params.estado && params.estado !== 'TODOS') qs.set('estado', params.estado);
+  if (params.tenant_id)                           qs.set('tenant_id', params.tenant_id);
+  if (params.ordering)                           qs.set('ordering', params.ordering);
+  if (params.page)                                qs.set('page', params.page);
+  if (params.page_size)                           qs.set('page_size', params.page_size);
+
+  const query = qs.toString() ? `?${qs.toString()}` : '';
+  return request(`/tenants/usuarios/todos/${query}`);
+}
+
+export async function updateUsuarioPlataforma(id, data) {
+  return request(`/tenants/usuarios/todos/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteUsuarioPlataforma(id) {
+  return request(`/tenants/usuarios/todos/${id}/`, { method: 'DELETE' });
+}
+
+/**
+ * Envía al usuario el correo de "restablecer contraseña" (mismo flujo que
+ * /recuperar), disparado por un Administrador/Moderador desde /usuarios.
+ */
+export async function resetPasswordUsuarioPlataforma(id) {
+  return request(`/tenants/usuarios/todos/${id}/reset-password/`, { method: 'POST' });
+}
+
 // ─── Clientes ─────────────────────────────────────────────────────────────────
 
 /**
@@ -420,6 +469,27 @@ export async function deleteContrato(id) {
   return request(`/contratos/${id}/`, { method: 'DELETE' });
 }
 
+/** Sincroniza un contrato con un procesador externo (Word/Google Docs) o cambia el estado del bloqueo. */
+export async function syncExternalContract(id, data) {
+  return request(`/contratos/${id}/external-sync/`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+/** Administra el sobre de firma electrónica (DocuSign, Adobe, OTP) */
+export async function manageSignature(id, data) {
+  return request(`/contratos/${id}/firma/`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+/** Obtiene el estado de sincronización externa del contrato. */
+export async function getExternalSyncStatus(id) {
+  return request(`/contratos/${id}/external-sync/`);
+}
+
 /** Obtiene la lista de obligaciones de un contrato. */
 export async function getObligaciones(contratoId) {
   return request(`/contratos/${contratoId}/obligaciones/`);
@@ -521,17 +591,42 @@ export async function getSLAs() {
   return request('/slas/');
 }
 
+/**
+ * SLA técnico "N/A" del tenant (se crea una vez y se reutiliza). Para
+ * contratos de plantillas administrativas (NDA, memorándums, fichas de
+ * requerimientos) que no tienen nivel de servicio ni facturación real.
+ */
+export async function getSlaNA() {
+  return request('/slas/na/');
+}
+
 // ─── Generación de documentos ──────────────────────────────────────────────────
 
 /**
  * Genera el documento base de un contrato desde su plantilla activa.
- * @param {Object} data - { contrato_id, plantilla_id?, forzar? }
+ * @param {Object} data - { contrato_id, plantilla_id?, forzar?, campos? }
  */
 export async function generarDocumentoContrato(data) {
   return request('/plantillas/documentos/generar/', {
     method: 'POST',
     body: JSON.stringify(data),
   });
+}
+
+/**
+ * Campos manuales que pide una plantilla HTML (ej. PARA/DE/ASUNTO de un
+ * memorándum), para mostrarlos en un formulario antes de generar el
+ * documento. Vacío si la plantilla no es HTML.
+ * @param {Object} params
+ * @param {number} [params.contratoId] - resuelve la plantilla activa de ese contrato si no se pasa plantillaId
+ * @param {number} [params.plantillaId] - consulta directa a una plantilla ya elegida (no requiere contrato)
+ * @returns {{plantilla_id: number, campos: Array<{nombre, label, default, multilinea}>}}
+ */
+export async function getCamposPlantilla({ contratoId, plantillaId } = {}) {
+  const qs = new URLSearchParams();
+  if (contratoId) qs.set('contrato_id', contratoId);
+  if (plantillaId) qs.set('plantilla_id', plantillaId);
+  return request(`/plantillas/documentos/campos/?${qs.toString()}`);
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
@@ -562,11 +657,16 @@ export async function getAnalytics() {
 // ─── Plantillas ───────────────────────────────────────────────────────────────
 
 /**
- * Obtiene las rutas relativas de plantillas HTML disponibles en el backend.
- * @returns {Array<string>}
+ * Obtiene las plantillas HTML disponibles en el backend.
+ * Cada elemento es { ruta, nombre, tipo } — tipo null = plantilla global.
+ *
+ * @param {string} [tipoContrato] - Filtra por tipo (RECURRENTE, PERPETUO,
+ *                                  PRO_BONO, INTERNO); incluye siempre las globales.
+ * @returns {Array<{ruta: string, nombre: string, tipo: string|null}>}
  */
-export async function getAvailableHtmlTemplates() {
-  return request('/plantillas/html-templates/');
+export async function getAvailableHtmlTemplates(tipoContrato) {
+  const qs = tipoContrato ? `?tipo_contrato=${encodeURIComponent(tipoContrato)}` : '';
+  return request(`/plantillas/plantillas/html-templates/${qs}`);
 }
 
 /**
