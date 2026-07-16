@@ -17,10 +17,39 @@ export default function NotificationsBell() {
   const [count, setCount] = useState(0);
   const [items, setItems] = useState(null);
   const wrapRef = useRef(null);
+  const isInitialLoad = useRef(true);
 
   const fetchCount = useCallback(() => {
     getNotificacionesUnreadCount()
-      .then((res) => setCount(res.count || 0))
+      .then((res) => {
+        const newCount = res.count || 0;
+        setCount((prevCount) => {
+          if (!isInitialLoad.current && newCount > prevCount) {
+            try {
+              const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+              const osc = audioCtx.createOscillator();
+              const gainNode = audioCtx.createGain();
+              osc.connect(gainNode);
+              gainNode.connect(audioCtx.destination);
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+              gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+              gainNode.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + 0.05);
+              gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+              osc.frequency.setValueAtTime(880.00, audioCtx.currentTime + 0.2);
+              gainNode.gain.setValueAtTime(0, audioCtx.currentTime + 0.2);
+              gainNode.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + 0.25);
+              gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
+              osc.start(audioCtx.currentTime);
+              osc.stop(audioCtx.currentTime + 0.6);
+            } catch (e) {
+              console.error("AudioPlay error", e);
+            }
+          }
+          isInitialLoad.current = false;
+          return newCount;
+        });
+      })
       .catch(() => {});
   }, []);
 
