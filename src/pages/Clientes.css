@@ -549,7 +549,7 @@
 
 .cl-thead {
   display: grid;
-  grid-template-columns: 32px minmax(180px,2fr) minmax(120px,1.2fr) minmax(110px,0.9fr) minmax(130px,1fr) minmax(90px,0.75fr) minmax(100px,0.75fr) minmax(70px,0.55fr) 72px;
+  grid-template-columns: 32px minmax(180px,2fr) minmax(120px,1.2fr) minmax(110px,0.9fr) minmax(130px,1fr) minmax(90px,0.75fr) minmax(100px,0.75fr) 116px;
   gap: 6px;
   padding: 8px 16px;
   background: var(--bg-topbar);
@@ -595,7 +595,7 @@
 
 .cl-row {
   display: grid;
-  grid-template-columns: 32px minmax(180px,2fr) minmax(120px,1.2fr) minmax(110px,0.9fr) minmax(130px,1fr) minmax(90px,0.75fr) minmax(100px,0.75fr) minmax(70px,0.55fr) 72px;
+  grid-template-columns: 32px minmax(180px,2fr) minmax(120px,1.2fr) minmax(110px,0.9fr) minmax(130px,1fr) minmax(90px,0.75fr) minmax(100px,0.75fr) 116px;
   gap: 6px;
   padding: 10px 16px;
   border-bottom: 1px solid var(--bg-topbar);
@@ -784,27 +784,51 @@
 .cl-cell-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 4px;
 }
 
-.cl-action-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border);
-  background: var(--bg-topbar);
-  display: flex;
+.cl-action-group {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.12s, border-color 0.12s;
-  flex-shrink: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light, var(--border));
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+  opacity: 0.8;
+  transition: opacity 0.2s, border-color 0.2s, box-shadow 0.2s;
 }
 
-.cl-action-btn:hover {
-  background: var(--surface);
-  border-color: var(--border-strong);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+.cl-table-row:hover .cl-action-group {
+  opacity: 1;
+  border-color: var(--border-strong, #ccc);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+.cl-action-group-btn {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.cl-action-group-btn > svg {
+  display: block;
+  margin: 0;
+}
+
+.cl-action-group-btn:hover:not(:disabled) {
+  background: var(--bg-subtle, #f3f4f6);
+  color: var(--text-primary);
 }
 
 /* ── Badges ── */
@@ -1099,11 +1123,10 @@
 
 @media (max-width: 992px) {
   .cl-thead, .cl-row {
-    grid-template-columns: 32px minmax(160px, 2fr) minmax(120px, 1.5fr) minmax(80px, 0.8fr) minmax(90px, 0.8fr) 72px;
+    grid-template-columns: 32px minmax(160px, 2fr) minmax(120px, 1.5fr) minmax(80px, 0.8fr) minmax(90px, 0.8fr) 116px;
   }
   .cl-thead > *:nth-child(3), .cl-row > *:nth-child(3), /* Hide ID Fiscal */
-  .cl-thead > *:nth-child(4), .cl-row > *:nth-child(4), /* Sector */
-  .cl-thead > *:nth-child(8), .cl-row > *:nth-child(8)  /* Contratos */ {
+  .cl-thead > *:nth-child(4), .cl-row > *:nth-child(4)  /* Sector */ {
     display: none;
   }
 }
@@ -1165,9 +1188,8 @@
   .cl-row:not(.cl-skeleton-row) > *:nth-child(3) { grid-row: 2; grid-column: 2; display: block; }
   .cl-row:not(.cl-skeleton-row) > *:nth-child(6) { grid-row: 2; grid-column: 3; justify-self: end; display: inline-flex; }
   .cl-row:not(.cl-skeleton-row) > *:nth-child(5) { grid-row: 3; grid-column: 2; display: block; }
-  .cl-row:not(.cl-skeleton-row) > *:nth-child(9) { grid-row: 3; grid-column: 3; justify-self: end; }
-  .cl-row:not(.cl-skeleton-row) > *:nth-child(4),
-  .cl-row:not(.cl-skeleton-row) > *:nth-child(8) { display: none; }
+  .cl-row:not(.cl-skeleton-row) > *:nth-child(8) { grid-row: 3; grid-column: 3; justify-self: end; }
+  .cl-row:not(.cl-skeleton-row) > *:nth-child(4) { display: none; }
 
   /* Skeleton: barras apiladas en vez del grid de tarjeta */
   .cl-row.cl-skeleton-row {

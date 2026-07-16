@@ -192,7 +192,7 @@ function DetailPanel({ clientId, onClose }) {
 
     if (interactiveElements) {
       interactiveElements.forEach(el => {
-        el.addEventListener('mouseenter', handleMouseEnter);
+        el.addEventListener('mouseenter', handleMouseEnter, { once: true });
       });
     }
 
@@ -679,7 +679,7 @@ export default function Clientes() {
 
     if (interactiveElements) {
       interactiveElements.forEach(el => {
-        el.addEventListener('mouseenter', handleMouseEnter);
+        el.addEventListener('mouseenter', handleMouseEnter, { once: true });
       });
     }
 
@@ -1201,13 +1201,7 @@ export default function Clientes() {
               ordering={filters.ordering}
               onSort={(next) => updateFilter('ordering', next)}
             />
-            <SortableHeader
-              className="cl-th"
-              label="Contratos"
-              field="contratos"
-              ordering={filters.ordering}
-              onSort={(next) => updateFilter('ordering', next)}
-            />
+
             <span className="cl-th">Acciones</span>
           </div>
 
@@ -1305,32 +1299,47 @@ export default function Clientes() {
                     {/* Estado */}
                     <StatusBadge estado={c.estado} />
 
-                    {/* Contratos */}
-                    <div className="cl-cell-contracts">
-                      <span className="cl-contract-num">{c.contratos_count}</span>
-                      <Svg paths={['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z']} color="var(--text-faint)" size={12} />
-                    </div>
-
                     {/* Acciones */}
-                    <div className="cl-cell-actions">
-                      <button
-                        className="cl-action-btn"
-                        title="Ver perfil"
-                        id={`clientes-view-${c.id}`}
-                        onClick={e => { e.stopPropagation(); setSelectedClientId(c.id); }}
-                      >
-                        <Svg paths={['M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z']} circles={[{cx:12,cy:12,r:3}]} color="var(--text-muted)" size={13} />
-                      </button>
-                      {canWrite && (
+                    <div className="cl-cell-actions" onClick={e => e.stopPropagation()}>
+                      <div className="cl-action-group">
                         <button
-                          className="cl-action-btn"
-                          title="Más opciones"
-                          id={`clientes-more-${c.id}`}
-                          onClick={e => handleOpenContextMenu(e, c.id)}
+                          className="cl-action-group-btn"
+                          title={`Contratos (${c.contratos_count})`}
+                          onClick={e => { e.stopPropagation(); setSelectedClientId(c.id); }}
+                          style={{ display: 'flex', gap: 2, padding: '0 4px', width: 'auto' }}
                         >
-                          <Svg paths={['M12 5v.01','M12 12v.01','M12 19v.01','M12 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2z','M12 13a1 1 0 1 1 0-2 1 1 0 0 1 0 2z','M12 20a1 1 0 1 1 0-2 1 1 0 0 1 0 2z']} color="var(--text-muted)" size={13} />
+                          <span style={{ fontSize: 10, fontWeight: 700 }}>{c.contratos_count}</span>
+                          <Svg paths={['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z']} color="currentColor" size={12} />
                         </button>
-                      )}
+                        <button
+                          className="cl-action-group-btn"
+                          title="Ver perfil"
+                          id={`clientes-view-${c.id}`}
+                          onClick={e => { e.stopPropagation(); setSelectedClientId(c.id); }}
+                        >
+                          <Svg paths={['M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z']} circles={[{cx:12,cy:12,r:3}]} color="currentColor" size={13} />
+                        </button>
+                        {canWrite && (
+                          <button
+                            className="cl-action-group-btn"
+                            title="Editar"
+                            id={`clientes-edit-${c.id}`}
+                            onClick={e => { e.stopPropagation(); handleEditClient(c.id); }}
+                          >
+                            <Svg paths={['M12 20h9', 'M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z']} color="currentColor" size={13} />
+                          </button>
+                        )}
+                        {canWrite && (
+                          <button
+                            className="cl-action-group-btn"
+                            title="Más opciones"
+                            id={`clientes-more-${c.id}`}
+                            onClick={e => handleOpenContextMenu(e, c.id)}
+                          >
+                            <Svg paths={['M12 5v.01','M12 12v.01','M12 19v.01','M12 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2z','M12 13a1 1 0 1 1 0-2 1 1 0 0 1 0 2z','M12 20a1 1 0 1 1 0-2 1 1 0 0 1 0 2z']} color="currentColor" size={13} />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
