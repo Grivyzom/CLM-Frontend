@@ -122,33 +122,27 @@ export default function ProductosTab({
             </div>
             <span style={{ color: 'var(--text-muted)' }}>{p.tipo_licencia === 'Gratuito / OpenSource' ? '—' : p.currency}</span>
 
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <div className="catalogo-action-group" onClick={e => e.stopPropagation()}>
               <button
                 title="Ver workspace del producto"
+                className="catalogo-action-group-btn"
                 onClick={(e) => { e.stopPropagation(); if (p.id) navigate(`/catalogo/${p.id}`, { state: { producto: p } }); else onView(p); }}
-                style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }}
-                onMouseEnter={e => e.currentTarget.style.color = 'var(--primary)'}
-                onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
               >
-                <Icon d={['M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z','M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z']} w={13} />
+                <Icon d={['M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z','M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z']} w={14} color="currentColor" />
               </button>
               <button
                 title="Editar"
+                className="catalogo-action-group-btn"
                 onClick={(e) => { e.stopPropagation(); onEdit(p); }}
-                style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }}
-                onMouseEnter={e => e.currentTarget.style.color = 'var(--primary)'}
-                onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
               >
-                <Icon d={['M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7','M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z']} w={13} />
+                <Icon d={['M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7','M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z']} w={14} color="currentColor" />
               </button>
               <button
                 title="Eliminar"
+                className="catalogo-action-group-btn danger"
                 onClick={(e) => { e.stopPropagation(); onDelete(p.id); }}
-                style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }}
-                onMouseEnter={e => e.currentTarget.style.color = 'var(--danger)'}
-                onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
               >
-                <Icon d={['M19 7l-1 12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 7m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3','M10 11v6','M14 11v6']} w={13} />
+                <Icon d={['M19 7l-1 12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 7m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3','M10 11v6','M14 11v6']} w={14} color="currentColor" />
               </button>
             </div>
           </div>

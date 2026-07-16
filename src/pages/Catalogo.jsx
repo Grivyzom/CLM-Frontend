@@ -249,12 +249,16 @@ export default function Catalogo() {
     if (!container) return;
 
     const SELECTOR = '.catalogo-tab, .catalogo-card, .catalogo-btn-secondary, .catalogo-btn-primary, .catalogo-action-btn, button';
+    const animatedElements = new WeakSet();
 
     const handleMouseOver = (e) => {
       const el = e.target.closest(SELECTOR);
       if (!el || !container.contains(el)) return;
       // Ignorar movimientos internos dentro del mismo elemento (equivale a mouseenter)
       if (el.contains(e.relatedTarget)) return;
+
+      if (animatedElements.has(el)) return;
+      animatedElements.add(el);
 
       const paths = el.querySelectorAll(
         'svg.clm-svg path, svg.clm-svg line, svg.clm-svg polyline, svg.clm-svg circle, svg.clm-svg rect'
@@ -372,6 +376,22 @@ export default function Catalogo() {
     setContextMenuPos({ x: e.clientX, y: e.clientY });
   }, []);
 
+  const handleEditTemplate = useCallback((template) => {
+    setEditingTemplate(template);
+    setTemplateFormCache({
+       nombre: template.name,
+       tipo_contrato: template.tipo_contrato,
+       version_codigo: template.version,
+       software_id: template.software_id || '',
+       modo_origen: template.modo_origen,
+       archivo_docx: null,
+       ruta_plantilla_html: template.ruta_plantilla_html || '',
+       codigo_prefijo: template._raw?.codigo_prefijo || '',
+       requiere_sla_facturacion: template.requiere_sla_facturacion !== false
+    });
+    setIsNewTemplateModalOpen(true);
+  }, []);
+
   const handleCreateTemplateFromScratch = useCallback(() => {
     setTemplateFormCache(TEMPLATE_VACIO);
     setEditingTemplate(null);
@@ -437,6 +457,7 @@ export default function Catalogo() {
             activeFilterCount={activeFilterCount}
             setPreviewTemplate={setPreviewTemplate}
             handleOpenContextMenu={handleOpenContextMenu}
+            handleEditTemplate={handleEditTemplate}
             onCreateFromScratch={handleCreateTemplateFromScratch}
           />
         )}
@@ -496,17 +517,7 @@ export default function Catalogo() {
           onUse={() => { setUseTemplate(contextMenuTarget); setContextMenuTarget(null); }}
           onRegenerate={() => { handleRegeneratePreview(contextMenuTarget); setContextMenuTarget(null); }}
           onEdit={() => {
-            setEditingTemplate(contextMenuTarget);
-            setTemplateFormCache({
-               nombre: contextMenuTarget.name,
-               tipo_contrato: contextMenuTarget.tipo_contrato,
-               version_codigo: contextMenuTarget.version,
-               software_id: contextMenuTarget.software_id || '',
-               modo_origen: contextMenuTarget.modo_origen,
-               archivo_docx: null,
-               ruta_plantilla_html: contextMenuTarget.ruta_plantilla_html || ''
-            });
-            setIsNewTemplateModalOpen(true);
+            handleEditTemplate(contextMenuTarget);
             setContextMenuTarget(null);
           }}
         />

@@ -7,7 +7,7 @@ import PlantillaCard from './PlantillaCard';
 export default function PlantillasTab({
   plantillas, loading, error, onRetry,
   filters, updateFilter, activeFilterCount,
-  setPreviewTemplate, handleOpenContextMenu, onCreateFromScratch,
+  setPreviewTemplate, handleOpenContextMenu, handleEditTemplate, onCreateFromScratch,
 }) {
   const [filterOpen, setFilterOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -171,6 +171,7 @@ export default function PlantillasTab({
             p={p}
             setPreviewTemplate={setPreviewTemplate}
             handleOpenContextMenu={handleOpenContextMenu}
+            handleEditTemplate={handleEditTemplate}
           />
         ))}
       </div>

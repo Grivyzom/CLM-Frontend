@@ -993,3 +993,51 @@
   transform: translateX(4px);
   box-shadow: 0 4px 14px rgba(var(--primary-rgb), 0.35);
 }
+
+.catalogo-action-group {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light, var(--border));
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+  opacity: 0.8;
+  transition: opacity 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.catalogo-card:hover .catalogo-action-group {
+  opacity: 1;
+  border-color: var(--border-strong, #ccc);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+.catalogo-action-group-btn {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.catalogo-action-group-btn > svg {
+  display: block;
+  margin: 0;
+}
+
+.catalogo-action-group-btn:hover:not(:disabled) {
+  background: var(--bg-subtle, #f3f4f6);
+  color: var(--text-primary);
+}
+
+.catalogo-action-group-btn.danger:hover:not(:disabled) {
+  background: var(--danger-bg, #fef2f2);
+  color: var(--danger);
+}

@@ -48,6 +48,7 @@ export function normalizeApiPlantilla(p) {
     software_id:   p.software_id,
     modo_origen:   p.modo_origen,
     ruta_plantilla_html: p.ruta_plantilla_html,
+    requiere_sla_facturacion: p.requiere_sla_facturacion !== false,
     _raw: p,
   };
 }
@@ -68,5 +69,5 @@ export function formatPrecio(price) {
 
 export const PRODUCTO_VACIO = { name: '', desc: '', cat: 'Software', tipo_licencia: 'Comercial', price: '', currency: 'USD', unit: '', status: 'Activo', datos_adicionales: {} };
 
-export const TEMPLATE_VACIO = { nombre: '', tipo_contrato: 'PLAZO_FIJO', version_codigo: '', software_id: '', modo_origen: 'archivo', archivo_docx: null, clausulas_seleccionadas: [], ruta_plantilla_html: '' };
+export const TEMPLATE_VACIO = { nombre: '', tipo_contrato: 'RECURRENTE', version_codigo: '', software_id: '', modo_origen: 'archivo', archivo_docx: null, clausulas_seleccionadas: [], ruta_plantilla_html: '', codigo_prefijo: '', requiere_sla_facturacion: true };
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getClientes, getSLAs, createContrato, togglePlantillaActiva, generarDocumentoContrato } from '../../api';
+import { getClientes, getSLAs, createContrato, togglePlantillaActiva, generarDocumentoContrato, getCamposPlantilla } from '../../api';
 import { Icon } from './ui';
 
 // ─── Use Template Modal (wizard: cliente → configuración → creado) ──────────
@@ -12,6 +12,13 @@ export default function UseTemplateModal({ plantilla, onClose }) {
   const [clientes, setClientes] = useState([]);
   const [slas, setSlas] = useState([]);
 
+  // Campos manuales de la plantilla (ej. PARA/DE/ASUNTO de un memorándum):
+  // se recolectan en un paso propio del wizard antes de crear el contrato,
+  // porque el contrato todavía no existe en este punto del flujo.
+  const [camposPlantilla, setCamposPlantilla] = useState([]);
+  const [camposValores, setCamposValores] = useState({});
+  const hasCampos = camposPlantilla.length > 0;
+
   useEffect(() => {
     getClientes({ page_size: 200 })
       .then((data) => setClientes(Array.isArray(data) ? data : data.results || []))
@@ -19,7 +26,15 @@ export default function UseTemplateModal({ plantilla, onClose }) {
     getSLAs()
       .then((data) => setSlas(Array.isArray(data) ? data : []))
       .catch(() => setSlas([]));
-  }, []);
+    if (plantilla.modo_origen === 'html') {
+      getCamposPlantilla({ plantillaId: plantilla.id })
+        .then(({ campos }) => {
+          setCamposPlantilla(campos || []);
+          setCamposValores(Object.fromEntries((campos || []).map(c => [c.nombre, ''])));
+        })
+        .catch(() => setCamposPlantilla([]));
+    }
+  }, [plantilla.id, plantilla.modo_origen]);
 
   useEffect(() => {
     const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -58,6 +73,7 @@ export default function UseTemplateModal({ plantilla, onClose }) {
       await generarDocumentoContrato({
         contrato_id: nuevoContrato.id,
         plantilla_id: plantilla.id,
+        campos: camposValores,
       });
 
       setStep(3);
@@ -118,24 +134,28 @@ export default function UseTemplateModal({ plantilla, onClose }) {
         </div>
 
         {/* Steps indicator */}
-        {step < 3 && (
-          <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--bg-topbar)', display: 'flex', gap: 0 }}>
-            {[{n:1,label:'Cliente'},{n:2,label:'Configuración del contrato'}].map((s, i) => (
-              <React.Fragment key={s.n}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{
-                    width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 10, fontWeight: 700,
-                    background: step >= s.n ? 'var(--primary)' : 'var(--neutral-200)',
-                    color: step >= s.n ? 'var(--text-on-accent)' : 'var(--text-faint)'
-                  }}>{s.n}</div>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: step >= s.n ? 'var(--primary)' : 'var(--text-faint)' }}>{s.label}</span>
-                </div>
-                {i < 1 && <div style={{ flex: 1, height: 1, background: 'var(--neutral-200)', margin: '0 10px', alignSelf: 'center' }} />}
-              </React.Fragment>
-            ))}
-          </div>
-        )}
+        {step < 3 && (() => {
+          const stepsList = [{n:1,label:'Cliente'},{n:2,label:'Configuración del contrato'}];
+          if (hasCampos) stepsList.push({n:2.5,label:'Personalizar contenido'});
+          return (
+            <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--bg-topbar)', display: 'flex', gap: 0 }}>
+              {stepsList.map((s, i) => (
+                <React.Fragment key={s.n}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{
+                      width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 10, fontWeight: 700,
+                      background: step >= s.n ? 'var(--primary)' : 'var(--neutral-200)',
+                      color: step >= s.n ? 'var(--text-on-accent)' : 'var(--text-faint)'
+                    }}>{i + 1}</div>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: step >= s.n ? 'var(--primary)' : 'var(--text-faint)' }}>{s.label}</span>
+                  </div>
+                  {i < stepsList.length - 1 && <div style={{ flex: 1, height: 1, background: 'var(--neutral-200)', margin: '0 10px', alignSelf: 'center' }} />}
+                </React.Fragment>
+              ))}
+            </div>
+          );
+        })()}
 
         {/* Body */}
         <div style={{ padding: '16px 20px', minHeight: 220 }}>
@@ -223,9 +243,37 @@ export default function UseTemplateModal({ plantilla, onClose }) {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Variables:</span>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)' }}>{plantilla.vars || 0} a completar</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)' }}>{hasCampos ? camposPlantilla.length : (plantilla.vars || 0)} a completar</span>
                   </div>
                 </div>
+              </div>
+            </>
+          )}
+          {step === 2.5 && (
+            <>
+              <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>Completa el contenido del documento</p>
+              <p style={{ margin: '0 0 12px', fontSize: 10, color: 'var(--text-muted)' }}>Campos propios de esta plantilla. Déjalos en blanco para conservar el texto de ejemplo.</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 300, overflowY: 'auto' }}>
+                {camposPlantilla.map(c => (
+                  <div key={c.nombre}>
+                    <label style={{ display: 'block', margin: '0 0 4px', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>{c.label}</label>
+                    {c.multilinea ? (
+                      <textarea
+                        value={camposValores[c.nombre] ?? ''}
+                        onChange={e => setCamposValores(prev => ({ ...prev, [c.nombre]: e.target.value }))}
+                        placeholder={c.default}
+                        style={{ width: '100%', minHeight: 80, padding: '8px 10px', fontSize: 12, border: '1px solid var(--border)', borderRadius: 5, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', color: 'var(--text-primary)', backgroundColor: 'var(--surface)' }}
+                      />
+                    ) : (
+                      <input
+                        value={camposValores[c.nombre] ?? ''}
+                        onChange={e => setCamposValores(prev => ({ ...prev, [c.nombre]: e.target.value }))}
+                        placeholder={c.default}
+                        style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 5, fontSize: 12, fontFamily: 'inherit', outline: 'none', color: 'var(--text-primary)', backgroundColor: 'var(--surface)' }}
+                      />
+                    )}
+                  </div>
+                ))}
               </div>
             </>
           )}
@@ -251,29 +299,43 @@ export default function UseTemplateModal({ plantilla, onClose }) {
           display: 'flex', justifyContent: step === 3 ? 'center' : 'space-between', gap: 8,
           background: 'var(--bg-faint)'
         }}>
-          {step < 3 ? (
-            <>
-              <button
-                onClick={() => step === 1 ? onClose() : setStep(1)}
-                style={{
-                  padding: '7px 14px', borderRadius: 5, border: '1px solid var(--border)',
-                  background: 'var(--bg-topbar)', color: 'var(--text-primary)', fontSize: 12, fontWeight: 600,
-                  cursor: 'pointer', fontFamily: 'inherit'
-                }}
-              >{step === 1 ? 'Cancelar' : '← Atrás'}</button>
-              <button
-                disabled={isCreating || (step === 1 ? !selectedClient : !contractName.trim())}
-                onClick={() => step === 1 ? setStep(2) : handleCreate()}
-                style={{
-                  padding: '7px 16px', borderRadius: 5, border: 'none',
-                  background: isCreating || (step === 1 ? !selectedClient : !contractName.trim()) ? 'var(--primary-soft)' : 'var(--primary)',
-                  color: 'var(--text-on-accent)', fontSize: 12, fontWeight: 600,
-                  cursor: isCreating || (step === 1 ? !selectedClient : !contractName.trim()) ? 'not-allowed' : 'pointer',
-                  fontFamily: 'inherit', transition: 'background 0.15s'
-                }}
-              >{step === 1 ? 'Siguiente →' : (isCreating ? 'Creando...' : 'Crear contrato ✓')}</button>
-            </>
-          ) : (
+          {step < 3 ? (() => {
+            const isBlocked = step === 1 ? !selectedClient : step === 2 ? !contractName.trim() : false;
+            const goNext = () => {
+              if (step === 1) return setStep(2);
+              if (step === 2) return hasCampos ? setStep(2.5) : handleCreate();
+              return handleCreate();
+            };
+            const goBack = () => {
+              if (step === 1) return onClose();
+              if (step === 2.5) return setStep(2);
+              return setStep(1);
+            };
+            const nextLabel = (step === 1 || (step === 2 && hasCampos)) ? 'Siguiente →' : (isCreating ? 'Creando...' : 'Crear contrato ✓');
+            return (
+              <>
+                <button
+                  onClick={goBack}
+                  style={{
+                    padding: '7px 14px', borderRadius: 5, border: '1px solid var(--border)',
+                    background: 'var(--bg-topbar)', color: 'var(--text-primary)', fontSize: 12, fontWeight: 600,
+                    cursor: 'pointer', fontFamily: 'inherit'
+                  }}
+                >{step === 1 ? 'Cancelar' : '← Atrás'}</button>
+                <button
+                  disabled={isCreating || isBlocked}
+                  onClick={goNext}
+                  style={{
+                    padding: '7px 16px', borderRadius: 5, border: 'none',
+                    background: isCreating || isBlocked ? 'var(--primary-soft)' : 'var(--primary)',
+                    color: 'var(--text-on-accent)', fontSize: 12, fontWeight: 600,
+                    cursor: isCreating || isBlocked ? 'not-allowed' : 'pointer',
+                    fontFamily: 'inherit', transition: 'background 0.15s'
+                  }}
+                >{nextLabel}</button>
+              </>
+            );
+          })() : (
             <button
               onClick={onClose}
               style={{

@@ -17,8 +17,21 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
   const [htmlTemplatesOpciones, setHtmlTemplatesOpciones] = useState([]);
   useEffect(() => {
     getClausulas().then(setClausulasOpciones).catch(() => {});
-    getAvailableHtmlTemplates().then(setHtmlTemplatesOpciones).catch(() => {});
   }, []);
+
+  // Plantillas HTML filtradas por el tipo de contrato elegido (nomenclatura
+  // TIPO__Nombre.dc.html en docs_template/); las globales aparecen siempre.
+  useEffect(() => {
+    getAvailableHtmlTemplates(createForm.tipo_contrato)
+      .then(opciones => {
+        setHtmlTemplatesOpciones(opciones);
+        // Si la ruta elegida ya no es válida para el nuevo tipo, se descarta.
+        if (createForm.ruta_plantilla_html && !opciones.some(o => o.ruta === createForm.ruta_plantilla_html)) {
+          setCreateForm(prev => ({ ...prev, ruta_plantilla_html: '' }));
+        }
+      })
+      .catch(() => setHtmlTemplatesOpciones([]));
+  }, [createForm.tipo_contrato]);
 
   const setField = (field, value) => setCreateForm(prev => ({ ...prev, [field]: value }));
 
@@ -46,12 +59,14 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
       fd.append('version_codigo', createForm.version_codigo);
       fd.append('software', createForm.software_id);
       fd.append('modo_origen', createForm.modo_origen);
+      fd.append('requiere_sla_facturacion', createForm.requiere_sla_facturacion !== false ? 'true' : 'false');
       if (createForm.archivo_docx) fd.append('archivo_docx', createForm.archivo_docx);
       if (createForm.modo_origen === 'clausulas') {
         fd.append('clausulas_seleccionadas', JSON.stringify(createForm.clausulas_seleccionadas || []));
       }
       if (createForm.modo_origen === 'html') {
         fd.append('ruta_plantilla_html', createForm.ruta_plantilla_html || '');
+        fd.append('codigo_prefijo', createForm.codigo_prefijo || '');
       }
 
       if (isEdit) {
@@ -184,11 +199,10 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
                 onChange={e => setField('tipo_contrato', e.target.value)}
                 required
               >
-                <option value="PLAZO_FIJO">Plazo Fijo</option>
-                <option value="INDEFINIDO">Indefinido</option>
-                <option value="OBRA_FAENA">Por Obra o Faena</option>
-                <option value="HONORARIOS">Honorarios / Prestación de Servicios</option>
-                <option value="PART_TIME">Part-Time</option>
+                <option value="RECURRENTE">Recurrente</option>
+                <option value="PERPETUO">Perpetuo</option>
+                <option value="PRO_BONO">Pro Bono</option>
+                <option value="INTERNO">Interno / Propio</option>
               </select>
             </div>
           </div>
@@ -203,6 +217,24 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
               placeholder="Ej: v1.0"
               required
             />
+          </div>
+
+          {/* Documento administrativo (sin SLA/facturación) */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '10px 12px', background: 'var(--bg-faint)', border: '1px solid var(--border)', borderRadius: 6 }}>
+            <input
+              type="checkbox"
+              id="requiere_sla_facturacion"
+              checked={createForm.requiere_sla_facturacion !== false}
+              onChange={e => setField('requiere_sla_facturacion', e.target.checked)}
+              style={{ marginTop: 2 }}
+            />
+            <label htmlFor="requiere_sla_facturacion" style={{ fontSize: 11.5, color: 'var(--text-primary)', cursor: 'pointer' }}>
+              <strong>Requiere SLA y facturación</strong>
+              <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 2 }}>
+                Desmárcalo para documentos administrativos (NDA, memorándums, fichas de requerimientos) —
+                el wizard "Nuevo Contrato" no pedirá SLA, monto ni días de gracia para esta plantilla.
+              </div>
+            </label>
           </div>
 
           {/* Modo origen */}
@@ -320,9 +352,28 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
               >
                 <option value="">-- Seleccionar archivo HTML --</option>
                 {htmlTemplatesOpciones.map(t => (
-                  <option key={t} value={t}>{t}</option>
+                  <option key={t.ruta} value={t.ruta}>
+                    {t.nombre}{t.tipo ? ` — ${t.tipo}` : ' — Global'}
+                  </option>
                 ))}
               </select>
+              <p style={{ margin: 0, fontSize: 10, color: 'var(--text-muted)' }}>
+                Solo se listan plantillas del tipo seleccionado y las globales.
+                Nomenclatura de archivo: <code>TIPO__Nombre.dc.html</code> (ej: <code>INTERNO__Memorandum.dc.html</code>).
+              </p>
+
+              <label style={{ ...labelStyle, marginTop: 4 }}>Prefijo de Referencia</label>
+              <input
+                style={inputStyle}
+                value={createForm.codigo_prefijo || ''}
+                onChange={e => setField('codigo_prefijo', e.target.value.toUpperCase().slice(0, 20))}
+                placeholder="Ej: NDA, MSA, TOS, REQ"
+              />
+              <p style={{ margin: 0, fontSize: 10, color: 'var(--text-muted)' }}>
+                El sistema arma el código de "Referencia" del documento como <code>PREFIJO-AÑO-NNN</code> (ej: <code>NDA-2026-004</code>)
+                y lo asigna solo al generar el documento — nunca se pide al usuario. Plantillas con el mismo prefijo comparten
+                el mismo correlativo. Déjalo vacío para usar <code>DOC</code>.
+              </p>
             </div>
           )}
 
