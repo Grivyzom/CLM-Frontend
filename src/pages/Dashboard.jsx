@@ -5,23 +5,34 @@ import { useGSAP } from '@gsap/react';
 
 gsap.registerPlugin(useGSAP);
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, Cell,
   Tooltip as RechartsTooltip, ResponsiveContainer,
 } from 'recharts';
 import {
   ChevronUp, ChevronDown, ChevronsUpDown, Download, RefreshCw,
   CheckCircle2, AlertTriangle, FileWarning, ArrowRight,
-  DollarSign, FileText, Users, Calendar, FileQuestion, X
+  DollarSign, FileText, Users, Calendar, FileQuestion, X,
+  ShieldAlert, Layers, TrendingUp
 } from 'lucide-react';
 import { useDashboard } from '../hooks/useDashboard';
 import TopbarActions from '../components/layout/TopbarActions';
 import './Dashboard.css';
+import './Analytics.css';
 
 // Paleta categórica fija (validada CVD): una serie = un color, orden estable.
 const SERIES_COLORS = ['var(--primary)', 'var(--success)', 'var(--warning-bright)', 'var(--violet-bright)', 'var(--rose)', 'var(--cyan)'];
 
 // Ramp ordinal (validado): etapas del pipeline, claro → oscuro.
 const PIPELINE_COLORS = ['var(--chart-pipeline-1)', 'var(--chart-pipeline-2)', 'var(--primary)', 'var(--chart-pipeline-4)', 'var(--chart-pipeline-5)'];
+
+// Estado de cobranza (status del contrato, no etapa) → color de riesgo.
+// Mismo mapa que Analytics.jsx (duplicado intencional, igual que MRR_EXPR en el backend).
+const ESTADO_COLOR = {
+  ACTIVO: 'var(--success)',
+  GRACIA: 'var(--warning)',
+  MORA: 'var(--danger)',
+  SUSPENDIDO: 'var(--danger-deep)',
+};
 
 // Etiquetas cortas para etapas (los display names del backend son largos).
 const ETAPA_CORTA = {
@@ -81,6 +92,43 @@ function MrrTooltip({ active, payload, label }) {
   );
 }
 
+// ── Tooltips para los charts de estado / valor negociado ────────────────────
+
+function EstadoTooltip({ active, payload }) {
+  if (!active || !payload || !payload.length) return null;
+  const p = payload[0].payload;
+  return (
+    <div className="db-tooltip">
+      <p className="db-tooltip-label">{p.label}</p>
+      <div className="db-tooltip-items">
+        <div className="db-tooltip-item">
+          <span className="db-tooltip-name">Contratos</span>
+          <span className="db-tooltip-value">{p.count}</span>
+        </div>
+        <div className="db-tooltip-item">
+          <span className="db-tooltip-name">Monto</span>
+          <span className="db-tooltip-value">{fmtCLP(p.monto)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ValorNegociadoTooltip({ active, payload, label }) {
+  if (!active || !payload || !payload.length) return null;
+  return (
+    <div className="db-tooltip">
+      <p className="db-tooltip-label">{label}</p>
+      <div className="db-tooltip-items">
+        <div className="db-tooltip-item">
+          <span className="db-tooltip-name">Monto negociado</span>
+          <span className="db-tooltip-value">{fmtCLP(payload[0].value * 1000)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Exportación CSV ──────────────────────────────────────────────────────────
 
 function downloadMetricsCSV(kpis) {
@@ -121,6 +169,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const {
     kpis, mrr_series, pipeline, renovaciones, urgent_contracts, actividad,
+    cartera_estado, valor_negociado,
     loading, error, refetch,
   } = useDashboard();
 
@@ -280,7 +329,7 @@ export default function Dashboard() {
 
     if (interactiveElements) {
       interactiveElements.forEach(el => {
-        el.addEventListener('mouseenter', handleMouseEnter);
+        el.addEventListener('mouseenter', handleMouseEnter, { once: true });
       });
     }
 
@@ -387,6 +436,9 @@ export default function Dashboard() {
   const hayMrr = mrr_series.data.some((punto) =>
     mrr_series.softwares.some((sw) => (punto[sw] || 0) > 0)
   );
+  const hayCarteraEstado = cartera_estado.por_estado.some((e) => e.count > 0);
+  const hayValorNegociado = valor_negociado.data.some((p) => p.monto_k > 0);
+  const montoTotalEstado = cartera_estado.por_estado.reduce((s, e) => s + e.monto, 0);
 
   return (
     <div className="db-container" ref={dashboardRef}>
@@ -664,6 +716,99 @@ export default function Dashboard() {
                       </li>
                     ))}
                   </ul>
+                )}
+              </div>
+
+            </div>
+
+            <div className="db-panel-row-3">
+
+              {/* Volumen de contratos activos */}
+              <div className="db-panel-card">
+                <p className="db-section-label"><Layers size={10} style={{ verticalAlign: '-1px', marginRight: 3 }} />Volumen</p>
+                <h3 className="db-section-title">Contratos por estado</h3>
+                {!hayCarteraEstado ? (
+                  <div className="db-empty">
+                    <p>Sin contratos registrados todavía.</p>
+                  </div>
+                ) : (
+                  <div style={{ height: 180 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={cartera_estado.por_estado} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+                        <CartesianGrid vertical={false} stroke="var(--bg-inset)" />
+                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }} dy={8} />
+                        <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }} />
+                        <RechartsTooltip content={<EstadoTooltip />} cursor={{ fill: 'var(--bg-page)' }} />
+                        <Bar dataKey="count" radius={[3, 3, 0, 0]}>
+                          {cartera_estado.por_estado.map((e) => (
+                            <Cell key={e.estado} fill={ESTADO_COLOR[e.estado]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+
+              {/* Riesgo de cartera */}
+              <div className="db-panel-card">
+                <p className="db-section-label"><ShieldAlert size={10} style={{ verticalAlign: '-1px', marginRight: 3 }} />Riesgo</p>
+                <h3 className="db-section-title">Riesgo de cartera</h3>
+                <span className={`db-kpi-value-compact ${cartera_estado.pct_riesgo >= 15 ? 'color-red' : cartera_estado.pct_riesgo > 0 ? 'color-amber' : 'color-emerald'}`} style={{ display: 'block', marginBottom: 10 }}>
+                  {cartera_estado.pct_riesgo}% en riesgo
+                </span>
+                {!hayCarteraEstado ? (
+                  <div className="db-empty">
+                    <p>Sin contratos registrados todavía.</p>
+                  </div>
+                ) : (
+                  <>
+                    {montoTotalEstado > 0 && (
+                      <div className="an-estado-bar" title={cartera_estado.por_estado.map((e) => `${e.label}: ${e.count}`).join(' · ')}>
+                        {cartera_estado.por_estado.filter((e) => e.monto > 0).map((e) => (
+                          <div
+                            key={e.estado}
+                            className="an-estado-seg"
+                            style={{ width: `${(e.monto / montoTotalEstado) * 100}%`, backgroundColor: ESTADO_COLOR[e.estado] }}
+                          ></div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="an-estado-legend">
+                      {cartera_estado.por_estado.map((e) => (
+                        <span key={e.estado} className="an-estado-legend-item">
+                          <span className="an-estado-dot" style={{ backgroundColor: ESTADO_COLOR[e.estado] }}></span>
+                          {e.label} · {e.count}
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Valor total negociado */}
+              <div className="db-panel-card">
+                <p className="db-section-label"><TrendingUp size={10} style={{ verticalAlign: '-1px', marginRight: 3 }} />Cartera</p>
+                <div className="db-panel-head-row">
+                  <h3 className="db-section-title">Valor total negociado</h3>
+                  <span className="db-trend color-emerald">{fmtCompact(valor_negociado.total_vigente)}</span>
+                </div>
+                {!hayValorNegociado ? (
+                  <div className="db-empty">
+                    <p>Sin contratos firmados en los últimos 6 meses.</p>
+                  </div>
+                ) : (
+                  <div style={{ height: 150 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={valor_negociado.data} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+                        <CartesianGrid vertical={false} stroke="var(--bg-inset)" />
+                        <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }} dy={8} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }} tickFormatter={(v) => `$${v}k`} />
+                        <RechartsTooltip content={<ValorNegociadoTooltip />} cursor={{ fill: 'var(--bg-page)' }} />
+                        <Bar dataKey="monto_k" fill="var(--primary)" radius={[3, 3, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 )}
               </div>
 

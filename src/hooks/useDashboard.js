@@ -16,11 +16,15 @@ const EMPTY = {
   renovaciones: [],
   urgent_contracts: [],
   actividad: [],
+  cartera_estado: { por_estado: [], monto_total: 0, monto_riesgo: 0, pct_riesgo: 0 },
+  valor_negociado: { data: [], total_vigente: 0 },
 };
 
 // Caché en memoria para evitar recargas al navegar, una entrada por vista
 // activa ('global' o 'cliente:<id>').
 const dashboardCache = {};
+
+const POLL_MS = 30000;
 
 /**
  * Hook que carga los datos agregados del dashboard desde el backend.
@@ -40,7 +44,7 @@ export function useDashboard() {
   // no debe pisar a la de la vista actual.
   const requestSeq = useRef(0);
 
-  const fetchData = useCallback(async (force = false) => {
+  const fetchData = useCallback(async (force = false, { silent = false } = {}) => {
     if (!force && dashboardCache[viewKey]) {
       setData(dashboardCache[viewKey]);
       setLoading(false);
@@ -48,8 +52,10 @@ export function useDashboard() {
     }
 
     const seq = ++requestSeq.current;
-    setLoading(true);
-    setError(null);
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const result = await getDashboard(clienteId ? { cliente: clienteId } : {});
       const newData = { ...EMPTY, ...result, kpis: { ...EMPTY.kpis, ...(result.kpis || {}) } };
@@ -58,14 +64,21 @@ export function useDashboard() {
       setData(newData);
     } catch (err) {
       if (seq !== requestSeq.current) return;
-      setError(err.message || 'Error al cargar el dashboard');
+      // Un poll silencioso fallido no debe tapar la última data buena con un error.
+      if (!silent) setError(err.message || 'Error al cargar el dashboard');
     } finally {
-      if (seq === requestSeq.current) setLoading(false);
+      if (seq === requestSeq.current && !silent) setLoading(false);
     }
   }, [viewKey, clienteId]);
 
   useEffect(() => {
     fetchData();
+  }, [fetchData]);
+
+  // Actualización en tiempo real: poll silencioso cada 30s, sin parpadeo de loading.
+  useEffect(() => {
+    const id = setInterval(() => fetchData(true, { silent: true }), POLL_MS);
+    return () => clearInterval(id);
   }, [fetchData]);
 
   const refetch = useCallback(() => {

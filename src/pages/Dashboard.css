@@ -168,6 +168,19 @@
   min-width: 0;
 }
 
+/* Fila de 3 paneles: volumen / riesgo / valor negociado. */
+.db-panel-row-3 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .db-panel-row-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
 /* Las dos cards laterales se reparten la altura de la tabla,
    así ambas columnas terminan exactamente en la misma línea. */
 .db-side-col > .db-panel-card { flex: 1; }
