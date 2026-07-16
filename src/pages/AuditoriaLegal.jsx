@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
@@ -94,13 +94,13 @@ export default function AuditoriaLegal() {
   }, [selectedEvent, closeModal]);
 
   const term = searchTerm.trim().toLowerCase();
-  const filteredLogs = auditLogs.filter(log => {
+  const filteredLogs = useMemo(() => auditLogs.filter(log => {
     if (riskFilter !== 'all' && log.risk !== riskFilter) return false;
     if (!term) return true;
     return (log.target || '').toLowerCase().includes(term) ||
       (log.action || '').toLowerCase().includes(term) ||
       (log.user || '').toLowerCase().includes(term);
-  });
+  }), [auditLogs, riskFilter, term]);
 
   const totalRiskContracts = riskDistribution.reduce((acc, item) => acc + (item.value || 0), 0);
 
@@ -241,7 +241,7 @@ export default function AuditoriaLegal() {
     );
 
     if (interactiveElements) {
-      interactiveElements.forEach(el => el.addEventListener('mouseenter', handleMouseEnter));
+      interactiveElements.forEach(el => el.addEventListener('mouseenter', handleMouseEnter, { once: true }));
     }
 
     return () => {

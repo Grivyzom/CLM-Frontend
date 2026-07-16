@@ -33,7 +33,7 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background-color: var(--accent, var(--text-primary));
+  background-color: var(--primary);
   flex-shrink: 0;
 }
 
