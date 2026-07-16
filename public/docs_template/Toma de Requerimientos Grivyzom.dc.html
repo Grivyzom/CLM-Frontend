@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  html { -webkit-font-smoothing: antialiased; }
+  @media print { html, body { background: #fff; } }
+</style>
+</helmet>
+<x-import component-from-global-scope="doc-page" from="./doc-page.js" size="letter" margin="1in" hint-size="850px,1100px">
+  <div slot="footer" style="border-top:1px solid #d8d2c4;padding-top:8px;font-family:Calibri, 'Segoe UI', Arial, sans-serif;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+    <div style="font-size:8pt;color:#8a8a8a;line-height:1.4;max-width:75%;">
+      Documento Confidencial &mdash; Propiedad exclusiva de Grivyzom S.P.A. Prohibida su reproducción total o parcial sin autorización escrita.
+    </div>
+    <div style="font-size:8.5pt;color:#5b5b5b;white-space:nowrap;">Página 1 de 1</div>
+  </div>
+
+  <div style="font-family:Calibri, 'Segoe UI', Arial, sans-serif;color:#1a1a1a;font-size:11pt;line-height:1.15;">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:24px;border-bottom:2px solid #b8974e;padding-bottom:10px;margin-bottom:20px;">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <img src="assets/logo-grivyzom.png" alt="Logo Grivyzom S.P.A" style="height:52px;width:auto;object-fit:contain;" />
+        <div>
+          <div style="font-size:16px;font-weight:700;color:#0a1f3d;letter-spacing:0.5px;">GRIVYZOM S.P.A</div>
+          <div style="font-size:9.5px;color:#5b5b5b;line-height:1.4;">Pasaje La Paz 1, #63 &nbsp;·&nbsp; Tel. 926904593 &nbsp;·&nbsp; ff.fuentes@grivyzom.com</div>
+        </div>
+      </div>
+      <div style="text-align:right;font-size:9.5px;color:#0a1f3d;font-weight:600;letter-spacing:0.3px;white-space:nowrap;">
+        REF: {{ referencia|default:"REQ-CLI-2026-001" }}
+      </div>
+    </div>
+
+    <div style="text-align:center;margin:8px 0 28px;">
+      <div style="font-size:20pt;font-weight:700;color:#0a1f3d;letter-spacing:1.5px;">FICHA DE TOMA DE REQUERIMIENTOS</div>
+      <div style="font-size:10pt;color:#5b5b5b;margin-top:4px;">Entrevista de levantamiento de requerimientos con el cliente</div>
+      <div style="width:60px;height:3px;background:#b8974e;margin:10px auto 0;"></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:130px 1fr 100px 1fr;row-gap:8px;column-gap:12px;font-size:10.5pt;margin-bottom:24px;">
+      <div style="font-weight:700;color:#0a1f3d;">CLIENTE:</div><div>{{ cliente_nombre|default:"[Nombre de la empresa cliente]" }}</div>
+      <div style="font-weight:700;color:#0a1f3d;">FECHA:</div><div>{{ fecha_reunion|default:"[dd/mm/aaaa]" }}</div>
+      <div style="font-weight:700;color:#0a1f3d;">PROYECTO:</div><div>{{ proyecto_nombre|default:"[Nombre del proyecto]" }}</div>
+      <div style="font-weight:700;color:#0a1f3d;">REF:</div><div>{{ referencia|default:"REQ-CLI-2026-001" }}</div>
+      <div style="font-weight:700;color:#0a1f3d;">ENTREVISTADOR:</div><div>{{ entrevistador|default:"[Nombre del consultor Grivyzom]" }}</div>
+      <div style="font-weight:700;color:#0a1f3d;">DURACIÓN:</div><div>{{ duracion|default:"[hh:mm]" }}</div>
+    </div>
+
+    <div style="height:1px;background:#d8d2c4;margin-bottom:24px;"></div>
+
+    <div style="font-size:12.5pt;font-weight:700;color:#0a1f3d;margin-bottom:10px;">1. Información General del Cliente</div>
+    <div style="display:grid;grid-template-columns:170px 1fr;row-gap:10px;column-gap:12px;font-size:10.5pt;margin-bottom:22px;">
+      <div style="font-weight:600;">Contacto principal:</div><div style="border-bottom:1px solid #d8d2c4;">&nbsp;</div>
+      <div style="font-weight:600;">Cargo:</div><div style="border-bottom:1px solid #d8d2c4;">&nbsp;</div>
+      <div style="font-weight:600;">Rubro / industria:</div><div style="border-bottom:1px solid #d8d2c4;">&nbsp;</div>
+      <div style="font-weight:600;">Teléfono:</div><div style="border-bottom:1px solid #d8d2c4;">&nbsp;</div>
+      <div style="font-weight:600;">Correo electrónico:</div><div style="border-bottom:1px solid #d8d2c4;">&nbsp;</div>
+      <div style="font-weight:600;">Sitio web / redes:</div><div style="border-bottom:1px solid #d8d2c4;">&nbsp;</div>
+    </div>
+
+    <div style="font-size:12.5pt;font-weight:700;color:#0a1f3d;margin-bottom:10px;">2. Objetivos del Proyecto</div>
+    <div style="font-size:10.5pt;margin-bottom:6px;font-weight:600;">¿Qué problema o necesidad busca resolver este proyecto?</div>
+    <div style="border-bottom:1px solid #d8d2c4;height:22px;margin-bottom:14px;"></div>
+    <div style="border-bottom:1px solid #d8d2c4;height:22px;margin-bottom:14px;"></div>
+    <div style="font-size:10.5pt;margin-bottom:6px;font-weight:600;">¿Cuál es el resultado o impacto esperado al finalizar?</div>
+    <div style="border-bottom:1px solid #d8d2c4;height:22px;margin-bottom:14px;"></div>
+    <div style="border-bottom:1px solid #d8d2c4;height:22px;margin-bottom:22px;"></div>
+
+    <div style="break-before:page;"></div>
+
+    <div style="font-size:12.5pt;font-weight:700;color:#0a1f3d;margin-bottom:10px;">3. Alcance Funcional Requerido</div>
+    <table style="width:100%;border-collapse:collapse;font-size:10pt;margin-bottom:22px;">
+      <thead>
+        <tr style="background:#f2efe6;">
+          <th style="text-align:left;padding:8px;border:1px solid #d8d2c4;width:32px;">#</th>
+          <th style="text-align:left;padding:8px;border:1px solid #d8d2c4;">Requerimiento / Funcionalidad</th>
+          <th style="text-align:left;padding:8px;border:1px solid #d8d2c4;width:90px;">Prioridad</th>
+          <th style="text-align:left;padding:8px;border:1px solid #d8d2c4;width:150px;">Observaciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td style="padding:10px 8px;border:1px solid #d8d2c4;">1</td><td style="padding:10px 8px;border:1px solid #d8d2c4;">&nbsp;</td><td style="padding:10px 8px;border:1px solid #d8d2c4;">&nbsp;</td><td style="padding:10px 8px;border:1px solid #d8d2c4;">&nbsp;</td></tr>
+        <tr><td style="padding:10px 8px;border:1px solid #d8d2c4;">2</td><td style="padding:10px 8px;border:1px solid #d8d2c4;">&nbsp;</td><td style="padding:10px 8px;border:1px solid #d8d2c4;">&nbsp;</td><td style="padding:10px 8px;border:1px solid #d8d2c4;">&nbsp;</td></tr>
+        <tr><td style="padding:10px 8px;border:1px solid #d8d2c4;">3</td><td style="padding:10px 8px;border:1px solid #d8d2c4;">&nbsp;</td><td style="padding:10px 8px;border:1px solid #d8d2c4;">&nbsp;</td><td style="padding:10px 8px;border:1px solid #d8d2c4;">&nbsp;</td></tr>
+        <tr><td style="padding:10px 8px;border:1px solid #d8d2c4;">4</td><td style="padding:10px 8px;border:1px solid #d8d2c4;">&nbsp;</td><td style="padding:10px 8px;border:1px solid #d8d2c4;">&nbsp;</td><td style="padding:10px 8px;border:1px solid #d8d2c4;">&nbsp;</td></tr>
+        <tr><td style="padding:10px 8px;border:1px solid #d8d2c4;">5</td><td style="padding:10px 8px;border:1px solid #d8d2c4;">&nbsp;</td><td style="padding:10px 8px;border:1px solid #d8d2c4;">&nbsp;</td><td style="padding:10px 8px;border:1px solid #d8d2c4;">&nbsp;</td></tr>
+      </tbody>
+    </table>
+
+    <div style="font-size:12.5pt;font-weight:700;color:#0a1f3d;margin-bottom:10px;">4. Requerimientos Técnicos</div>
+    <div style="display:grid;grid-template-columns:190px 1fr;row-gap:10px;column-gap:12px;font-size:10.5pt;margin-bottom:22px;">
+      <div style="font-weight:600;">Plataforma(s) objetivo:</div><div style="border-bottom:1px solid #d8d2c4;">&nbsp;</div>
+      <div style="font-weight:600;">Sistemas a integrar:</div><div style="border-bottom:1px solid #d8d2c4;">&nbsp;</div>
+      <div style="font-weight:600;">N.º usuarios estimado:</div><div style="border-bottom:1px solid #d8d2c4;">&nbsp;</div>
+      <div style="font-weight:600;">Infraestructura / hosting:</div><div style="border-bottom:1px solid #d8d2c4;">&nbsp;</div>
+      <div style="font-weight:600;">Requisitos de seguridad:</div><div style="border-bottom:1px solid #d8d2c4;">&nbsp;</div>
+    </div>
+
+    <div style="font-size:12.5pt;font-weight:700;color:#0a1f3d;margin-bottom:10px;">5. Restricciones y Condiciones</div>
+    <div style="display:grid;grid-template-columns:190px 1fr;row-gap:10px;column-gap:12px;font-size:10.5pt;margin-bottom:22px;">
+      <div style="font-weight:600;">Presupuesto referencial:</div><div style="border-bottom:1px solid #d8d2c4;">&nbsp;</div>
+      <div style="font-weight:600;">Plazo esperado:</div><div style="border-bottom:1px solid #d8d2c4;">&nbsp;</div>
+      <div style="font-weight:600;">Normativas / regulaciones:</div><div style="border-bottom:1px solid #d8d2c4;">&nbsp;</div>
+    </div>
+
+    <div style="break-before:page;"></div>
+
+    <div style="font-size:12.5pt;font-weight:700;color:#0a1f3d;margin-bottom:10px;">6. Diseño y Experiencia</div>
+    <div style="display:grid;grid-template-columns:190px 1fr;row-gap:10px;column-gap:12px;font-size:10.5pt;margin-bottom:22px;">
+      <div style="font-weight:600;">Referencias / marca:</div><div style="border-bottom:1px solid #d8d2c4;">&nbsp;</div>
+      <div style="font-weight:600;">Paleta de colores:</div><div style="border-bottom:1px solid #d8d2c4;">&nbsp;</div>
+      <div style="font-weight:600;">Tono / estilo deseado:</div><div style="border-bottom:1px solid #d8d2c4;">&nbsp;</div>
+    </div>
+
+    <div style="font-size:12.5pt;font-weight:700;color:#0a1f3d;margin-bottom:10px;">7. Observaciones Adicionales y Próximos Pasos</div>
+    <div style="border-bottom:1px solid #d8d2c4;height:22px;margin-bottom:14px;"></div>
+    <div style="border-bottom:1px solid #d8d2c4;height:22px;margin-bottom:14px;"></div>
+    <div style="border-bottom:1px solid #d8d2c4;height:22px;margin-bottom:32px;"></div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:60px;margin-top:36px;">
+      <div style="border-top:1px solid #1a1a1a;padding-top:6px;font-size:10.5pt;">
+        <div style="font-weight:700;">Firma Cliente</div>
+        <div style="color:#5b5b5b;">[Nombre y cargo]</div>
+      </div>
+      <div style="border-top:1px solid #1a1a1a;padding-top:6px;font-size:10.5pt;">
+        <div style="font-weight:700;">Firma Consultor Grivyzom</div>
+        <div style="color:#5b5b5b;">[Nombre y cargo]</div>
+      </div>
+    </div>
+
+  </div>
+</x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:900,&quot;height&quot;:1150}}"></script>
+</body>
+</html>

@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './Contratos.css';
+import SignatureSimulator from '../components/ui/SignatureSimulator';
 import {
   getContratoDetail, updateContrato, deleteContrato, generarDocumentoContrato,
   createObligacion, updateObligacion, deleteObligacion, getObligacionHistorial, enmendarContrato,
-  getPlantillas, togglePlantillaActiva
+  getPlantillas, togglePlantillaActiva, getCamposPlantilla, syncExternalContract, manageSignature
 } from '../api';
 import { fmtMoney, fmtDate, fmtDateTime, contratoIdDisplay } from '../utils/formatters';
 import OtpSignatureModal from '../components/ui/OtpSignatureModal';
+import WordDocsPluginSimulator from '../components/ui/WordDocsPluginSimulator';
 
 // ─── Paleta de etapas (workflow legal real: EtapaContrato) ────────────────────
 const ETAPA_CFG = {
@@ -133,6 +135,15 @@ export default function ContractDetail() {
   const [previewDocId, setPreviewDocId] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
 
+  const [showCamposModal, setShowCamposModal] = useState(false);
+  const [camposPlantilla, setCamposPlantilla] = useState([]);
+  const [camposValores, setCamposValores] = useState({});
+  const [camposLoading, setCamposLoading] = useState(false);
+  const [showPluginSimulator, setShowPluginSimulator] = useState(false);
+  const [signatureProvider, setSignatureProvider] = useState(null);
+  const [selectedFirmaMethod, setSelectedFirmaMethod] = useState('OTP');
+  const [showEditModal, setShowEditModal] = useState(false);
+
   // Escape sale de la vista previa (además del breadcrumb "← Documento").
   useEffect(() => {
     if (!showPreview) return;
@@ -194,7 +205,13 @@ export default function ContractDetail() {
 
   async function handleTransicion(target, confirmMsg) {
     if (target === 'ACTIVO' && contrato.etapa === 'PENDIENTE_FIRMA') {
-      setIsOtpModalOpen(true);
+      if (contrato.firma_proveedor === 'DOCUSIGN') {
+        setSignatureProvider('DOCUSIGN');
+      } else if (contrato.firma_proveedor === 'ADOBE') {
+        setSignatureProvider('ADOBE');
+      } else {
+        setIsOtpModalOpen(true);
+      }
       return;
     }
     if (confirmMsg && !window.confirm(confirmMsg)) return;
@@ -301,21 +318,51 @@ export default function ContractDetail() {
     }
   }
 
+  // Punto de entrada de los botones "Generar/Regenerar Documento": si la
+  // plantilla resuelta pide campos manuales (ej. PARA/DE/ASUNTO de un
+  // memorándum), primero los recolecta en un modal; si no, genera directo.
   async function handleGenerarDocumento(forzar = false) {
+    setActionError(null);
+    setCamposLoading(true);
+    try {
+      const { campos } = await getCamposPlantilla({ contratoId: contrato.id });
+      setCamposLoading(false);
+      if (campos && campos.length > 0) {
+        setCamposPlantilla(campos);
+        setCamposValores(Object.fromEntries(campos.map(c => [c.nombre, ''])));
+        setShowCamposModal(true);
+        return;
+      }
+      await ejecutarGeneracion(forzar, {});
+    } catch (err) {
+      setCamposLoading(false);
+      // Si no se pudo resolver la plantilla (ej. sin plantilla activa), se
+      // deja que ejecutarGeneracion muestre el error real del backend.
+      await ejecutarGeneracion(forzar, {});
+    }
+  }
+
+  async function ejecutarGeneracion(forzar, campos) {
     setBusy(true);
     setActionError(null);
     try {
-      await generarDocumentoContrato({ contrato_id: contrato.id, forzar });
+      await generarDocumentoContrato({ contrato_id: contrato.id, forzar, campos });
       setPreviewDocId(null); // la previsualización vuelve a la versión más reciente
+      setShowCamposModal(false);
       await load();
     } catch (err) {
       if (!forzar && /confirma/i.test(err.message) && window.confirm(err.message)) {
-        return handleGenerarDocumento(true);
+        return ejecutarGeneracion(true, campos);
       }
       setActionError(err.message);
     } finally {
       setBusy(false);
     }
+  }
+
+  function handleSubmitCampos(e) {
+    e.preventDefault();
+    ejecutarGeneracion(false, camposValores);
   }
 
   async function handleSaveEditText() {
@@ -326,6 +373,93 @@ export default function ContractDetail() {
       await load();
     } catch (err) {
       alert(err.message || 'Error al guardar el texto.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleLinkExternal(editor) {
+    setBusy(true);
+    setActionError(null);
+    try {
+      await syncExternalContract(contrato.id, { action: 'link', editor });
+      await load();
+      setShowPluginSimulator(true); // Open simulator automatically upon linking
+    } catch (err) {
+      setActionError(err.message || 'Error al vincular el procesador externo.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleUnlinkExternal() {
+    if (!window.confirm('¿Desvincular el contrato del procesador externo? Se detendrá la sincronización automática.')) return;
+    setBusy(true);
+    setActionError(null);
+    try {
+      await syncExternalContract(contrato.id, { action: 'unlink' });
+      await load();
+    } catch (err) {
+      setActionError(err.message || 'Error al desvincular el procesador externo.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleForceUnlockExternal() {
+    setBusy(true);
+    setActionError(null);
+    try {
+      await syncExternalContract(contrato.id, { action: 'unlock' });
+      await load();
+    } catch (err) {
+      setActionError(err.message || 'Error al desbloquear el contrato.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleSendSignature(proveedor) {
+    setBusy(true);
+    setActionError(null);
+    try {
+      await manageSignature(contrato.id, { action: 'send', proveedor });
+      await load();
+      if (proveedor === 'DOCUSIGN' || proveedor === 'ADOBE') {
+        setSignatureProvider(proveedor);
+      } else if (proveedor === 'OTP') {
+        setIsOtpModalOpen(true);
+      }
+    } catch (err) {
+      setActionError(err.message || 'Error al iniciar el sobre de firma electrónica.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleCancelSignature() {
+    if (!window.confirm('¿Cancelar la solicitud de firma electrónica? El contrato volverá a estado Aprobado.')) return;
+    setBusy(true);
+    setActionError(null);
+    try {
+      await manageSignature(contrato.id, { action: 'cancel' });
+      await load();
+    } catch (err) {
+      setActionError(err.message || 'Error al cancelar la firma electrónica.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDeclineSignature() {
+    if (!window.confirm('¿Simular rechazo de firma por parte del cliente?')) return;
+    setBusy(true);
+    setActionError(null);
+    try {
+      await manageSignature(contrato.id, { action: 'decline' });
+      await load();
+    } catch (err) {
+      setActionError(err.message || 'Error al declinar el proceso de firma.');
     } finally {
       setBusy(false);
     }
@@ -343,7 +477,7 @@ export default function ContractDetail() {
     }
   }
 
-  if (loading) {
+  if (loading && !contrato) {
     return (
       <div className="ct-workspace">
         <div className="ct-table-empty" style={{ flex: 1 }}>Cargando contrato…</div>
@@ -400,7 +534,7 @@ export default function ContractDetail() {
                   Editar Texto
                 </button>
               )}
-              <button className="ct-btn-secondary" style={{ marginLeft: 8 }} disabled={busy} onClick={() => handleGenerarDocumento(false)}>
+              <button className="ct-btn-secondary" style={{ marginLeft: 8 }} disabled={busy || camposLoading} onClick={() => handleGenerarDocumento(false)}>
                 <Icon d={['M12 5v14', 'M5 12h14']} color="var(--text-muted)" w={13} />
                 {contrato.documentos.length > 0 ? 'Regenerar Documento' : 'Generar Documento'}
               </button>
@@ -618,6 +752,232 @@ export default function ContractDetail() {
                 )}
                 <p className="ct-resumen-detail">ID Cliente: <strong>{contrato.cliente.id}</strong></p>
               </div>
+
+              <div className="ct-resumen-card" style={{ gridColumn: 'span 2' }}>
+                <p className="ct-resumen-card-title">
+                  <Icon d={['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z', 'M14 2v6h6', 'M16 13H8', 'M16 17H8']} color="var(--primary)" w={14} />
+                  Integración con Procesadores de Texto (Word / Docs)
+                </p>
+                
+                {contrato.external_editor ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%', marginTop: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {contrato.external_editor === 'WORD' ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: '#185abd', color: '#fff', width: '28px', height: '28px', borderRadius: '4px', fontWeight: 'bold', fontSize: '14px' }}>W</span>
+                        ) : (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: '#1a73e8', color: '#fff', width: '28px', height: '28px', borderRadius: '4px', fontWeight: 'bold', fontSize: '14px' }}>D</span>
+                        )}
+                        <div>
+                          <p style={{ margin: 0, fontWeight: 600, fontSize: '13px' }}>
+                            Vinculado a {contrato.external_editor === 'WORD' ? 'Microsoft Word' : 'Google Docs'}
+                          </p>
+                          <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-muted)' }}>
+                            ID Documento: {contrato.external_doc_id || 'Autogenerado'}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                        {contrato.external_sync_status === 'EDITING' ? (
+                          <span className="ct-badge" style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning-border)', color: 'var(--warning-bright)', fontSize: '10px', padding: '2px 8px', borderRadius: '12px' }}>
+                            ⚠️ Editándose Externamente
+                          </span>
+                        ) : (
+                          <span className="ct-badge" style={{ background: 'var(--success-bg)', border: '1px solid var(--success-border)', color: 'var(--success)', fontSize: '10px', padding: '2px 8px', borderRadius: '12px' }}>
+                            ✓ Sincronizado
+                          </span>
+                        )}
+                        {contrato.external_last_sync && (
+                          <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                            Sinc: {fmtDateTime(contrato.external_last_sync)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {contrato.external_locked_by && (
+                      <p style={{ margin: 0, fontSize: '12px', color: 'var(--warning-bright)', background: 'var(--warning-bg)', padding: '6px 10px', borderRadius: '4px', border: '1px solid var(--warning-border)' }}>
+                        🔒 Editándose y bloqueado por el usuario: <strong>{contrato.external_locked_by}</strong>.
+                      </p>
+                    )}
+
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                      <button className="ct-btn-primary" style={{ flex: 1, height: '32px', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }} onClick={() => setShowPluginSimulator(true)}>
+                        <Icon d={['M15 3h6v6', 'M9 21H3v-6', 'M21 3l-7 7', 'M3 21l7-7']} color="var(--text-on-accent)" w={12} />
+                        Abrir Simulador de Plugin
+                      </button>
+                      {contrato.external_sync_status === 'EDITING' && (
+                        <button className="ct-btn-secondary" style={{ height: '32px', fontSize: '12px' }} onClick={handleForceUnlockExternal}>
+                          Liberar Bloqueo
+                        </button>
+                      )}
+                      <button className="ct-btn-danger" style={{ height: '32px', fontSize: '12px', padding: '0 12px' }} onClick={handleUnlinkExternal}>
+                        Desvincular
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
+                    <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                      Edita este contrato directamente en tu procesador de texto habitual (Microsoft Word o Google Docs) mientras se sincronizan los cambios de forma automática en el CLM.
+                    </p>
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                      <button className="ct-btn-secondary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '12px', height: '34px', borderColor: '#185abd22', cursor: 'pointer' }} onClick={() => handleLinkExternal('WORD')}>
+                        <span style={{ color: '#185abd', fontWeight: 'bold' }}>W</span>
+                        Vincular MS Word
+                      </button>
+                      <button className="ct-btn-secondary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '12px', height: '34px', borderColor: '#1a73e822', cursor: 'pointer' }} onClick={() => handleLinkExternal('GDOCS')}>
+                        <span style={{ color: '#1a73e8', fontWeight: 'bold' }}>D</span>
+                        Vincular Google Docs
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="ct-resumen-card" style={{ gridColumn: 'span 2' }}>
+                <p className="ct-resumen-card-title">
+                  <Icon d={['M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z', 'M12 8v4', 'M12 16h.01']} color="var(--sky)" w={14} />
+                  Firma Electrónica del Acuerdo
+                </p>
+
+                {contrato.firma_status === 'NONE' || contrato.firma_status === 'DECLINED' || !contrato.firma_status ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '6px' }}>
+                    {contrato.firma_status === 'DECLINED' && (
+                      <div className="ct-alert-error" style={{ margin: '0 0 8px 0', padding: '8px 12px', fontSize: '12px' }}>
+                        ❌ El envío anterior de firma fue rechazado por el destinatario en {contrato.firma_proveedor}.
+                      </div>
+                    )}
+                    <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                      Una vez que el contrato esté aprobado internamente, puedes iniciar el proceso de firma digital. Selecciona el proveedor de firma legal:
+                    </p>
+                    
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                      <div 
+                        onClick={() => setSelectedFirmaMethod('OTP')}
+                        style={{ flex: 1, padding: '10px', border: `1.5px solid ${selectedFirmaMethod === 'OTP' ? 'var(--primary)' : 'var(--border)'}`, borderRadius: '6px', cursor: 'pointer', background: selectedFirmaMethod === 'OTP' ? 'var(--primary-bg)' : 'transparent', textAlign: 'center' }}
+                      >
+                        <p style={{ margin: 0, fontWeight: 'bold', fontSize: '12px', color: selectedFirmaMethod === 'OTP' ? 'var(--primary)' : 'var(--text-primary)' }}>Firma OTP Nativa</p>
+                        <p style={{ margin: '2px 0 0', fontSize: '10px', color: 'var(--text-muted)' }}>SMS/Email de un solo uso</p>
+                      </div>
+                      
+                      <div 
+                        onClick={() => setSelectedFirmaMethod('DOCUSIGN')}
+                        style={{ flex: 1, padding: '10px', border: `1.5px solid ${selectedFirmaMethod === 'DOCUSIGN' ? 'var(--primary)' : 'var(--border)'}`, borderRadius: '6px', cursor: 'pointer', background: selectedFirmaMethod === 'DOCUSIGN' ? 'var(--primary-bg)' : 'transparent', textAlign: 'center' }}
+                      >
+                        <p style={{ margin: 0, fontWeight: 'bold', fontSize: '12px', color: selectedFirmaMethod === 'DOCUSIGN' ? 'var(--primary)' : 'var(--text-primary)' }}>DocuSign</p>
+                        <p style={{ margin: '2px 0 0', fontSize: '10px', color: 'var(--text-muted)' }}>Simulador de sobre</p>
+                      </div>
+
+                      <div 
+                        onClick={() => setSelectedFirmaMethod('ADOBE')}
+                        style={{ flex: 1, padding: '10px', border: `1.5px solid ${selectedFirmaMethod === 'ADOBE' ? 'var(--primary)' : 'var(--border)'}`, borderRadius: '6px', cursor: 'pointer', background: selectedFirmaMethod === 'ADOBE' ? 'var(--primary-bg)' : 'transparent', textAlign: 'center' }}
+                      >
+                        <p style={{ margin: 0, fontWeight: 'bold', fontSize: '12px', color: selectedFirmaMethod === 'ADOBE' ? 'var(--primary)' : 'var(--text-primary)' }}>Adobe Sign</p>
+                        <p style={{ margin: '2px 0 0', fontSize: '10px', color: 'var(--text-muted)' }}>Simulador de acuerdo</p>
+                      </div>
+                    </div>
+
+                    <button 
+                      className="ct-btn-primary" 
+                      style={{ marginTop: '8px', height: '36px', fontSize: '13px', cursor: 'pointer' }}
+                      onClick={() => handleSendSignature(selectedFirmaMethod)}
+                      disabled={busy}
+                    >
+                      🚀 Enviar a Firmar vía {selectedFirmaMethod === 'OTP' ? 'OTP Nativa' : selectedFirmaMethod === 'DOCUSIGN' ? 'DocuSign' : 'Adobe Sign'}
+                    </button>
+                  </div>
+                ) : contrato.firma_status === 'PENDING' ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%', marginTop: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                      <div>
+                        <p style={{ margin: 0, fontWeight: 600, fontSize: '13px', color: 'var(--warning-bright)' }}>
+                          ⏳ Enviado y Pendiente de Firma ({contrato.firma_proveedor === 'OTP' ? 'OTP Nativa' : contrato.firma_proveedor === 'DOCUSIGN' ? 'DocuSign' : 'Adobe Sign'})
+                        </p>
+                        <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-muted)' }}>
+                          Envelope ID: {contrato.firma_envelope_id}
+                        </p>
+                      </div>
+
+                      <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                        {contrato.firma_fecha_envio && (
+                          <span style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>
+                            Enviado: {fmtDateTime(contrato.firma_fecha_envio)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={{ background: 'var(--bg-topbar)', border: '1px solid var(--border)', borderRadius: '6px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)' }}>
+                        El representante del cliente ha recibido el enlace de firma en su correo electrónico (<strong>{contrato.cliente.email || 'representante@empresa.com'}</strong>).
+                      </p>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                      <button 
+                        className="ct-btn-primary" 
+                        style={{ flex: 1, height: '32px', fontSize: '12px', cursor: 'pointer' }} 
+                        onClick={() => {
+                          if (contrato.firma_proveedor === 'OTP') {
+                            setIsOtpModalOpen(true);
+                          } else {
+                            setSignatureProvider(contrato.firma_proveedor);
+                          }
+                        }}
+                      >
+                        ✍️ Abrir Portal de Firma (Simulador)
+                      </button>
+                      <button className="ct-btn-secondary" style={{ height: '32px', fontSize: '12px', cursor: 'pointer' }} onClick={handleDeclineSignature}>
+                        Simular Rechazo
+                      </button>
+                      <button className="ct-btn-danger" style={{ height: '32px', fontSize: '12px', cursor: 'pointer' }} onClick={handleCancelSignature}>
+                        Cancelar Envío
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  // SIGNED
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%', marginTop: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'var(--success-bg)', border: '1px solid var(--success-border)', color: 'var(--success)', width: '28px', height: '28px', borderRadius: '50%', fontWeight: 'bold' }}>✓</span>
+                      <div>
+                        <p style={{ margin: 0, fontWeight: 600, fontSize: '13px', color: 'var(--success)' }}>
+                          ✓ Contrato Firmado Digitalmente
+                        </p>
+                        <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-muted)' }}>
+                          Cerrado vía: {contrato.firma_proveedor === 'OTP' ? 'OTP Nativa' : contrato.firma_proveedor === 'DOCUSIGN' ? 'DocuSign' : 'Adobe Sign'} | Envelope ID: {contrato.firma_envelope_id}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div style={{ background: 'var(--bg-topbar)', border: '1px solid var(--border)', borderRadius: '6px', padding: '10px 14px', fontSize: '11.5px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Fecha de envío:</span>
+                        <span style={{ fontWeight: 600 }}>{fmtDateTime(contrato.firma_fecha_envio)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Fecha de firma:</span>
+                        <span style={{ fontWeight: 600 }}>{fmtDateTime(contrato.firma_fecha_firma)}</span>
+                      </div>
+                    </div>
+
+                    {contrato.firma_documento_firmado_url && (
+                      <a 
+                        className="ct-btn-primary" 
+                        style={{ height: '34px', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }} 
+                        href={contrato.firma_documento_firmado_url} 
+                        target="_blank" 
+                        rel="noreferrer"
+                      >
+                        <Icon d={['M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4', 'M7 10l5 5 5-5', 'M12 15V3']} color="var(--text-on-accent)" w={12} />
+                        Descargar Contrato Certificado (PDF)
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -709,7 +1069,7 @@ export default function ContractDetail() {
                       Editar Texto
                     </button>
                   )}
-                  <button className="ct-btn-primary" disabled={busy} style={{ marginLeft: 8 }} onClick={() => handleGenerarDocumento(false)}>
+                  <button className="ct-btn-primary" disabled={busy || camposLoading} style={{ marginLeft: 8 }} onClick={() => handleGenerarDocumento(false)}>
                     <Icon d={['M12 5v14', 'M5 12h14']} color="var(--text-on-accent)" w={13} />
                     Generar Documento
                   </button>
@@ -731,6 +1091,44 @@ export default function ContractDetail() {
                     <button className="ct-btn-primary" onClick={handleSaveEditText} disabled={busy}>Guardar Texto</button>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {showCamposModal && (
+              <div style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(10,10,10,0.5)', padding: 24 }}>
+                <form onSubmit={handleSubmitCampos} style={{ background: 'var(--surface)', padding: 24, borderRadius: 8, width: 560, maxWidth: '100%', maxHeight: '85vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: 16, color: 'var(--text-primary)' }}>Completar plantilla</h3>
+                    <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>Estos campos son propios de la plantilla del documento. Déjalos en blanco para conservar el texto de ejemplo.</p>
+                  </div>
+                  {camposPlantilla.map(c => (
+                    <div key={c.nombre}>
+                      <label style={{ display: 'block', margin: '0 0 4px', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>{c.label}</label>
+                      {c.multilinea ? (
+                        <textarea
+                          value={camposValores[c.nombre] ?? ''}
+                          onChange={e => setCamposValores(prev => ({ ...prev, [c.nombre]: e.target.value }))}
+                          placeholder={c.default}
+                          style={{ width: '100%', minHeight: 90, padding: '8px 10px', fontSize: 12, border: '1px solid var(--border)', borderRadius: 5, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', color: 'var(--text-primary)', backgroundColor: 'var(--surface)' }}
+                        />
+                      ) : (
+                        <input
+                          value={camposValores[c.nombre] ?? ''}
+                          onChange={e => setCamposValores(prev => ({ ...prev, [c.nombre]: e.target.value }))}
+                          placeholder={c.default}
+                          style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 5, fontSize: 12, fontFamily: 'inherit', outline: 'none', color: 'var(--text-primary)', backgroundColor: 'var(--surface)' }}
+                        />
+                      )}
+                    </div>
+                  ))}
+                  {actionError && (
+                    <p style={{ margin: 0, fontSize: 12, color: 'var(--danger)' }}>{actionError}</p>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                    <button type="button" className="ct-btn-secondary" onClick={() => setShowCamposModal(false)} disabled={busy}>Cancelar</button>
+                    <button type="submit" className="ct-btn-primary" disabled={busy}>{busy ? 'Generando…' : 'Generar Documento'}</button>
+                  </div>
+                </form>
               </div>
             )}
 
@@ -987,6 +1385,27 @@ export default function ContractDetail() {
             </div>
           </div>
         </div>
+      )}
+
+      {showPluginSimulator && (
+        <WordDocsPluginSimulator
+          contratoId={contrato.id}
+          currentText={contrato.texto_adicional_clausulas}
+          onClose={() => setShowPluginSimulator(false)}
+          onSyncSuccess={load}
+        />
+      )}
+
+      {signatureProvider && (
+        <SignatureSimulator
+          contrato={contrato}
+          proveedor={signatureProvider}
+          onClose={() => setSignatureProvider(null)}
+          onSignComplete={async () => {
+            setSignatureProvider(null);
+            await load();
+          }}
+        />
       )}
     </div>
   );

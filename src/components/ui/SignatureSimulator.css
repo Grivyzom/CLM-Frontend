@@ -1,0 +1,389 @@
+.sig-sim-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1600;
+  background: rgba(30, 30, 30, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.sig-sim-window {
+  width: 950px;
+  max-width: 100%;
+  height: 85vh;
+  background: #f4f4f4;
+  border-radius: 8px;
+  box-shadow: 0 12px 36px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* --- DocuSign Theme --- */
+.sig-sim-window.docusign .sig-sim-header {
+  background: #1e1e1e;
+  color: #ffffff;
+  border-bottom: 3px solid #ffcc00;
+}
+
+.sig-sim-window.docusign .sig-sim-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: #ffcc00;
+}
+
+/* --- Adobe Sign Theme --- */
+.sig-sim-window.adobe .sig-sim-header {
+  background: #1473e6;
+  color: #ffffff;
+  border-bottom: none;
+}
+
+.sig-sim-window.adobe .sig-sim-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.sig-sim-header {
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  flex-shrink: 0;
+}
+
+.sig-sim-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sig-sim-primary-btn {
+  border: none;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: opacity 0.2s;
+}
+
+.sig-sim-window.docusign .sig-sim-primary-btn {
+  background: #ffcc00;
+  color: #000000;
+}
+
+.sig-sim-window.adobe .sig-sim-primary-btn {
+  background: #ffffff;
+  color: #1473e6;
+}
+
+.sig-sim-primary-btn:hover {
+  opacity: 0.9;
+}
+
+.sig-sim-secondary-btn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.4);
+  color: #ffffff;
+  font-size: 13px;
+  padding: 7px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.sig-sim-secondary-btn:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.sig-sim-workspace {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.sig-sim-doc-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-y: auto;
+  padding: 32px;
+  background: #e9e9e9;
+  position: relative;
+}
+
+.sig-sim-doc-page {
+  background: #ffffff;
+  width: 680px;
+  min-height: 900px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  padding: 60px 80px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.sig-sim-doc-title {
+  font-size: 20px;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 24px;
+  color: #111111;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sig-sim-doc-body {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #333333;
+  white-space: pre-wrap;
+  flex: 1;
+}
+
+/* --- Floating Signature Sticky Area --- */
+.sig-sim-sticky-indicator {
+  position: absolute;
+  left: 80px;
+  bottom: 120px;
+  width: 220px;
+  height: 60px;
+  border: 2px dashed #ffcc00;
+  background: rgba(255, 204, 0, 0.15);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+  z-index: 10;
+}
+
+.sig-sim-window.adobe .sig-sim-sticky-indicator {
+  border-color: #1473e6;
+  background: rgba(20, 115, 230, 0.1);
+}
+
+.sig-sim-sticky-indicator:hover {
+  background: rgba(255, 204, 0, 0.25);
+}
+
+.sig-sim-sticky-tag {
+  background: #ffcc00;
+  color: #000000;
+  font-size: 9px;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 3px;
+  position: absolute;
+  top: -10px;
+  left: 10px;
+}
+
+.sig-sim-window.adobe .sig-sim-sticky-tag {
+  background: #1473e6;
+  color: #ffffff;
+}
+
+.sig-sim-sticky-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #000000;
+}
+
+.sig-sim-window.adobe .sig-sim-sticky-label {
+  color: #1473e6;
+}
+
+/* --- Applied Signature View --- */
+.sig-sim-applied-signature {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.sig-sim-cursive-text {
+  font-family: 'Georgia', cursive, serif;
+  font-size: 22px;
+  font-style: italic;
+  color: #0000cc;
+  margin: 0;
+  line-height: 1.1;
+  text-shadow: 1px 1px 1px rgba(0,0,0,0.05);
+}
+
+.sig-sim-audit-code {
+  font-size: 7.5px;
+  color: #666666;
+  font-family: monospace;
+  margin-top: 4px;
+}
+
+/* --- Sidebar instructions pane --- */
+.sig-sim-sidebar {
+  width: 250px;
+  background: #ffffff;
+  border-left: 1px solid #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.sig-sim-sidebar-title {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #5f6368;
+}
+
+.sig-sim-step-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sig-sim-step-item {
+  display: flex;
+  gap: 10px;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.sig-sim-step-num {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.sig-sim-step-item.active .sig-sim-step-num {
+  background: #ffcc00;
+  color: #000000;
+}
+
+.sig-sim-window.adobe .sig-sim-step-item.active .sig-sim-step-num {
+  background: #1473e6;
+  color: #ffffff;
+}
+
+/* --- Adopt Signature Dialog --- */
+.sig-adopt-dialog-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  background: rgba(10,10,10,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sig-adopt-dialog {
+  background: #ffffff;
+  width: 480px;
+  border-radius: 6px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sig-adopt-header {
+  padding: 16px;
+  border-bottom: 1px solid #e0e0e0;
+  font-weight: bold;
+  font-size: 14px;
+  color: #202124;
+}
+
+.sig-adopt-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sig-adopt-preview {
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  height: 100px;
+  background: #fafafa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.sig-adopt-preview-text {
+  font-family: 'Georgia', cursive, serif;
+  font-size: 32px;
+  font-style: italic;
+  color: #0000cc;
+}
+
+.sig-adopt-footer {
+  padding: 12px 16px;
+  background: #f8f9fa;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.sig-adopt-btn-primary {
+  background: #ffcc00;
+  border: none;
+  color: #000000;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sig-sim-window.adobe .sig-adopt-btn-primary {
+  background: #1473e6;
+  color: #ffffff;
+}
+
+.sig-adopt-btn-secondary {
+  background: #ffffff;
+  border: 1px solid #dadce0;
+  color: #3c4043;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.sig-adopt-btn-secondary:hover {
+  background: #f1f3f4;
+}

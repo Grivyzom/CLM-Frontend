@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import './Contratos.css';
 import { useContratos } from '../hooks/useContratos';
-import { getSoftwareList } from '../api';
+import { getSoftwareList, generarDocumentoContrato } from '../api';
 import NewContractModal from './NewContractModal';
 import ExportContratosModal from './ExportContratosModal';
 import SortableHeader from '../components/ui/SortableHeader';
@@ -236,14 +238,65 @@ function KanbanCard({ contrato, onClick }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function Contratos() {
+  const containerRef = useRef(null);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  useGSAP(() => {
+    const handleMouseEnter = (e) => {
+      const paths = e.currentTarget.querySelectorAll('svg path, svg line, svg polyline, svg circle, svg rect');
+      paths.forEach(path => {
+        try {
+          const length = path.getTotalLength();
+          if (length > 0) {
+            gsap.fromTo(path,
+              { strokeDasharray: length, strokeDashoffset: length },
+              { strokeDashoffset: 0, duration: 0.8, ease: 'power2.out', clearProps: 'strokeDasharray,strokeDashoffset' }
+            );
+          }
+        } catch (e) {}
+      });
+    };
+
+    const interactiveElements = containerRef.current?.querySelectorAll(
+      '.ct-icon-btn-sm, .ct-row-open-btn, .ct-action-group-btn'
+    );
+    if (interactiveElements) {
+      interactiveElements.forEach(el => {
+        el.addEventListener('mouseenter', handleMouseEnter, { once: true });
+      });
+    }
+
+    return () => {
+      if (interactiveElements) {
+        interactiveElements.forEach(el => {
+          el.removeEventListener('mouseenter', handleMouseEnter);
+        });
+      }
+    };
+  }, { scope: containerRef });
   const [view, setView] = useState('table');
   const [selectedContrato, setSelectedContrato] = useState(null);
   const [showNewModal, setShowNewModal] = useState(false);
+  const [previewDocId, setPreviewDocId] = useState(null);
+  const [editingContract, setEditingContract] = useState(null);
   const [newModalClienteId, setNewModalClienteId] = useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [softwareList, setSoftwareList] = useState([]);
+  const [busyRows, setBusyRows] = useState({}); // To track loading state per row
+
+  const handleRegenerarDocumento = async (e, contratoId) => {
+    e.stopPropagation();
+    setBusyRows(prev => ({ ...prev, [contratoId]: true }));
+    try {
+      await generarDocumentoContrato({ contrato_id: contratoId, forzar: true });
+      refetch(); // Reload the list to get new doc ID
+    } catch (err) {
+      alert(err.message || 'Error regenerando el documento.');
+    } finally {
+      setBusyRows(prev => ({ ...prev, [contratoId]: false }));
+    }
+  };
   
   const { user, isModerador } = useAuth();
   const canCreateContrato = user && (user.isSuperadmin || isModerador || user.rawRole === 'TENANT_ADMIN');
@@ -273,8 +326,26 @@ export default function Contratos() {
 
   const today = new Date().toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 
+  // Antes: cada columna del Kanban recorría `contratos` entero (filter + reduce)
+  // en cada render del componente (7 columnas × hasta 150 contratos = ~1050
+  // iteraciones por render, aunque solo cambiara p.ej. la fila seleccionada).
+  // Ahora: un solo pase agrupado, memoizado, que solo se recalcula si cambia
+  // el array de contratos.
+  const kanbanColumns = useMemo(() => {
+    const grouped = {};
+    for (const col of ETAPA_ORDER) grouped[col] = [];
+    for (const c of contratos) {
+      if (grouped[c.etapa]) grouped[c.etapa].push(c);
+    }
+    return ETAPA_ORDER.map(col => {
+      const colContratos = grouped[col];
+      const colMRR = colContratos.reduce((a, c) => a + (c.tipo_contrato === 'RECURRENTE' ? Number(c.mrr) : 0), 0);
+      return { col, colContratos, colMRR };
+    });
+  }, [contratos]);
+
   return (
-    <div className="ct-container">
+    <div className="ct-container" ref={containerRef}>
       <div className="ct-header">
         <div>
           <p className="ct-header-label">Enfoque Platform</p>
@@ -360,6 +431,12 @@ export default function Contratos() {
                 onSort={(next) => updateFilter('ordering', next)}
               />
               <SortableHeader
+                label="Tipo"
+                field="tipo_contrato"
+                ordering={filters.ordering}
+                onSort={(next) => updateFilter('ordering', next)}
+              />
+              <SortableHeader
                 label="Etapa"
                 field="etapa"
                 ordering={filters.ordering}
@@ -434,6 +511,7 @@ export default function Contratos() {
                       <span className="ct-row-client">{c.cliente.nombre}</span>
                     </div>
                     <SoftwareTag software={c.software.nombre} />
+                    <span className="ct-row-name" style={{ fontWeight: 'normal', color: 'var(--text-muted)' }}>{c.tipo_contrato_display}</span>
                     <EtapaBadge etapa={c.etapa} label={c.etapa_display} />
                     <span className="ct-mono ct-mrr-cell">{c.tipo_contrato === 'RECURRENTE' ? fmtMoney(c.mrr) : fmtMoney(c.monto)}</span>
                     <span className="ct-bill-cell">{c.frecuencia_facturacion === 'ANUAL' ? 'Anual' : c.frecuencia_facturacion === 'MENSUAL' ? 'Mensual' : c.tipo_contrato_display}</span>
@@ -442,10 +520,39 @@ export default function Contratos() {
                       {isExpiring && <span className="ct-expiring-tag">{days < 0 ? 'Vencido' : `Renueva en ${days}d`}</span>}
                     </span>
                     <span className="ct-resp-cell">{c.responsable || '—'}</span>
-                    <div className="ct-row-actions">
-                      <button className="ct-row-open-btn" onClick={(e) => { e.stopPropagation(); navigate(`/contratos/${c.id}`); }}>
-                        Abrir →
-                      </button>
+                    <div className="ct-row-actions" onClick={e => e.stopPropagation()}>
+                      <div className="ct-action-group">
+                        <button 
+                          className="ct-action-group-btn ct-icon-preview" 
+                          disabled={!c.tiene_documento}
+                          onClick={() => { if(c.tiene_documento) setPreviewDocId(c.documento_id); }} 
+                          title={c.tiene_documento ? "Previsualizar PDF" : "Sin documento"}
+                        >
+                          <Icon d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2 12c0-3.8 4.2-7 10-7s10 3.2 10 7-4.2 7-10 7-10-3.2-10-7z" w={15} color="currentColor" />
+                        </button>
+
+                        <button 
+                          className="ct-action-group-btn ct-icon-actualizar" 
+                          disabled={busyRows[c.id]} 
+                          onClick={(e) => handleRegenerarDocumento(e, c.id)} 
+                          title="Actualizar Contrato"
+                        >
+                          <Icon 
+                            className={busyRows[c.id] ? "ct-spin" : ""}
+                            d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16" 
+                            w={15} 
+                            color="currentColor"
+                          />
+                        </button>
+
+                        <button 
+                          className="ct-action-group-btn primary ct-icon-abrir" 
+                          onClick={() => navigate(`/contratos/${c.id}`)}
+                          title="Abrir Contrato"
+                        >
+                          <Icon d="M9 5l7 7-7 7" w={16} color="currentColor" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -473,9 +580,7 @@ export default function Contratos() {
 
         {view === 'kanban' && (
           <div className="ct-kanban">
-            {ETAPA_ORDER.map(col => {
-              const colContratos = contratos.filter(c => c.etapa === col);
-              const colMRR = colContratos.reduce((a, c) => a + (c.tipo_contrato === 'RECURRENTE' ? Number(c.mrr) : 0), 0);
+            {kanbanColumns.map(({ col, colContratos, colMRR }) => {
               const sc = ETAPA_CFG[col];
               return (
                 <div key={col} className="ct-kanban-col">
@@ -505,6 +610,26 @@ export default function Contratos() {
         onClose={() => setSelectedContrato(null)}
         onOpen={(c) => { setSelectedContrato(null); navigate(`/contratos/${c.id}`); }}
       />
+      
+      {previewDocId && (
+        <div className="ctm-backdrop" onClick={() => setPreviewDocId(null)} style={{ zIndex: 9999 }}>
+          <div className="ctm-panel" style={{ width: '80%', maxWidth: '1000px', height: '90vh', padding: 0, display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+            <div className="ctm-header" style={{ padding: '16px', borderBottom: '1px solid var(--border)' }}>
+              <h2 className="ctm-title">Previsualización de Documento</h2>
+              <button className="ctm-close" onClick={() => setPreviewDocId(null)} title="Cerrar">
+                <Icon d={['M18 6 6 18', 'M6 6l12 12']} color="var(--text-muted)" w={14} />
+              </button>
+            </div>
+            <div style={{ flex: 1, backgroundColor: '#525659' }}>
+              <iframe
+                src={`/api/plantillas/documentos/${previewDocId}/pdf/?inline=1#view=FitH`}
+                style={{ width: '100%', height: '100%', border: 'none' }}
+                title="Previsualización PDF"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {showNewModal && (
         <NewContractModal

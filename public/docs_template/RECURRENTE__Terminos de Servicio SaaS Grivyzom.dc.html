@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  html { -webkit-font-smoothing: antialiased; }
+  @media print { html, body { background: #fff; } }
+</style>
+</helmet>
+<x-import component-from-global-scope="doc-page" from="./doc-page.js" size="letter" margin="1in" hint-size="850px,1100px">
+  <div slot="footer" style="border-top:1px solid #d8d2c4;padding-top:8px;font-family:Calibri, 'Segoe UI', Arial, sans-serif;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+    <div style="font-size:8pt;color:#8a8a8a;line-height:1.4;max-width:75%;">
+      Documento Confidencial &mdash; Propiedad exclusiva de Grivyzom S.P.A. Prohibida su reproducción total o parcial sin autorización escrita.
+    </div>
+    <div style="font-size:8.5pt;color:#5b5b5b;white-space:nowrap;">Página 1 de 1</div>
+  </div>
+
+  <div style="font-family:Calibri, 'Segoe UI', Arial, sans-serif;color:#1a1a1a;font-size:11pt;line-height:1.15;">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:24px;border-bottom:2px solid #b8974e;padding-bottom:10px;margin-bottom:20px;">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <img src="assets/logo-grivyzom.png" alt="Logo Grivyzom S.P.A" style="height:52px;width:auto;object-fit:contain;" />
+        <div>
+          <div style="font-size:16px;font-weight:700;color:#0a1f3d;letter-spacing:0.5px;">GRIVYZOM S.P.A</div>
+          <div style="font-size:9.5px;color:#5b5b5b;line-height:1.4;">Pasaje La Paz 1, #63 &nbsp;·&nbsp; Tel. 926904593 &nbsp;·&nbsp; ff.fuentes@grivyzom.com</div>
+        </div>
+      </div>
+      <div style="text-align:right;font-size:9.5px;color:#0a1f3d;font-weight:600;letter-spacing:0.3px;white-space:nowrap;">
+        REF: {{ referencia|default:"TOS-SAAS-2026-001" }}
+      </div>
+    </div>
+
+    <div style="text-align:center;margin:8px 0 28px;">
+      <div style="font-size:20pt;font-weight:700;color:#0a1f3d;letter-spacing:1.5px;">TÉRMINOS DE SERVICIO Y LICENCIA DE USO</div>
+      <div style="font-size:10pt;color:#5b5b5b;margin-top:4px;">Terms of Service (SaaS) / End User License Agreement (EULA)</div>
+      <div style="width:60px;height:3px;background:#b8974e;margin:10px auto 0;"></div>
+    </div>
+
+    <p style="text-align:justify;margin:0 0 24px;">{{ encabezado|default:"[Encabezado: lugar y fecha de aceptación, individualización de las Partes (Grivyzom S.P.A. como proveedor de la plataforma, y el Cliente/Usuario Licenciatario), y declaración de aceptación de los presentes Términos como condición para el uso del software.]" }}</p>
+
+    <div style="font-size:11.5pt;font-weight:700;color:#0a1f3d;margin:0 0 8px;">PRIMERA: Objeto y Definiciones</div>
+    <p style="text-align:justify;margin:0 0 16px;">{{ cuerpo_clausula_1|default:"[Describa el objeto del documento y defina términos clave: la Plataforma, el Software, la Instancia, el Usuario, la Licencia.]" }}</p>
+
+    <div style="font-size:11.5pt;font-weight:700;color:#0a1f3d;margin:20px 0 8px;">SEGUNDA: Otorgamiento de la Licencia</div>
+    <p style="text-align:justify;margin:0 0 16px;">{{ cuerpo_clausula_2|default:"[Describa el tipo de licencia otorgada: no exclusiva, intransferible, revocable, limitada al uso del servicio contratado y por el plazo de la suscripción vigente.]" }}</p>
+
+    <div style="font-size:11.5pt;font-weight:700;color:#0a1f3d;margin:20px 0 8px;">TERCERA: Restricciones de Uso</div>
+    <p style="text-align:justify;margin:0 0 16px;">{{ cuerpo_clausula_3|default:"[Describa las conductas prohibidas: ingeniería inversa, copia, redistribución, sublicenciamiento, acceso no autorizado a otras instancias, o uso fuera de los fines contratados.]" }}</p>
+
+    <div style="font-size:11.5pt;font-weight:700;color:#0a1f3d;margin:20px 0 8px;">CUARTA: Propiedad del Software y la Plataforma</div>
+    <p style="text-align:justify;margin:0 0 16px;">{{ cuerpo_clausula_4|default:"[Describa que el código fuente, arquitectura, marcas y demás elementos de la plataforma administradora son de propiedad exclusiva de Grivyzom S.P.A., y que el Cliente no adquiere derecho alguno sobre ellos más allá de la licencia de uso otorgada.]" }}</p>
+
+    <div style="break-before:page;"></div>
+
+    <div style="font-size:11.5pt;font-weight:700;color:#0a1f3d;margin:0 0 8px;">QUINTA: Datos e Información del Cliente</div>
+    <p style="text-align:justify;margin:0 0 16px;">{{ cuerpo_clausula_5|default:"[Describa la titularidad de los datos ingresados por el Cliente, su tratamiento, resguardo, y condiciones de exportación o eliminación al término del servicio.]" }}</p>
+
+    <div style="font-size:11.5pt;font-weight:700;color:#0a1f3d;margin:20px 0 8px;">SEXTA: Disponibilidad y Soporte del Servicio (SLA)</div>
+    <p style="text-align:justify;margin:0 0 16px;">{{ cuerpo_clausula_6|default:"[Describa el nivel de disponibilidad comprometido, ventanas de mantenimiento, canales y tiempos de soporte técnico.]" }}</p>
+
+    <div style="font-size:11.5pt;font-weight:700;color:#0a1f3d;margin:20px 0 8px;">SÉPTIMA: Actualizaciones y Cambios al Software</div>
+    <p style="text-align:justify;margin:0 0 16px;">{{ cuerpo_clausula_7|default:"[Describa la facultad del Proveedor de actualizar, modificar o discontinuar funcionalidades de la Plataforma, y la forma de notificación al Cliente.]" }}</p>
+
+    <div style="font-size:11.5pt;font-weight:700;color:#0a1f3d;margin:20px 0 8px;">OCTAVA: Tarifas y Condiciones de Suscripción</div>
+    <p style="text-align:justify;margin:0 0 16px;">{{ cuerpo_clausula_8|default:"[Describa el modelo de cobro (mensual/anual, por usuario, por instancia), forma de pago, reajustes de precio y consecuencias del no pago.]" }}</p>
+
+    <div style="break-before:page;"></div>
+
+    <div style="font-size:11.5pt;font-weight:700;color:#0a1f3d;margin:0 0 8px;">NOVENA: Suspensión y Terminación del Servicio</div>
+    <p style="text-align:justify;margin:0 0 16px;">{{ cuerpo_clausula_9|default:"[Describa las causales de suspensión o término de la licencia por incumplimiento, falta de pago o uso indebido, y los efectos sobre el acceso a la Plataforma y los datos.]" }}</p>
+
+    <div style="font-size:11.5pt;font-weight:700;color:#0a1f3d;margin:20px 0 8px;">DÉCIMA: Confidencialidad</div>
+    <p style="text-align:justify;margin:0 0 16px;">{{ cuerpo_clausula_10|default:"[Describa las obligaciones de confidencialidad respecto de la arquitectura, metodologías y demás información no pública de la Plataforma.]" }}</p>
+
+    <div style="font-size:11.5pt;font-weight:700;color:#0a1f3d;margin:20px 0 8px;">UNDÉCIMA: Limitación de Responsabilidad</div>
+    <p style="text-align:justify;margin:0 0 16px;">{{ cuerpo_clausula_11|default:"[Describa los límites de responsabilidad del Proveedor frente a interrupciones del servicio, pérdida de datos o perjuicios indirectos.]" }}</p>
+
+    <div style="font-size:11.5pt;font-weight:700;color:#0a1f3d;margin:20px 0 8px;">DUODÉCIMA: Modificaciones a los Presentes Términos</div>
+    <p style="text-align:justify;margin:0 0 16px;">{{ cuerpo_clausula_12|default:"[Describa el procedimiento para modificar estos Términos y la forma en que se notificará al Cliente antes de su entrada en vigencia.]" }}</p>
+
+    <div style="font-size:11.5pt;font-weight:700;color:#0a1f3d;margin:20px 0 8px;">DECIMOTERCERA: Legislación Aplicable y Jurisdicción</div>
+    <p style="text-align:justify;margin:0 0 16px;">{{ cuerpo_clausula_13|default:"[Describa la legislación aplicable y el domicilio/jurisdicción a la que se someten las Partes.]" }}</p>
+
+    <p style="text-align:justify;margin:24px 0 40px;">La aceptación de estos Términos, ya sea mediante firma, aceptación electrónica o el uso efectivo de la Plataforma, constituye consentimiento pleno y vinculante para el Cliente.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:60px;margin-top:20px;">
+      <div style="border-top:1px solid #1a1a1a;padding-top:6px;font-size:10.5pt;">
+        <div style="font-weight:700;">Por el Proveedor</div>
+        <div style="color:#5b5b5b;">GRIVYZOM S.P.A.</div>
+        <div style="color:#5b5b5b;">{{ firma_proveedor_nombre|default:"[Nombre representante]" }}</div>
+        <div style="color:#5b5b5b;">RUT: {{ firma_proveedor_rut|default:"[xx.xxx.xxx-x]" }}</div>
+      </div>
+      <div style="border-top:1px solid #1a1a1a;padding-top:6px;font-size:10.5pt;">
+        <div style="font-weight:700;">Por el Cliente / Licenciatario</div>
+        <div style="color:#5b5b5b;">{{ firma_cliente_razon_social|default:"[Razón social del cliente]" }}</div>
+        <div style="color:#5b5b5b;">{{ firma_cliente_nombre|default:"[Nombre representante]" }}</div>
+        <div style="color:#5b5b5b;">RUT: {{ firma_cliente_rut|default:"[xx.xxx.xxx-x]" }}</div>
+      </div>
+    </div>
+
+  </div>
+</x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:900,&quot;height&quot;:1150}}"></script>
+</body>
+</html>

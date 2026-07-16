@@ -1,0 +1,592 @@
+.plugin-sim-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  background: #f8f9fa;
+  color: #333333;
+  display: flex;
+  flex-direction: column;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.plugin-sim-header {
+  height: 48px;
+  background: #202124;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+}
+
+.plugin-sim-header-title {
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.plugin-sim-close-btn {
+  background: #3c4043;
+  color: #ffffff;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.plugin-sim-close-btn:hover {
+  background: #5f6368;
+}
+
+.plugin-sim-container {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+}
+
+/* --- Microsoft Word Interface Styles --- */
+.word-window {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #f3f2f1;
+  overflow: hidden;
+}
+
+.word-top-bar {
+  background: #185abd;
+  color: #ffffff;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.word-window-controls {
+  display: flex;
+  gap: 16px;
+}
+
+.word-tab-strip {
+  background: #f3f2f1;
+  border-bottom: 1px solid #d2d0ce;
+  display: flex;
+  padding-left: 12px;
+  gap: 4px;
+  height: 30px;
+  align-items: flex-end;
+}
+
+.word-tab {
+  padding: 4px 16px;
+  font-size: 12px;
+  color: #323130;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-bottom: none;
+  background: transparent;
+  border-top-left-radius: 3px;
+  border-top-right-radius: 3px;
+}
+
+.word-tab:hover {
+  background: #e1dfdd;
+}
+
+.word-tab.active {
+  background: #ffffff;
+  border-color: #d2d0ce;
+  color: #185abd;
+  font-weight: 600;
+}
+
+.word-ribbon {
+  background: #ffffff;
+  border-bottom: 1px solid #d2d0ce;
+  height: 80px;
+  padding: 8px 16px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  overflow-x: auto;
+}
+
+.word-ribbon-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-right: 1px solid #e1dfdd;
+  padding-right: 12px;
+  height: 100%;
+  justify-content: space-between;
+}
+
+.word-ribbon-group-label {
+  font-size: 10px;
+  color: #605e5c;
+  margin-top: 4px;
+}
+
+.word-ribbon-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex: 1;
+}
+
+.word-ribbon-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  color: #323130;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 11px;
+  gap: 4px;
+  min-width: 48px;
+}
+
+.word-ribbon-btn:hover {
+  background: #f3f2f1;
+  border-color: #d2d0ce;
+}
+
+.word-ribbon-btn.primary {
+  color: #185abd;
+  font-weight: 600;
+}
+
+/* --- Google Docs Interface Styles --- */
+.gdocs-window {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #f9fbfd;
+  overflow: hidden;
+}
+
+.gdocs-header-bar {
+  background: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 8px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gdocs-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gdocs-doc-title-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gdocs-doc-icon {
+  width: 32px;
+  height: 32px;
+  color: #4285f4;
+}
+
+.gdocs-doc-title {
+  font-size: 16px;
+  color: #202124;
+  font-weight: 500;
+  border: 1px solid transparent;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.gdocs-doc-title:hover {
+  border-color: #dadce0;
+}
+
+.gdocs-menu-bar {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: #5f6368;
+}
+
+.gdocs-menu-item {
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.gdocs-menu-item:hover {
+  background: #f1f3f4;
+}
+
+.gdocs-toolbar {
+  background: #edf2fc;
+  border-radius: 24px;
+  margin: 4px 16px;
+  padding: 6px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.gdocs-toolbar-btn {
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #3c4043;
+}
+
+.gdocs-toolbar-btn:hover {
+  background: #dadce0;
+}
+
+.gdocs-toolbar-btn.active {
+  background: #d3e3fd;
+  color: #041e49;
+}
+
+/* --- Document Workspace Sheets --- */
+.sim-doc-workspace {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  align-items: center;
+  padding: 24px;
+}
+
+.sim-doc-sheet {
+  background: #ffffff;
+  width: 800px;
+  min-height: 1000px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  border: 1px solid #dadce0;
+  padding: 72px 96px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.sim-doc-sheet-ruler {
+  height: 20px;
+  background: #f1f3f4;
+  border-bottom: 1px solid #dadce0;
+  width: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.sim-doc-sheet-content {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  border: none;
+  resize: none;
+  outline: none;
+  font-family: "Calibri", "Arial", sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #000000;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+}
+
+.sim-doc-status-bar {
+  height: 24px;
+  border-top: 1px solid #d2d0ce;
+  background: #ffffff;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #605e5c;
+  flex-shrink: 0;
+}
+
+.sim-doc-status-left {
+  display: flex;
+  gap: 16px;
+}
+
+.sim-doc-status-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #107c41;
+  font-weight: 500;
+}
+
+/* --- CLM Integration Taskpane/Sidebar --- */
+.clm-taskpane {
+  width: 320px;
+  background: #ffffff;
+  border-left: 1px solid #dadce0;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -2px 0 8px rgba(0,0,0,0.05);
+  z-index: 10;
+  flex-shrink: 0;
+  color: #333333;
+}
+
+.clm-taskpane-header {
+  padding: 16px;
+  background: #185abd;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.clm-taskpane-header.gdocs {
+  background: #ffffff;
+  color: #1a73e8;
+  border-bottom: 1px solid #dadce0;
+}
+
+.clm-taskpane-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.clm-status-box {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.clm-status-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #5f6368;
+  letter-spacing: 0.5px;
+}
+
+.clm-status-value {
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.clm-sync-badge {
+  padding: 2px 6px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.clm-sync-badge.synced {
+  background: #e6f4ea;
+  color: #137333;
+}
+
+.clm-sync-badge.syncing {
+  background: #fef7e0;
+  color: #b06000;
+}
+
+.clm-sync-badge.unsynced {
+  background: #fce8e6;
+  color: #c5221f;
+}
+
+.clm-action-btn {
+  background: #185abd;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.2s;
+}
+
+.clm-action-btn:hover {
+  background: #124996;
+}
+
+.clm-action-btn.secondary {
+  background: #ffffff;
+  color: #3c4043;
+  border: 1px solid #dadce0;
+}
+
+.clm-action-btn.secondary:hover {
+  background: #f8f9fa;
+  border-color: #c0c0c0;
+}
+
+.clm-action-btn.gdocs {
+  background: #1a73e8;
+}
+
+.clm-action-btn.gdocs:hover {
+  background: #1557b0;
+}
+
+.clm-clause-library {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.clm-clause-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #ffffff;
+  text-align: left;
+}
+
+.clm-clause-card:hover {
+  border-color: #185abd;
+  background: #f3f6fc;
+}
+
+.clm-clause-title {
+  font-weight: 600;
+  color: #202124;
+  margin-bottom: 2px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.clm-clause-risk {
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-weight: 700;
+}
+
+.clm-clause-risk.low { background: #e6f4ea; color: #137333; }
+.clm-clause-risk.medium { background: #fef7e0; color: #b06000; }
+.clm-clause-risk.high { background: #fce8e6; color: #c5221f; }
+
+.clm-clause-text {
+  color: #5f6368;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.clm-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.clm-form-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #5f6368;
+}
+
+.clm-toggle-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.clm-switch {
+  position: relative;
+  display: inline-block;
+  width: 34px;
+  height: 20px;
+}
+
+.clm-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.clm-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+  border-radius: 20px;
+}
+
+.clm-slider:before {
+  position: absolute;
+  content: "";
+  height: 12px;
+  width: 12px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+
+input:checked + .clm-slider {
+  background-color: #185abd;
+}
+
+input:checked + .clm-slider.gdocs {
+  background-color: #1a73e8;
+}
+
+input:checked + .clm-slider:before {
+  transform: translateX(14px);
+}

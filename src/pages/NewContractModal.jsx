@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { createContrato, getClientes, getClienteDetail, getSoftwareList, getSLAs, getPlantillas, generarDocumentoContrato, getClausulas } from '../api';
+import { createContrato, getClientes, getClienteDetail, getSoftwareList, getSLAs, getSlaNA, getPlantillas, generarDocumentoContrato, getClausulas, getCamposPlantilla } from '../api';
 import { contratoIdDisplay } from '../utils/formatters';
+import ConfirmModal from '../components/ui/ConfirmModal';
 import './Contratos.css';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -17,6 +18,7 @@ const FRECUENCIA_OPTIONS = [
 function todayISO() { return new Date().toISOString().slice(0, 10); }
 
 const INITIAL_FORM = {
+  nombre: '',
   software_id: '',
   plantilla_id: '',
   sla_id: '',
@@ -129,8 +131,23 @@ function SRow({ label, value, accent }) {
 }
 
 // ─── Main modal ───────────────────────────────────────────────────────────────
+const loadDraft = () => {
+  try {
+    const saved = localStorage.getItem('clm_new_contract_draft');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    console.error('Error loading draft', e);
+  }
+  return null;
+};
+
 export default function NewContractModal({ onClose, onSuccess, initialClienteId = null }) {
-  const [step, setStep] = useState(1);
+  const [draft] = useState(() => loadDraft() || {});
+  const [hasDraftLoaded, setHasDraftLoaded] = useState(() => !!draft.form);
+
+  const [step, setStep] = useState(() => draft.step || 1);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
@@ -151,8 +168,8 @@ export default function NewContractModal({ onClose, onSuccess, initialClienteId 
   }, []);
 
   // ── Form state ────────────────────────────────────────────────────────────
-  const [clienteSelected, setClienteSelected] = useState(null);
-  const [clienteQuery, setClienteQuery] = useState('');
+  const [clienteSelected, setClienteSelected] = useState(() => draft.clienteSelected || null);
+  const [clienteQuery, setClienteQuery] = useState(() => draft.clienteQuery || '');
   const [clienteResults, setClienteResults] = useState([]);
   const [clienteOpen, setClienteOpen] = useState(false);
   const [clienteLoading, setClienteLoading] = useState(false);
@@ -160,13 +177,59 @@ export default function NewContractModal({ onClose, onSuccess, initialClienteId 
   const clienteTimerRef = useRef(null);
   const clienteBoxRef = useRef(null);
 
-  const [form, setForm] = useState(INITIAL_FORM);
-  const [textoClausulas, setTextoClausulas] = useState('');
+  const [form, setForm] = useState(() => draft.form || INITIAL_FORM);
+  const [textoClausulas, setTextoClausulas] = useState(() => draft.textoClausulas || '');
   const [allClausulas, setAllClausulas] = useState([]);
 
   useEffect(() => {
     getClausulas().then(setAllClausulas).catch(() => {});
   }, []);
+
+  // Campos manuales de la plantilla HTML elegida (ej. PARA/DE/ASUNTO de un
+  // memorándum): se recolectan en el Paso 3, junto al resto de la
+  // configuración final, antes de crear el contrato y generar el documento.
+  const [camposPlantilla, setCamposPlantilla] = useState([]);
+  const [camposValores, setCamposValores] = useState(() => draft.camposValores || {});
+
+  const isFirstFieldsMount = useRef(true);
+
+  useEffect(() => {
+    // Si es la carga inicial y las plantillas aún no se han recuperado del API,
+    // evitamos limpiar camposValores para no borrar el borrador restaurado.
+    if (isFirstFieldsMount.current && plantillas.length === 0) {
+      return;
+    }
+
+    const plantilla = plantillas.find(p => String(p.id) === String(form.plantilla_id));
+    if (!plantilla || plantilla.modo_origen !== 'html') {
+      setCamposPlantilla([]);
+      if (!isFirstFieldsMount.current) {
+        setCamposValores({});
+      }
+      return;
+    }
+    getCamposPlantilla({ plantillaId: plantilla.id })
+      .then(({ campos }) => {
+        setCamposPlantilla(campos || []);
+        setCamposValores(prev => {
+          const next = { ...prev };
+          for (const c of (campos || [])) {
+            if (next[c.nombre] === undefined) {
+              next[c.nombre] = '';
+            }
+          }
+          return next;
+        });
+        isFirstFieldsMount.current = false;
+      })
+      .catch(() => { 
+        setCamposPlantilla([]); 
+        if (!isFirstFieldsMount.current) {
+          setCamposValores({});
+        }
+        isFirstFieldsMount.current = false;
+      });
+  }, [form.plantilla_id, plantillas]);
 
   // Cliente precargado (deep-link desde Clientes): no cuenta como "dato ingresado"
   // para la confirmación de descarte al cerrar.
@@ -192,25 +255,96 @@ export default function NewContractModal({ onClose, onSuccess, initialClienteId 
     return () => { cancelled = true; };
   }, [initialClienteId]);
 
-  const isDirty = (clienteSelected?.id ?? null) !== prefillRef.current.clienteId ||
-    clienteQuery !== prefillRef.current.query ||
-    JSON.stringify(form) !== JSON.stringify(INITIAL_FORM);
+  const ignoreSaveRef = useRef(false);
+  const stateRef = useRef({
+    form: INITIAL_FORM,
+    clienteSelected: null,
+    clienteQuery: '',
+    textoClausulas: '',
+    camposValores: {},
+    step: 1
+  });
 
-  // ── Cierre seguro: confirma si hay datos; si el contrato ya existe, no se pierde ──
+  useEffect(() => {
+    stateRef.current = {
+      form,
+      clienteSelected,
+      clienteQuery,
+      textoClausulas,
+      camposValores,
+      step
+    };
+  }, [form, clienteSelected, clienteQuery, textoClausulas, camposValores, step]);
+
+  const clearDraft = () => {
+    ignoreSaveRef.current = true;
+    try {
+      localStorage.removeItem('clm_new_contract_draft');
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    if (createdRef.current || ignoreSaveRef.current) return;
+    try {
+      const draftData = {
+        form,
+        clienteSelected,
+        clienteQuery,
+        textoClausulas,
+        camposValores,
+        step,
+      };
+      localStorage.setItem('clm_new_contract_draft', JSON.stringify(draftData));
+    } catch (e) {
+      console.error('Error saving draft', e);
+    }
+  }, [form, clienteSelected, clienteQuery, textoClausulas, camposValores, step]);
+
+  const handleDiscardDraft = () => {
+    ignoreSaveRef.current = true;
+    try {
+      localStorage.removeItem('clm_new_contract_draft');
+    } catch (e) {
+      console.error(e);
+    }
+    setHasDraftLoaded(false);
+    setForm(INITIAL_FORM);
+    setClienteSelected(null);
+    setClienteQuery('');
+    setStep(1);
+    setTextoClausulas('');
+    setCamposValores({});
+    setTimeout(() => {
+      ignoreSaveRef.current = false;
+    }, 0);
+  };
+
+  // ── Cierre seguro: guarda borrador al cerrar modal ──
   const attemptClose = useCallback(() => {
     if (loading) return;
     if (createdRef.current) {
-      // El contrato ya fue creado; cerrar equivale a continuar sin documento.
       onSuccess?.(createdRef.current);
-      onClose();
-      return;
+      clearDraft();
+    } else {
+      if (!ignoreSaveRef.current) {
+        try {
+          localStorage.setItem('clm_new_contract_draft', JSON.stringify(stateRef.current));
+        } catch (e) {
+          console.error('Error saving draft on close', e);
+        }
+      }
     }
-    if (isDirty && !window.confirm('¿Descartar el nuevo contrato? Se perderán los datos ingresados.')) return;
     onClose();
-  }, [loading, isDirty, onClose, onSuccess]);
+  }, [loading, onClose, onSuccess]);
 
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') attemptClose(); };
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        attemptClose();
+      }
+    };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [attemptClose]);
@@ -259,6 +393,7 @@ export default function NewContractModal({ onClose, onSuccess, initialClienteId 
       setClienteActiveIdx(i => (i <= 0 ? clienteResults.length - 1 : i - 1));
     } else if (e.key === 'Enter') {
       e.preventDefault();
+      e.stopPropagation();
       pickCliente(clienteResults[clienteActiveIdx >= 0 ? clienteActiveIdx : 0]);
     } else if (e.key === 'Escape') {
       // Solo cierra el dropdown; el listener global de Escape no debe cerrar el modal.
@@ -267,26 +402,87 @@ export default function NewContractModal({ onClose, onSuccess, initialClienteId 
     }
   };
 
+  const panelRef = useRef(null);
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      const activeEl = document.activeElement;
+      if (!activeEl) return;
+
+      // Si es un textarea o botón, no interferimos.
+      if (activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'BUTTON') {
+        return;
+      }
+
+      // Si es un checkbox, simulamos clic para hacer toggle y continuamos enfocando el siguiente
+      if (activeEl.tagName === 'INPUT' && activeEl.type === 'checkbox') {
+        activeEl.click();
+      }
+
+      if (!panelRef.current) return;
+      const elements = Array.from(
+        panelRef.current.querySelectorAll(
+          'input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])'
+        )
+      );
+
+      const index = elements.indexOf(activeEl);
+      if (index !== -1) {
+        e.preventDefault();
+        let nextIndex = index + 1;
+        while (nextIndex < elements.length) {
+          const nextEl = elements[nextIndex];
+          // Saltamos botones de cerrar, quitar cliente, cancelar, anterior, etc.
+          if (
+            nextEl.classList.contains('ctm-close') || 
+            nextEl.classList.contains('ctm-clear') ||
+            nextEl.classList.contains('ct-btn-secondary') ||
+            nextEl.textContent === 'Descartar borrador'
+          ) {
+            nextIndex++;
+            continue;
+          }
+          nextEl.focus();
+          break;
+        }
+      }
+    }
+  };
+
+  const isFirstMount = useRef(true);
+
   // ── Load plantillas cuando cambia software o tipo de contrato ─────────────
   // La plantilla debe ser coherente con ambos: el motor de renderizado resuelve
   // por (tipo_contrato, software) con fallback a plantillas globales.
   useEffect(() => {
     if (!form.software_id) { setPlantillas([]); return; }
     setLoadingPlantillas(true);
-    setForm(f => ({ ...f, plantilla_id: '' }));
+    if (!isFirstMount.current) {
+      setForm(f => ({ ...f, plantilla_id: '' }));
+    }
     getPlantillas({
       software: form.software_id,
       tipo_contrato: form.tipo_contrato,
       incluir_globales: true,
-      activa: true,
     })
       .then(data => {
         const lista = data || [];
         setPlantillas(lista);
-        // Si hay una sola opción, se preselecciona.
-        if (lista.length === 1) setForm(f => ({ ...f, plantilla_id: String(lista[0].id) }));
+        if (!isFirstMount.current || !form.plantilla_id) {
+          // Si hay una plantilla activa, la preseleccionamos. Si no, si hay una sola opción, se preselecciona.
+          const activaItem = lista.find(p => p.activa);
+          if (activaItem) {
+            setForm(f => ({ ...f, plantilla_id: String(activaItem.id) }));
+          } else if (lista.length === 1) {
+            setForm(f => ({ ...f, plantilla_id: String(lista[0].id) }));
+          }
+        }
+        isFirstMount.current = false;
       })
-      .catch(() => setPlantillas([]))
+      .catch(() => {
+        setPlantillas([]);
+        isFirstMount.current = false;
+      })
       .finally(() => setLoadingPlantillas(false));
   }, [form.software_id, form.tipo_contrato]);
 
@@ -324,6 +520,12 @@ export default function NewContractModal({ onClose, onSuccess, initialClienteId 
   const esRecurrente = form.tipo_contrato === 'RECURRENTE';
   const esProBono = form.tipo_contrato === 'PRO_BONO';
 
+  // Plantillas administrativas (NDA, memorándums, fichas de requerimientos)
+  // no tienen nivel de servicio ni facturación real — el wizard no debe
+  // pedirlos. Ver PlantillaDocumento.requiere_sla_facturacion.
+  const plantillaSeleccionada = plantillas.find(p => String(p.id) === String(form.plantilla_id));
+  const requiereSlaFacturacion = plantillaSeleccionada ? plantillaSeleccionada.requiere_sla_facturacion !== false : true;
+
   const handleTipoChange = (e) => {
     const tipo = e.target.value;
     setForm(f => ({
@@ -349,7 +551,7 @@ export default function NewContractModal({ onClose, onSuccess, initialClienteId 
         errs.plantilla_id = 'Selecciona una plantilla';
       }
     }
-    if (s === 2) {
+    if (s === 2 && requiereSlaFacturacion) {
       if (!form.sla_id) errs.sla_id = 'Selecciona un SLA';
       if (!esProBono) {
         const m = parseFloat(form.monto);
@@ -364,8 +566,10 @@ export default function NewContractModal({ onClose, onSuccess, initialClienteId 
       if (!form.sin_vencimiento && form.fecha_vencimiento && form.fecha_vencimiento < form.fecha_inicio) {
         errs.fecha_vencimiento = 'Debe ser posterior a la fecha de inicio';
       }
-      const dg = parseInt(form.dias_gracia_autorizados, 10);
-      if (isNaN(dg) || dg < 0) errs.dias_gracia_autorizados = 'Debe ser un número ≥ 0';
+      if (requiereSlaFacturacion) {
+        const dg = parseInt(form.dias_gracia_autorizados, 10);
+        if (isNaN(dg) || dg < 0) errs.dias_gracia_autorizados = 'Debe ser un número ≥ 0';
+      }
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -379,6 +583,7 @@ export default function NewContractModal({ onClose, onSuccess, initialClienteId 
     await generarDocumentoContrato({
       contrato_id: contrato.id,
       plantilla_id: form.plantilla_id,
+      campos: camposValores,
     });
   };
 
@@ -391,17 +596,22 @@ export default function NewContractModal({ onClose, onSuccess, initialClienteId 
       // Si el contrato ya fue creado en un intento anterior, no se duplica.
       let contrato = createdRef.current;
       if (!contrato) {
+        // Plantillas administrativas (NDA, memorándums, etc.) no piden SLA/monto
+        // en el wizard, pero el modelo Contrato los exige igual — se asigna un
+        // SLA técnico "N/A" (creado una vez por tenant) y monto $0 en silencio.
+        const slaId = requiereSlaFacturacion ? form.sla_id : (await getSlaNA()).id;
         const payload = {
+          nombre: form.nombre || null,
           cliente_id: clienteSelected.id,
           software_id: form.software_id,
-          sla_id: form.sla_id,
+          sla_id: slaId,
           tipo_contrato: form.tipo_contrato,
-          monto: esProBono ? '0' : form.monto,
+          monto: (!requiereSlaFacturacion || esProBono) ? '0' : form.monto,
           fecha_inicio: form.fecha_inicio,
           fecha_vencimiento: (form.sin_vencimiento || !form.fecha_vencimiento) ? null : form.fecha_vencimiento,
-          dias_gracia_autorizados: parseInt(form.dias_gracia_autorizados, 10) || 0,
+          dias_gracia_autorizados: requiereSlaFacturacion ? (parseInt(form.dias_gracia_autorizados, 10) || 0) : 0,
         };
-        if (esRecurrente) payload.frecuencia_facturacion = form.frecuencia_facturacion;
+        if (requiereSlaFacturacion && esRecurrente) payload.frecuencia_facturacion = form.frecuencia_facturacion;
         if (textoClausulas) payload.texto_adicional_clausulas = textoClausulas;
         contrato = await createContrato(payload);
         createdRef.current = contrato;
@@ -417,6 +627,7 @@ export default function NewContractModal({ onClose, onSuccess, initialClienteId 
       }
 
       onSuccess?.(contrato);
+      clearDraft();
       onClose();
     } catch (err) {
       // Errores de validación por campo del backend → se muestran en su campo
@@ -450,6 +661,7 @@ export default function NewContractModal({ onClose, onSuccess, initialClienteId 
     try {
       await generarDocumento(createdRef.current);
       onSuccess?.(createdRef.current);
+      clearDraft();
       onClose();
     } catch (err) {
       setDocError(err.message || 'Error desconocido al generar el documento.');
@@ -461,6 +673,7 @@ export default function NewContractModal({ onClose, onSuccess, initialClienteId 
   const continuarSinDocumento = () => {
     if (!createdRef.current) return;
     onSuccess?.(createdRef.current);
+    clearDraft();
     onClose();
   };
 
@@ -476,7 +689,7 @@ export default function NewContractModal({ onClose, onSuccess, initialClienteId 
     <>
       <div className="ctm-backdrop" onClick={attemptClose} />
 
-      <div className="ctm-panel" role="dialog" aria-modal="true" aria-label="Nuevo contrato">
+      <div ref={panelRef} onKeyDown={handleKeyDown} className="ctm-panel" role="dialog" aria-modal="true" aria-label="Nuevo contrato">
         {/* Header */}
         <div className="ctm-header">
           <div>
@@ -498,6 +711,33 @@ export default function NewContractModal({ onClose, onSuccess, initialClienteId 
           {/* ── STEP 1 ─────────────────────────────────────────────────────── */}
           {step === 1 && (
             <div>
+              {hasDraftLoaded && (
+                <div className="ctm-note ctm-note-info" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', padding: '10px 12px' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
+                    <Svg d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" color="var(--primary)" size={14} />
+                    Se ha recuperado un borrador de contrato sin guardar.
+                  </span>
+                  <button 
+                    type="button" 
+                    onClick={handleDiscardDraft} 
+                    style={{ 
+                      background: 'none', 
+                      border: 'none', 
+                      color: 'var(--danger)', 
+                      fontWeight: 600, 
+                      fontSize: '11px', 
+                      cursor: 'pointer', 
+                      textDecoration: 'underline',
+                      padding: 0
+                    }}
+                  >
+                    Descartar borrador
+                  </button>
+                </div>
+              )}
+              <div className="ctm-row" style={{ marginBottom: '14px' }}>
+                <TF label="Nombre del Contrato" name="nombre" value={form.nombre} onChange={handleChange} error={errors.nombre} placeholder="Ej. Contrato de Licencia 2024" hint="Si lo dejas en blanco, se autogenerará según el tipo y software." />
+              </div>
               {/* Cliente */}
               <div className="ctm-field ctm-rel" ref={clienteBoxRef}>
                 <FL req>Cliente</FL>
@@ -586,7 +826,7 @@ export default function NewContractModal({ onClose, onSuccess, initialClienteId 
                 ) : plantillas.length === 0 ? (
                   <div className="ctm-note ctm-note-warn">
                     <Svg d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01" color="var(--warning-bright)" size={14} />
-                    No hay plantillas activas para este software y tipo de contrato.
+                    No hay plantillas registradas para este software y tipo de contrato.
                     Puedes crear el contrato igualmente y generar el documento después.
                   </div>
                 ) : (
@@ -596,7 +836,7 @@ export default function NewContractModal({ onClose, onSuccess, initialClienteId 
                       <option value="">Seleccionar plantilla…</option>
                       {plantillas.map(p => (
                         <option key={p.id} value={p.id}>
-                          {p.nombre} · {p.version_codigo}{!p.software_id ? ' (global)' : ''}
+                          {p.nombre} · {p.version_codigo}{!p.software_id ? ' (global)' : ''}{!p.activa ? ' (inactiva)' : ''}
                         </option>
                       ))}
                     </select>
@@ -611,42 +851,52 @@ export default function NewContractModal({ onClose, onSuccess, initialClienteId 
           {/* ── STEP 2 ─────────────────────────────────────────────────────── */}
           {step === 2 && (
             <div>
-              <SF label="SLA (Nivel de Servicio)" req name="sla_id"
-                value={form.sla_id} onChange={handleChange}
-                error={errors.sla_id}
-                placeholder="Selecciona el SLA"
-                options={slaList.map(s => ({ value: s.id, label: s.nombre }))}
-              />
+              {!requiereSlaFacturacion ? (
+                <div className="ctm-note ctm-note-empty">
+                  <Svg d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" color="var(--border)" size={14} />
+                  La plantilla <strong>{plantillaSeleccionada?.nombre}</strong> es un documento administrativo
+                  — no requiere SLA ni facturación. Se genera directo, sin costo asociado.
+                </div>
+              ) : (
+                <>
+                  <SF label="SLA (Nivel de Servicio)" req name="sla_id"
+                    value={form.sla_id} onChange={handleChange}
+                    error={errors.sla_id}
+                    placeholder="Selecciona el SLA"
+                    options={slaList.map(s => ({ value: s.id, label: s.nombre }))}
+                  />
 
-              {/* Billing section */}
-              <div className="ctm-section">
-                <p className="ctm-section-title">Facturación · {tipoLabel}</p>
-                {esRecurrente ? (
-                  <div className="ctm-grid-2">
-                    <SF label="Frecuencia" req name="frecuencia_facturacion"
-                      value={form.frecuencia_facturacion} onChange={handleChange}
-                      error={errors.frecuencia_facturacion}
-                      options={FRECUENCIA_OPTIONS}
-                    />
-                    <TF
-                      label={`Monto por ciclo (${form.frecuencia_facturacion === 'ANUAL' ? 'anual' : 'mensual'})`}
-                      req name="monto" type="number" step="0.01" min="0"
-                      value={form.monto} onChange={handleChange}
-                      error={errors.monto} placeholder="ej: 1500.00"
-                    />
+                  {/* Billing section */}
+                  <div className="ctm-section">
+                    <p className="ctm-section-title">Facturación · {tipoLabel}</p>
+                    {esRecurrente ? (
+                      <div className="ctm-grid-2">
+                        <SF label="Frecuencia" req name="frecuencia_facturacion"
+                          value={form.frecuencia_facturacion} onChange={handleChange}
+                          error={errors.frecuencia_facturacion}
+                          options={FRECUENCIA_OPTIONS}
+                        />
+                        <TF
+                          label={`Monto por ciclo (${form.frecuencia_facturacion === 'ANUAL' ? 'anual' : 'mensual'})`}
+                          req name="monto" type="number" step="0.01" min="0"
+                          value={form.monto} onChange={handleChange}
+                          error={errors.monto} placeholder="ej: 1500.00"
+                        />
+                      </div>
+                    ) : esProBono ? (
+                      <TF label="Monto" name="monto" type="number"
+                        value="0" onChange={handleChange} disabled
+                        hint="Los contratos Pro Bono no facturan monto."
+                      />
+                    ) : (
+                      <TF label="Monto" req name="monto" type="number" step="0.01" min="0"
+                        value={form.monto} onChange={handleChange}
+                        error={errors.monto} placeholder="ej: 5000.00"
+                      />
+                    )}
                   </div>
-                ) : esProBono ? (
-                  <TF label="Monto" name="monto" type="number"
-                    value="0" onChange={handleChange} disabled
-                    hint="Los contratos Pro Bono no facturan monto."
-                  />
-                ) : (
-                  <TF label="Monto" req name="monto" type="number" step="0.01" min="0"
-                    value={form.monto} onChange={handleChange}
-                    error={errors.monto} placeholder="ej: 5000.00"
-                  />
-                )}
-              </div>
+                </>
+              )}
             </div>
           )}
 
@@ -675,11 +925,13 @@ export default function NewContractModal({ onClose, onSuccess, initialClienteId 
                 </div>
               </div>
 
-              <TF label="Días de Gracia Autorizados" name="dias_gracia_autorizados"
-                type="number" min="0" value={form.dias_gracia_autorizados}
-                onChange={handleChange} error={errors.dias_gracia_autorizados}
-                placeholder="0"
-              />
+              {requiereSlaFacturacion && (
+                <TF label="Días de Gracia Autorizados" name="dias_gracia_autorizados"
+                  type="number" min="0" value={form.dias_gracia_autorizados}
+                  onChange={handleChange} error={errors.dias_gracia_autorizados}
+                  placeholder="0"
+                />
+              )}
 
               {textoClausulas !== '' && (
                 <div className="ctm-section">
@@ -692,20 +944,56 @@ export default function NewContractModal({ onClose, onSuccess, initialClienteId 
                 </div>
               )}
 
+              {camposPlantilla.length > 0 && (
+                <div className="ctm-section">
+                  <p className="ctm-section-title">Contenido del Documento</p>
+                  <p className="ctm-hint" style={{ marginTop: -4, marginBottom: 10 }}>
+                    Campos propios de la plantilla elegida. Déjalos en blanco para conservar el texto de ejemplo.
+                  </p>
+                  {camposPlantilla.map(c => (
+                    <div key={c.nombre} className="ctm-field">
+                      <FL>{c.label}</FL>
+                      {c.multilinea ? (
+                        <textarea
+                          value={camposValores[c.nombre] ?? ''}
+                          onChange={e => setCamposValores(prev => ({ ...prev, [c.nombre]: e.target.value }))}
+                          placeholder={c.default}
+                          style={{ width: '100%', minHeight: 80, padding: '10px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 5, fontFamily: 'inherit', resize: 'vertical' }}
+                        />
+                      ) : (
+                        <input
+                          type="text"
+                          value={camposValores[c.nombre] ?? ''}
+                          onChange={e => setCamposValores(prev => ({ ...prev, [c.nombre]: e.target.value }))}
+                          placeholder={c.default}
+                          className="ctm-control"
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {/* Summary */}
               <div className="ctm-section">
                 <p className="ctm-section-title">Resumen del Contrato</p>
                 <SRow label="Cliente" value={clienteNombre} />
                 <SRow label="Software" value={swNombre} accent />
                 <SRow label="Plantilla" value={form.plantilla_id ? plantillaNombre : 'Sin documento (se genera después)'} />
-                <SRow label="SLA" value={slaNombre} />
                 <SRow label="Tipo" value={tipoLabel} />
-                {esRecurrente && <SRow label="Facturación" value={frecLabel} />}
-                <SRow label={esRecurrente ? `Monto / ciclo` : 'Monto'}
-                  value={esProBono ? 'Pro Bono ($0)' : (form.monto ? `$${Number(form.monto).toLocaleString('es-CL')} USD` : '')} accent />
+                {requiereSlaFacturacion ? (
+                  <>
+                    <SRow label="SLA" value={slaNombre} />
+                    {esRecurrente && <SRow label="Facturación" value={frecLabel} />}
+                    <SRow label={esRecurrente ? `Monto / ciclo` : 'Monto'}
+                      value={esProBono ? 'Pro Bono ($0)' : (form.monto ? `$${Number(form.monto).toLocaleString('es-CL')} USD` : '')} accent />
+                  </>
+                ) : (
+                  <SRow label="SLA / Facturación" value="No aplica (documento administrativo)" />
+                )}
                 <SRow label="Inicio" value={form.fecha_inicio} />
                 <SRow label="Vencimiento" value={form.sin_vencimiento ? 'Sin vencimiento' : (form.fecha_vencimiento || '—')} />
-                {parseInt(form.dias_gracia_autorizados, 10) > 0 && (
+                {requiereSlaFacturacion && parseInt(form.dias_gracia_autorizados, 10) > 0 && (
                   <SRow label="Días de gracia" value={`${form.dias_gracia_autorizados} días`} />
                 )}
               </div>
@@ -771,6 +1059,7 @@ export default function NewContractModal({ onClose, onSuccess, initialClienteId 
           )}
         </div>
       </div>
+
     </>
   );
 }
