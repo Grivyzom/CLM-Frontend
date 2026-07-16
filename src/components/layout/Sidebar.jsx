@@ -91,7 +91,7 @@ export default function Sidebar() {
     return saved !== null ? parseInt(saved, 10) : 0;
   });
   
-  const { user, logout, hasFeature, canAccessClientes, isClienteExterno } = useAuth();
+  const { user, logout, hasFeature, canAccessClientes, isClienteExterno, isModerador } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -138,40 +138,54 @@ export default function Sidebar() {
 
   useEffect(() => {
     if (!user) return;
+    // Los 3 bloques son independientes entre sí (badges distintos); antes se
+    // esperaban en serie (3 round-trips seguidos), ahora corren en paralelo.
     const fetchBadge = async () => {
+      const tasks = [];
+
       if (hasFeature('contratos') || isClienteExterno) {
-        try {
-          const stats = await getContratoStats();
-          const count = stats.contratos_activos || 0;
-          setContratosBadge(count);
-          localStorage.setItem('clm_contratos_badge', count.toString());
-        } catch (err) {}
+        tasks.push((async () => {
+          try {
+            const stats = await getContratoStats();
+            const count = stats.contratos_activos || 0;
+            setContratosBadge(count);
+            localStorage.setItem('clm_contratos_badge', count.toString());
+          } catch (err) {}
+        })());
       }
 
       if (hasFeature('legal') && !isClienteExterno) {
-        try {
-          const audData = await getAuditoria();
-          const audCount = (audData.kpis?.pendingAudits || 0) + (audData.kpis?.highRiskContracts || 0);
-          setAuditoriaBadge(audCount);
-          localStorage.setItem('clm_auditoria_badge', audCount.toString());
-        } catch (err) {}
+        tasks.push((async () => {
+          try {
+            const audData = await getAuditoria();
+            const audCount = (audData.kpis?.pendingAudits || 0) + (audData.kpis?.highRiskContracts || 0);
+            setAuditoriaBadge(audCount);
+            localStorage.setItem('clm_auditoria_badge', audCount.toString());
+          } catch (err) {}
+        })());
       }
 
       if (hasFeature('incidencias') || isClienteExterno) {
-        try {
-          let count;
-          if (isClienteExterno) {
-            const abiertas = await getIncidencias({ estado: 'ABIERTO', page_size: 1 });
-            const enProgreso = await getIncidencias({ estado: 'EN_PROGRESO', page_size: 1 });
-            count = (abiertas.count || 0) + (enProgreso.count || 0);
-          } else {
-            const incStats = await getIncidenciaStats();
-            count = (incStats.abiertas || 0) + (incStats.en_progreso || 0);
-          }
-          setIncidenciasBadge(count);
-          localStorage.setItem('clm_incidencias_badge', count.toString());
-        } catch (err) {}
+        tasks.push((async () => {
+          try {
+            let count;
+            if (isClienteExterno) {
+              const [abiertas, enProgreso] = await Promise.all([
+                getIncidencias({ estado: 'ABIERTO', page_size: 1 }),
+                getIncidencias({ estado: 'EN_PROGRESO', page_size: 1 }),
+              ]);
+              count = (abiertas.count || 0) + (enProgreso.count || 0);
+            } else {
+              const incStats = await getIncidenciaStats();
+              count = (incStats.abiertas || 0) + (incStats.en_progreso || 0);
+            }
+            setIncidenciasBadge(count);
+            localStorage.setItem('clm_incidencias_badge', count.toString());
+          } catch (err) {}
+        })());
       }
+
+      await Promise.all(tasks);
     };
 
     fetchBadge();
@@ -179,23 +193,27 @@ export default function Sidebar() {
     return () => clearInterval(intervalId);
   }, [user, hasFeature, isClienteExterno]);
 
-  // Carga de clientes para el selector de Vista activa (solo al abrirlo).
+  // Carga de clientes para el selector de Vista activa (solo al abrirlo,
+  // una sola vez). El ref evita re-disparos del efecto por sus propios
+  // setState; si la petición falla se libera para reintentar al reabrir.
+  const ctxFetchStartedRef = useRef(false);
   useEffect(() => {
-    if (!dropOpen || ctxClientes !== null || ctxLoading) return;
-    let cancelled = false;
+    if (!dropOpen || ctxFetchStartedRef.current) return;
+    ctxFetchStartedRef.current = true;
     setCtxLoading(true);
     getClientes({ page_size: 100, ordering: 'razon_social' })
       .then((res) => {
-        if (cancelled) return;
         setCtxClientes((res.results || []).map((c) => ({
           id: c.id,
           nombre: c.razon_social || c.nombre_comercial || `Cliente #${c.id}`,
         })));
       })
-      .catch(() => { if (!cancelled) setCtxClientes([]); })
-      .finally(() => { if (!cancelled) setCtxLoading(false); });
-    return () => { cancelled = true; };
-  }, [dropOpen, ctxClientes, ctxLoading]);
+      .catch(() => {
+        setCtxClientes(null);
+        ctxFetchStartedRef.current = false;
+      })
+      .finally(() => setCtxLoading(false));
+  }, [dropOpen]);
 
   const activeViewLabel = activeCliente?.nombre || GLOBAL_VIEW_LABEL;
   const ctxFiltered = (ctxClientes || []).filter((c) =>
@@ -317,6 +335,7 @@ export default function Sidebar() {
       if (['historial', 'novedades', 'membresias', 'tarifas'].includes(item.id)) return false;
       if (item.id === 'clientes' && !canAccessClientes) return false;
       if (item.id === 'tenants' && !user.isSuperadmin) return false;
+      if (item.id === 'usuarios' && !(user.isSuperadmin || isModerador)) return false;
       if (item.id !== 'clientes' && item.id !== 'tenants' && item.feature && item.feature !== 'membresias' && !hasFeature(item.feature)) return false;
     }
     return true;

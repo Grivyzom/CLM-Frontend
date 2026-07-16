@@ -31,6 +31,7 @@ const Novedades      = lazy(() => import('./pages/Novedades'));
 const Reporte        = lazy(() => import('./pages/Reporte'));
 const ClienteWorkspace   = lazy(() => import('./pages/ClienteWorkspace'));
 const ProductoWorkspace  = lazy(() => import('./pages/ProductoWorkspace'));
+const Usuarios           = lazy(() => import('./pages/Usuarios'));
 
 function RouteFallback() {
   return <div className="route-fallback" aria-busy="true" />;
@@ -104,6 +105,9 @@ function App() {
                       } />
                       <Route path="/reportes" element={
                         <RequireAccess require={(auth) => auth.isClienteExterno || auth.hasFeature('incidencias')}><Reporte /></RequireAccess>
+                      } />
+                      <Route path="/usuarios" element={
+                        <RequireAccess require={(auth) => auth.user?.isSuperadmin || auth.isModerador}><Usuarios /></RequireAccess>
                       } />
                       <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
