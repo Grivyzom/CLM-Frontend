@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import gsap from 'gsap';
-import { useGSAP } from '@gsap/react';
 import './Contratos.css';
 import { useContratos } from '../hooks/useContratos';
 import { getSoftwareList, generarDocumentoContrato } from '../api';
@@ -115,12 +114,65 @@ function StatsStrip({ stats }) {
 }
 
 // ─── Slide-Over Panel (preview rápido desde tabla/kanban) ─────────────────────
-function SlideOver({ contrato, onClose, onOpen }) {
+function SlideOver({ contrato, onClose, onOpen, onPreview }) {
+  const dialogRef = useRef(null);
+  const triggerRef = useRef(null);
+
   useEffect(() => {
     if (!contrato) return;
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+
+    triggerRef.current = document.activeElement;
+
+    if (dialogRef.current) {
+      setTimeout(() => {
+        if (!dialogRef.current) return;
+        const focusable = dialogRef.current.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length > 0) {
+          focusable[0].focus();
+        } else {
+          dialogRef.current.focus();
+        }
+      }, 10);
+    }
+
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+
+      if (e.key === 'Tab' && dialogRef.current) {
+        const focusable = dialogRef.current.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+        
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
+    };
+    
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      if (triggerRef.current && typeof triggerRef.current.focus === 'function') {
+        triggerRef.current.focus();
+      }
+    };
   }, [contrato, onClose]);
 
   if (!contrato) return null;
@@ -129,7 +181,7 @@ function SlideOver({ contrato, onClose, onOpen }) {
   return (
     <>
       <div className="ct-slideover-backdrop" onClick={onClose} />
-      <div className="ct-slideover" role="dialog" aria-modal="true" aria-label={`Detalle de ${contrato.nombre}`}>
+      <div className="ct-slideover" ref={dialogRef} role="dialog" aria-modal="true" aria-label={`Detalle de ${contrato.nombre}`} tabIndex={-1}>
         <div className="ct-slideover-header">
           <div>
             <p className="ct-slideover-id">{contratoIdDisplay(contrato.id)}</p>
@@ -141,6 +193,22 @@ function SlideOver({ contrato, onClose, onOpen }) {
         </div>
 
         <div className="ct-slideover-body">
+          {contrato.tiene_documento && contrato.documento_id && (
+            <button
+              type="button"
+              className="ct-slideover-cover"
+              onClick={() => onPreview?.(contrato.documento_id)}
+              title="Previsualizar documento del contrato"
+            >
+              <img
+                src={`/api/plantillas/documentos/${contrato.documento_id}/preview-img/`}
+                alt={`Documento de ${contrato.nombre}`}
+                loading="lazy"
+                onError={e => { e.currentTarget.closest('.ct-slideover-cover').style.display = 'none'; }}
+              />
+            </button>
+          )}
+
           <div className="ct-slideover-status-row">
             <EtapaBadge etapa={contrato.etapa} label={contrato.etapa_display} />
             <StatusOpBadge status={contrato.status} />
@@ -217,8 +285,21 @@ function KanbanCard({ contrato, onClick }) {
           {contrato.software.nombre.split(' ')[0]}
         </span>
       </div>
-      <p className="ct-kc-name">{contrato.nombre}</p>
-      <p className="ct-kc-client">{contrato.cliente.nombre}</p>
+      <div className="ct-kc-main">
+        <div className="ct-kc-text">
+          <p className="ct-kc-name">{contrato.nombre}</p>
+          <p className="ct-kc-client">{contrato.cliente.nombre}</p>
+        </div>
+        {contrato.tiene_documento && contrato.documento_id && (
+          <img
+            className="ct-kc-thumb"
+            src={`/api/plantillas/documentos/${contrato.documento_id}/preview-img/`}
+            alt=""
+            loading="lazy"
+            onError={e => { e.currentTarget.style.display = 'none'; }}
+          />
+        )}
+      </div>
       <div className="ct-kc-footer">
         <span className="ct-kc-mrr">
           {contrato.tipo_contrato === 'RECURRENTE' ? fmtMoney(contrato.mrr) : fmtMoney(contrato.monto)}
@@ -236,14 +317,50 @@ function KanbanCard({ contrato, onClick }) {
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-export default function Contratos() {
-  const containerRef = useRef(null);
-  const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+// ─── Skeletons de carga (tabla / kanban) ───────────────────────────────────────
+function TableRowSkeleton() {
+  return (
+    <div className="ct-table-row ct-row-skeleton" aria-hidden="true">
+      <span className="ct-skeleton" style={{ width: 60 }} />
+      <div className="ct-name-cell">
+        <span className="ct-skeleton" style={{ width: '70%' }} />
+        <span className="ct-skeleton" style={{ width: '45%', height: 10 }} />
+      </div>
+      <span className="ct-skeleton" style={{ width: 70 }} />
+      <span className="ct-skeleton" style={{ width: 80 }} />
+      <span className="ct-skeleton" style={{ width: 90 }} />
+      <span className="ct-skeleton" style={{ width: 60 }} />
+      <span className="ct-skeleton" style={{ width: 50 }} />
+      <span className="ct-skeleton" style={{ width: 80 }} />
+      <span className="ct-skeleton" style={{ width: 70 }} />
+      <span className="ct-skeleton" style={{ width: 60 }} />
+    </div>
+  );
+}
 
-  useGSAP(() => {
-    const handleMouseEnter = (e) => {
+function KanbanCardSkeleton() {
+  return (
+    <div className="ct-kanban-card ct-card-skeleton" aria-hidden="true">
+      <div className="ct-kc-top">
+        <span className="ct-skeleton" style={{ width: 50, height: 10 }} />
+        <span className="ct-skeleton" style={{ width: 40, height: 14 }} />
+      </div>
+      <span className="ct-skeleton" style={{ width: '85%' }} />
+      <span className="ct-skeleton" style={{ width: '55%', height: 10 }} />
+      <div className="ct-kc-footer">
+        <span className="ct-skeleton" style={{ width: 60 }} />
+      </div>
+    </div>
+  );
+}
+
+// ─── Animated Button ──────────────────────────────────────────────────────────
+function AnimatedIconBtn({ children, onMouseEnter, ...props }) {
+  const hasAnimated = useRef(false);
+  
+  const handleMouseEnter = (e) => {
+    if (!hasAnimated.current) {
+      hasAnimated.current = true;
       const paths = e.currentTarget.querySelectorAll('svg path, svg line, svg polyline, svg circle, svg rect');
       paths.forEach(path => {
         try {
@@ -254,27 +371,24 @@ export default function Contratos() {
               { strokeDashoffset: 0, duration: 0.8, ease: 'power2.out', clearProps: 'strokeDasharray,strokeDashoffset' }
             );
           }
-        } catch (e) {}
-      });
-    };
-
-    const interactiveElements = containerRef.current?.querySelectorAll(
-      '.ct-icon-btn-sm, .ct-row-open-btn, .ct-action-group-btn'
-    );
-    if (interactiveElements) {
-      interactiveElements.forEach(el => {
-        el.addEventListener('mouseenter', handleMouseEnter, { once: true });
+        } catch (err) {}
       });
     }
+    if (onMouseEnter) onMouseEnter(e);
+  };
 
-    return () => {
-      if (interactiveElements) {
-        interactiveElements.forEach(el => {
-          el.removeEventListener('mouseenter', handleMouseEnter);
-        });
-      }
-    };
-  }, { scope: containerRef });
+  return (
+    <button onMouseEnter={handleMouseEnter} {...props}>
+      {children}
+    </button>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+export default function Contratos() {
+  const containerRef = useRef(null);
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [view, setView] = useState('table');
   const [selectedContrato, setSelectedContrato] = useState(null);
   const [showNewModal, setShowNewModal] = useState(false);
@@ -289,8 +403,10 @@ export default function Contratos() {
     e.stopPropagation();
     setBusyRows(prev => ({ ...prev, [contratoId]: true }));
     try {
-      await generarDocumentoContrato({ contrato_id: contratoId, forzar: true });
-      refetch(); // Reload the list to get new doc ID
+      // La respuesta trae el documento nuevo: se parcha solo esa fila (el id
+      // del documento cambia — los DocumentoGenerado son write-once).
+      const doc = await generarDocumentoContrato({ contrato_id: contratoId, forzar: true });
+      patchContrato(contratoId, { documento_id: doc.id, tiene_documento: true });
     } catch (err) {
       alert(err.message || 'Error regenerando el documento.');
     } finally {
@@ -312,7 +428,7 @@ export default function Contratos() {
 
   const {
     contratos, stats, totalCount, totalPages, loading, error,
-    page, pageSize, setPage, filters, updateFilter, refetch,
+    page, pageSize, setPage, filters, updateFilter, refetch, patchContrato,
   } = useContratos({ pageSize: view === 'kanban' ? 150 : 20 });
 
   useEffect(() => {
@@ -471,14 +587,17 @@ export default function Contratos() {
 
             <div className="ct-tbody">
               {loading && (
-                <div className="ct-table-empty"><p>Cargando contratos…</p></div>
+                <div aria-live="polite" aria-busy="true">
+                  <span className="ct-sr-only">Cargando contratos…</span>
+                  {Array.from({ length: 8 }).map((_, i) => <TableRowSkeleton key={i} />)}
+                </div>
               )}
 
               {!loading && contratos.length === 0 && (
-                <div className="ct-table-empty">
-                  <Icon d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" color="var(--border)" w={28} />
-                  <p>No se encontraron contratos con esos filtros</p>
-                  {(filters.search || filters.etapa !== 'Todos' || filters.software) && (
+                (filters.search || filters.etapa !== 'Todos' || filters.software) ? (
+                  <div className="ct-table-empty">
+                    <Icon d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" color="var(--border)" w={28} />
+                    <p>No se encontraron contratos con esos filtros</p>
                     <button className="ct-btn-secondary" onClick={() => {
                       updateFilter('search', '');
                       updateFilter('etapa', 'Todos');
@@ -486,8 +605,20 @@ export default function Contratos() {
                     }}>
                       Limpiar filtros
                     </button>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <div className="ct-table-empty ct-empty-zero">
+                    <Icon d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M9 15h6 M9 11h6" color="var(--border)" w={40} />
+                    <p className="ct-empty-title">Aún no hay contratos</p>
+                    <p className="ct-empty-sub">Crea tu primer contrato para llevar el seguimiento de vencimientos, renovaciones e ingresos recurrentes.</p>
+                    {canCreateContrato && (
+                      <button className="ct-btn-primary" onClick={() => setShowNewModal(true)}>
+                        <Icon d={['M12 5v14', 'M5 12h14']} color="var(--text-on-accent)" w={13} />
+                        Crea tu primer contrato
+                      </button>
+                    )}
+                  </div>
+                )
               )}
 
               {!loading && contratos.map(c => {
@@ -498,6 +629,7 @@ export default function Contratos() {
                     className={`ct-table-row ${selectedContrato?.id === c.id ? 'selected' : ''}`}
                     role="button"
                     tabIndex={0}
+                    aria-expanded={selectedContrato?.id === c.id}
                     onClick={() => setSelectedContrato(selectedContrato?.id === c.id ? null : c)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
@@ -507,8 +639,21 @@ export default function Contratos() {
                     }}>
                     <span className="ct-mono ct-id-cell">{contratoIdDisplay(c.id)}</span>
                     <div className="ct-name-cell">
-                      <span className="ct-row-name">{c.nombre}</span>
-                      <span className="ct-row-client">{c.cliente.nombre}</span>
+                      {c.tiene_documento && c.documento_id ? (
+                        <img
+                          className="ct-row-thumb"
+                          src={`/api/plantillas/documentos/${c.documento_id}/preview-img/`}
+                          alt=""
+                          loading="lazy"
+                          onError={e => { e.currentTarget.classList.add('ct-row-thumb-empty'); e.currentTarget.removeAttribute('src'); }}
+                        />
+                      ) : (
+                        <span className="ct-row-thumb ct-row-thumb-empty" aria-hidden="true" />
+                      )}
+                      <div className="ct-name-cell-text">
+                        <span className="ct-row-name">{c.nombre}</span>
+                        <span className="ct-row-client">{c.cliente.nombre}</span>
+                      </div>
                     </div>
                     <SoftwareTag software={c.software.nombre} />
                     <span className="ct-row-name" style={{ fontWeight: 'normal', color: 'var(--text-muted)' }}>{c.tipo_contrato_display}</span>
@@ -522,16 +667,16 @@ export default function Contratos() {
                     <span className="ct-resp-cell">{c.responsable || '—'}</span>
                     <div className="ct-row-actions" onClick={e => e.stopPropagation()}>
                       <div className="ct-action-group">
-                        <button 
+                        <AnimatedIconBtn 
                           className="ct-action-group-btn ct-icon-preview" 
                           disabled={!c.tiene_documento}
                           onClick={() => { if(c.tiene_documento) setPreviewDocId(c.documento_id); }} 
                           title={c.tiene_documento ? "Previsualizar PDF" : "Sin documento"}
                         >
                           <Icon d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2 12c0-3.8 4.2-7 10-7s10 3.2 10 7-4.2 7-10 7-10-3.2-10-7z" w={15} color="currentColor" />
-                        </button>
+                        </AnimatedIconBtn>
 
-                        <button 
+                        <AnimatedIconBtn 
                           className="ct-action-group-btn ct-icon-actualizar" 
                           disabled={busyRows[c.id]} 
                           onClick={(e) => handleRegenerarDocumento(e, c.id)} 
@@ -543,15 +688,15 @@ export default function Contratos() {
                             w={15} 
                             color="currentColor"
                           />
-                        </button>
+                        </AnimatedIconBtn>
 
-                        <button 
+                        <AnimatedIconBtn 
                           className="ct-action-group-btn primary ct-icon-abrir" 
                           onClick={() => navigate(`/contratos/${c.id}`)}
                           title="Abrir Contrato"
                         >
                           <Icon d="M9 5l7 7-7 7" w={16} color="currentColor" />
-                        </button>
+                        </AnimatedIconBtn>
                       </div>
                     </div>
                   </div>
@@ -588,15 +733,21 @@ export default function Contratos() {
                     <div className="ct-kanban-col-title">
                       <span className="ct-kanban-col-dot" style={{ background: sc.dot }} />
                       <span className="ct-kanban-col-name" title={sc.label}>{sc.label}</span>
-                      <span className="ct-kanban-col-count">{colContratos.length}</span>
+                      {!loading && <span className="ct-kanban-col-count">{colContratos.length}</span>}
                     </div>
-                    {colMRR > 0 && <span className="ct-kanban-col-mrr">${colMRR.toLocaleString('es-CL')}</span>}
+                    {!loading && colMRR > 0 && <span className="ct-kanban-col-mrr">${colMRR.toLocaleString('es-CL')}</span>}
                   </div>
-                  <div className="ct-kanban-cards">
-                    {colContratos.map(c => (
-                      <KanbanCard key={c.id} contrato={c} onClick={() => setSelectedContrato(c)} />
-                    ))}
-                    {colContratos.length === 0 && <div className="ct-kanban-empty">Sin contratos</div>}
+                  <div className="ct-kanban-cards" aria-busy={loading}>
+                    {loading ? (
+                      Array.from({ length: 3 }).map((_, i) => <KanbanCardSkeleton key={i} />)
+                    ) : (
+                      <>
+                        {colContratos.map(c => (
+                          <KanbanCard key={c.id} contrato={c} onClick={() => setSelectedContrato(c)} />
+                        ))}
+                        {colContratos.length === 0 && <div className="ct-kanban-empty">Sin contratos</div>}
+                      </>
+                    )}
                   </div>
                 </div>
               );
@@ -609,6 +760,7 @@ export default function Contratos() {
         contrato={selectedContrato}
         onClose={() => setSelectedContrato(null)}
         onOpen={(c) => { setSelectedContrato(null); navigate(`/contratos/${c.id}`); }}
+        onPreview={(docId) => setPreviewDocId(docId)}
       />
       
       {previewDocId && (
@@ -635,7 +787,7 @@ export default function Contratos() {
         <NewContractModal
           initialClienteId={newModalClienteId}
           onClose={() => { setShowNewModal(false); setNewModalClienteId(null); }}
-          onSuccess={(nuevo) => { refetch(); navigate(`/contratos/${nuevo.id}`); }}
+          onSuccess={(nuevo) => navigate(`/contratos/${nuevo.id}`)}
         />
       )}
 

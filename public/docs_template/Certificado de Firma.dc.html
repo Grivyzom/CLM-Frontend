@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  body { margin: 0; }
+  @font-face { font-family: 'Georgia'; }
+</style>
+</helmet>
+<x-import component-from-global-scope="doc-page" from="./doc-page.js" size="letter" margin="0.5in" hint-size="850px,1100px">
+
+<div style="width:100%;background:oklch(90% 0.004 258);display:flex;flex-direction:column;align-items:center;padding:24px 0;font-family:Helvetica,Arial,sans-serif;box-sizing:border-box">
+
+  <div style="width:100%;max-width:680px;background:oklch(99% 0.002 258);box-shadow:0 12px 40px oklch(20% 0.01 258 / 0.15);padding:40px 40px 0;box-sizing:border-box;display:flex;flex-direction:column;position:relative">
+
+    <div style="border:1.5px solid oklch(38% 0.09 258);background:oklch(97% 0.012 258);border-radius:4px;padding:28px 32px;margin-bottom:32px;position:relative">
+
+      <div style="display:flex;align-items:flex-start;gap:18px;padding-bottom:18px;border-bottom:1px solid oklch(80% 0.02 258)">
+        <div style="width:46px;height:46px;border-radius:50%;border:2px solid oklch(38% 0.09 258);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:oklch(38% 0.09 258);font-size:22px;font-weight:bold">✓</div>
+        <div style="flex:1">
+          <div style="font-family:Georgia,'Times New Roman',serif;font-weight:bold;font-size:17px;color:oklch(28% 0.09 258);letter-spacing:0.01em">CERTIFICADO DE VALIDACIÓN</div>
+          <div style="font-size:12.5px;color:oklch(42% 0.02 258);margin-top:4px;line-height:1.5">El presente documento ha sido firmado electrónicamente en conformidad a la Ley 19.799 de la República de Chile.</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:10px;color:oklch(55% 0.02 258);letter-spacing:0.06em;text-transform:uppercase">Folio</div>
+          <div style="font-family:Georgia,serif;font-size:16px;color:oklch(28% 0.09 258);font-weight:bold">{{ folio }}</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px 28px;padding:20px 0 18px">
+        <div>
+          <div style="font-size:10.5px;color:oklch(55% 0.02 258);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:3px">Identificador del Documento</div>
+          <div style="font-size:13px;color:oklch(25% 0.01 258);font-family:'Courier New',monospace">{{ document_id }}</div>
+        </div>
+        <div>
+          <div style="font-size:10.5px;color:oklch(55% 0.02 258);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:3px">Firmante</div>
+          <div style="font-size:13px;color:oklch(25% 0.01 258)">{{ firmante }}</div>
+        </div>
+        <div>
+          <div style="font-size:10.5px;color:oklch(55% 0.02 258);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:3px">Validación de Identidad</div>
+          <div style="font-size:13px;color:oklch(25% 0.01 258)">Correo electrónico confirmado exitosamente vía enlace seguro</div>
+        </div>
+        <div>
+          <div style="font-size:10.5px;color:oklch(55% 0.02 258);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:3px">Correo Destino</div>
+          <div style="font-size:13px;color:oklch(25% 0.01 258)">{{ email }}</div>
+        </div>
+        <div>
+          <div style="font-size:10.5px;color:oklch(55% 0.02 258);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:3px">Fecha de Emisión de Correo</div>
+          <div style="font-size:13px;color:oklch(25% 0.01 258)">{{ fecha_envio }}</div>
+        </div>
+        <div>
+          <div style="font-size:10.5px;color:oklch(55% 0.02 258);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:3px">Fecha y Hora de Confirmación</div>
+          <div style="font-size:13px;color:oklch(25% 0.01 258)">{{ fecha_confirmacion }}</div>
+        </div>
+        <div>
+          <div style="font-size:10.5px;color:oklch(55% 0.02 258);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:3px">Dirección IP del Firmante</div>
+          <div style="font-size:13px;color:oklch(25% 0.01 258);font-family:'Courier New',monospace">{{ ip }}</div>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid oklch(80% 0.02 258);padding-top:14px;display:flex;justify-content:space-between;align-items:flex-end;gap:24px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:10.5px;color:oklch(55% 0.02 258);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:3px">CÓDIGO HASH (SHA-256)</div>
+          <div style="font-size:11px;color:oklch(35% 0.01 258);font-family:'Courier New',monospace;word-break:break-all">{{ hash }}</div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:22px;padding-top:18px;border-top:1px solid oklch(80% 0.02 258)">
+        <div style="display:flex;align-items:center;gap:10px">
+          <img src="assets/logo-grivyzom.png" alt="Logo Grivyzom S.P.A" style="height:32px;width:auto;object-fit:contain;flex-shrink:0" />
+          <div>
+            <div style="font-family:Georgia,serif;font-weight:bold;font-size:15px;color:oklch(28% 0.09 258);letter-spacing:0.02em">GRIVYZOM</div>
+            <div style="font-size:10px;color:oklch(55% 0.02 258)">Documento generado por Software CLM</div>
+          </div>
+        </div>
+        <div style="font-size:10px;color:oklch(55% 0.02 258);text-align:right;max-width:220px;line-height:1.4">Verifique la autenticidad de este documento con el folio y el código hash indicados arriba.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1000,&quot;height&quot;:1250},&quot;document_id&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;DOC-8F3A2C1D-4B7E-4F9A-9C2D-1A5E6F7B8C9D&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;firmante&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Juan Pérez González&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;email&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;juan.perez@ejemplo.cl&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;fecha_envio&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;14 de julio de 2026, 09:32 hrs&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;fecha_confirmacion&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;14 de julio de 2026, 10:05 hrs&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;ip&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;181.43.212.7&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;hash&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;a3f8e1c2d94b7f60e5182bfa39c4d871f2a6e0b8c5d9f31a7b4e2c8d6f0a9b1&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;folio&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;N° 000482&quot;,&quot;tsType&quot;:&quot;string&quot;}}"></script>
+</body>
+</html>
