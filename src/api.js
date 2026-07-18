@@ -44,8 +44,10 @@ async function request(path, options = {}) {
     }
     let errMsg = `HTTP ${res.status}`;
     let fields = null;
+    let errData = null;
     try {
       const err = await res.json();
+      errData = err;
       if (err && typeof err === 'object') {
         // Excepción al criterio de arriba: el 403 CLIENTE_BLOQUEADO significa
         // que la cuenta del cliente fue bloqueada — su sesión ya no sirve.
@@ -70,6 +72,7 @@ async function request(path, options = {}) {
     const error = new Error(errMsg);
     error.status = res.status;
     if (fields) error.fields = fields;
+    if (errData) error.data = errData;
     throw error;
   }
 
@@ -92,12 +95,13 @@ export async function apiLogin({ username, password, otp_token, remember }) {
 }
 
 /**
- * Registro de un nuevo cliente a partir del enlace del correo de bienvenida.
+ * Activa la cuenta de portal de un cliente: valida uid+token del enlace del
+ * correo de bienvenida y fija la contraseña en el mismo paso.
  */
-export async function apiRegisterCliente({ email, password }) {
+export async function apiRegisterCliente({ uid, token, password }) {
   return request('/auth/register-cliente/', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ uid, token, password }),
   });
 }
 
@@ -485,6 +489,38 @@ export async function manageSignature(id, data) {
   });
 }
 
+/**
+ * Info pública del magic-link de firma OTP (token del enlace del correo,
+ * sin sesión — la visita la contraparte externa).
+ */
+export async function apiFirmaTokenInfo(token) {
+  return request(`/contratos/firmar/${encodeURIComponent(token)}/`);
+}
+
+/**
+ * Confirma la firma desde el magic-link público. A diferencia del resto de
+ * la API, la respuesta exitosa es el PDF final (Blob), no JSON — para que
+ * el firmante externo se lleve su copia en el momento.
+ */
+export async function apiFirmaTokenConfirmar(token) {
+  const res = await fetch(`${BASE}/contratos/firmar/${encodeURIComponent(token)}/confirmar/`, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': getCsrfToken() },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    let errMsg = `HTTP ${res.status}`;
+    try {
+      const err = await res.json();
+      errMsg = err.error || errMsg;
+    } catch (_) {}
+    const error = new Error(errMsg);
+    error.status = res.status;
+    throw error;
+  }
+  return res.blob();
+}
+
 /** Obtiene el estado de sincronización externa del contrato. */
 export async function getExternalSyncStatus(id) {
   return request(`/contratos/${id}/external-sync/`);
@@ -679,9 +715,11 @@ export async function getAvailableHtmlTemplates(tipoContrato) {
  *                                              globales (sin software), que el motor usa como fallback
  * @param {boolean} [params.activa]         - Filtrar por activa/inactiva
  * @param {string}  [params.modo_origen]    - 'archivo' | 'clausulas'
+ * @param {string}  [params.codigo_prefijo] - Familia de documento (ej. NDA) — trae todas sus versiones
  *
  * @returns {Array<{id, nombre, tipo_contrato, tipo_contrato_display, software_id, software_nombre,
- *                  modo_origen, modo_origen_display, version_codigo, activa, fecha_creacion, usos}>}
+ *                  modo_origen, modo_origen_display, version_codigo, codigo_prefijo, activa,
+ *                  fecha_creacion, usos}>}
  */
 export async function getPlantillas(params = {}) {
   const qs = new URLSearchParams();
@@ -690,6 +728,7 @@ export async function getPlantillas(params = {}) {
   if (params.incluir_globales) qs.set('incluir_globales', 'true');
   if (params.activa !== undefined) qs.set('activa', params.activa ? 'true' : 'false');
   if (params.modo_origen)   qs.set('modo_origen',   params.modo_origen);
+  if (params.codigo_prefijo) qs.set('codigo_prefijo', params.codigo_prefijo);
   const query = qs.toString() ? `?${qs.toString()}` : '';
   return request(`/plantillas/plantillas/${query}`);
 }
@@ -722,14 +761,40 @@ export async function regenerarPreviewPlantilla(id) {
 }
 
 /**
+ * Contratos que usan esta versión de plantilla (uno por contrato, con la
+ * fecha de su generación más reciente).
+ * @param {number} id
+ * @returns {{ plantilla_id, plantilla_nombre, plantilla_version, total_contratos,
+ *             results: Array<{contrato_id, contrato_display, nombre, cliente_id,
+ *             cliente_nombre, software_id, software_nombre, etapa, etapa_display,
+ *             status, monto, fecha_ultima_generacion, total_generaciones}> }}
+ */
+export async function getPlantillaContratos(id) {
+  return request(`/plantillas/plantillas/${id}/contratos/`);
+}
+
+/**
  * Activa o desactiva una plantilla.
  * @param {number}  id
  * @param {boolean} activa
+ * @param {boolean} [confirmar] - Confirma reemplazar la versión activa actual de la misma
+ *                                combinación tipo_contrato/software (backend responde 409 sin esto).
  */
-export async function togglePlantillaActiva(id, activa) {
+export async function togglePlantillaActiva(id, activa, confirmar = false) {
   return request(`/plantillas/plantillas/${id}/`, {
     method: 'PATCH',
-    body: JSON.stringify({ activa }),
+    body: JSON.stringify({ activa, confirmar }),
+  });
+}
+
+/**
+ * Elimina una versión de plantilla. El backend responde 409 si la versión
+ * generó documentos (registro inmutable): en ese caso solo puede archivarse.
+ * @param {number} id
+ */
+export async function deletePlantilla(id) {
+  return request(`/plantillas/plantillas/${id}/`, {
+    method: 'DELETE',
   });
 }
 
@@ -780,8 +845,49 @@ export async function getEmitidos(params = {}) {
  *
  * @returns {Array<{id, cat, name, risk, versions}>}
  */
-export async function getClausulas() {
-  return request(`/plantillas/clausulas/`);
+export async function getClausulas(tipo) {
+  const qs = tipo ? `?tipo=${encodeURIComponent(tipo)}` : '';
+  return request(`/plantillas/clausulas/${qs}`);
+}
+
+/**
+ * Índice compacto de la biblioteca agrupado por tipo de texto (una sola
+ * consulta en el backend, sin cuerpos completos).
+ *
+ * @returns {{total, tipos: Array<{tipo, label, items}>}}
+ */
+/**
+ * PDF efímero del documento con los campos actuales (vista previa en vivo del
+ * borrador). No persiste nada ni consume correlativo. Devuelve un Blob para
+ * embeber vía URL.createObjectURL. Solo plantillas HTML (422 en otros modos).
+ */
+export async function previewBorradorPdf(contratoId, campos, clausulas) {
+  const body = { contrato_id: contratoId, campos: campos || {} };
+  // Solo se envían si el editor de cláusulas está abierto: el backend las
+  // aplica al contrato en memoria (sin guardar) para renderizar el borrador.
+  if (clausulas !== undefined) body.clausulas = clausulas;
+  const res = await fetch(`${BASE}/plantillas/documentos/preview-borrador/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    let msg = `HTTP ${res.status}`;
+    try {
+      const err = await res.json();
+      msg = err.error || err.detail || msg;
+    } catch (_) {}
+    const error = new Error(msg);
+    error.status = res.status;
+    throw error;
+  }
+  return res.blob();
+}
+
+export async function getClausulasIndice(tipo) {
+  const qs = tipo ? `?tipo=${encodeURIComponent(tipo)}` : '';
+  return request(`/plantillas/clausulas/indice/${qs}`);
 }
 
 /**
@@ -869,6 +975,23 @@ export async function getAuditoria() {
   return request('/legal/auditoria/');
 }
 
+/**
+ * Obtiene el último análisis de la IA para un contrato.
+ */
+export async function getAnalisisIA(contratoId) {
+  return request(`/legal/contratos/${contratoId}/analisis-ia/`);
+}
+
+/**
+ * Ejecuta un nuevo análisis de la IA sobre el contrato.
+ */
+export async function runAnalisisIA(contratoId) {
+  return request(`/legal/contratos/${contratoId}/analisis-ia/analizar/`, {
+    method: 'POST',
+  });
+}
+
+
 // ─── Incidencias ───────────────────────────────────────────────────────────────
 
 /**
@@ -926,7 +1049,7 @@ export async function updateIncidencia(id, data) {
 }
 
 /** Lista de comentarios de una incidencia. */
-export async function getComentarios(incidenciaId) {
+export async function getComentariosIncidencia(incidenciaId) {
   return request(`/incidencias/${incidenciaId}/comentarios/`);
 }
 
@@ -935,7 +1058,7 @@ export async function getComentarios(incidenciaId) {
  * @param {number} incidenciaId
  * @param {FormData} formData - mensaje, es_interno? (solo staff), adjuntos[]
  */
-export async function createComentario(incidenciaId, formData) {
+export async function createComentarioIncidencia(incidenciaId, formData) {
   return request(`/incidencias/${incidenciaId}/comentarios/`, {
     method: 'POST',
     body: formData,
@@ -965,6 +1088,12 @@ export async function getCorreosCliente(id) {
   return request(`/clientes/${id}/correos/`);
 }
 
+/** Obtiene los archivos que pueden ser adjuntados a un correo para este cliente. */
+export async function getArchivosAdjuntables(id) {
+  return request(`/clientes/${id}/archivos-adjuntables/`);
+}
+
+
 /**
  * Envía un correo al cliente y lo registra en el historial.
  * @param {Object} data - { asunto, cuerpo, destinatario? }
@@ -980,13 +1109,14 @@ export async function enviarCorreoCliente(id, data) {
 
 /**
  * Lista de notificaciones dentro del alcance del usuario.
- * @param {Object} params - { cliente?, solo_no_leidas?, limit? }
+ * @param {Object} params - { cliente?, solo_no_leidas?, limit?, para_staff? }
  */
 export async function getNotificaciones(params = {}) {
   const qs = new URLSearchParams();
   if (params.cliente)        qs.set('cliente', params.cliente);
   if (params.solo_no_leidas) qs.set('solo_no_leidas', '1');
   if (params.limit)          qs.set('limit', params.limit);
+  if (params.para_staff)     qs.set('para_staff', '1');
   const query = qs.toString() ? `?${qs.toString()}` : '';
   return request(`/notificaciones/${query}`);
 }
@@ -1013,8 +1143,10 @@ export async function marcarNotificacionesLeidas() {
 }
 
 /** Conteo de no leídas para el badge de la campana. */
-export async function getNotificacionesUnreadCount() {
-  return request('/notificaciones/unread-count/');
+export async function getNotificacionesUnreadCount(params = {}) {
+  const query = new URLSearchParams();
+  if (params.para_staff) query.append('para_staff', 1);
+  return request(`/notificaciones/unread-count/?${query.toString()}`);
 }
 
 // ─── Toma de Requerimientos ─────────────────────────────────────────────────
@@ -1072,3 +1204,20 @@ export async function generarRequerimientoDocumento(id, opts = {}) {
   });
 }
 
+// ─── Comentarios Contrato ──────────────────────────────────────────────────
+export async function getComentariosContrato(contratoId) {
+  return request(`/contratos/${contratoId}/comentarios/`);
+}
+
+export async function createComentarioContrato(contratoId, payload) {
+  return request(`/contratos/${contratoId}/comentarios/`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteComentario(comentarioId) {
+  return request(`/comentarios/${comentarioId}/`, {
+    method: 'DELETE',
+  });
+}

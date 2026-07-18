@@ -55,6 +55,9 @@ export function useContratos({ pageSize = DEFAULT_PAGE_SIZE } = {}) {
 
   const fetchData = useCallback(async (options = { force: false }) => {
     const isForceRefetch = options?.force === true;
+    // silent: refetch tras una mutación con datos ya en pantalla — actualiza en
+    // su lugar sin volver a mostrar los skeletons.
+    const isSilent = options?.silent === true;
     const cacheKey = JSON.stringify({
       search: debouncedSearch,
       etapa: filters.etapa,
@@ -73,7 +76,7 @@ export function useContratos({ pageSize = DEFAULT_PAGE_SIZE } = {}) {
     }
 
     const seq = ++requestSeq.current;
-    setLoading(true);
+    if (!isSilent) setLoading(true);
     setError(null);
     try {
       const result = await getContratos({
@@ -129,9 +132,20 @@ export function useContratos({ pageSize = DEFAULT_PAGE_SIZE } = {}) {
   }, []);
 
   const refetch = useCallback(() => {
-    fetchData({ force: true });
+    // refetch se usa tras mutaciones: siempre hay datos en pantalla, así que
+    // va en silencio (sin skeletons). La carga inicial no pasa por aquí.
+    fetchData({ force: true, silent: true });
     fetchStats();
   }, [fetchData, fetchStats]);
+
+  // Mutación puntual: aplica cambios solo al contrato afectado, sin refetch.
+  // Invalida la caché de páginas para que paginar/filtrar traiga datos frescos.
+  const patchContrato = useCallback((id, cambios) => {
+    cache.current = {};
+    setData(prev => prev
+      ? { ...prev, results: prev.results.map(c => (c.id === id ? { ...c, ...cambios } : c)) }
+      : prev);
+  }, []);
 
   return {
     contratos:  data?.results ?? [],
@@ -147,5 +161,6 @@ export function useContratos({ pageSize = DEFAULT_PAGE_SIZE } = {}) {
     updateFilter,
     resetFilters,
     refetch,
+    patchContrato,
   };
 }
