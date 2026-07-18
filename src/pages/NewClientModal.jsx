@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createCliente, getTenants } from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import { validarRut, validarEmail, validarMaximoRut, validarTelefonoChile, validarEmailDominioLimpio } from '../utils/validators';
+import InfoTooltip from '../components/ui/InfoTooltip';
 
 function Svg({ paths = [], circles = [], size = 14, color = 'var(--text-muted)', strokeWidth = 1.8 }) {
   return (
@@ -14,11 +15,12 @@ function Svg({ paths = [], circles = [], size = 14, color = 'var(--text-muted)',
   );
 }
 
-function FormField({ label, name, type = 'text', value, onChange, error, placeholder, required }) {
+function FormField({ label, name, type = 'text', value, onChange, error, placeholder, required, glossaryKey, ...rest }) {
   return (
     <div>
-      <label style={{ display: 'block', fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.07em', fontFamily: "'JetBrains Mono', monospace" }}>
-        {label} {required && <span style={{ color: 'var(--danger)' }}>*</span>}
+      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.07em', fontFamily: "'JetBrains Mono', monospace" }}>
+        <span>{label} {required && <span style={{ color: 'var(--danger)' }}>*</span>}</span>
+        {glossaryKey && <InfoTooltip glossaryKey={glossaryKey} position="top" />}
       </label>
       <input
         type={type}
@@ -41,6 +43,7 @@ function FormField({ label, name, type = 'text', value, onChange, error, placeho
         }}
         onFocus={e => { e.target.style.borderColor = 'rgba(37, 99, 235, 0.4)'; e.target.style.background = 'var(--surface)'; }}
         onBlur={e => { e.target.style.borderColor = error ? 'var(--danger-soft)' : 'var(--border)'; e.target.style.background = error ? 'var(--danger-bg)' : 'var(--bg-topbar)'; }}
+        {...rest}
       />
       {error && <p style={{ margin: '4px 0 0', fontSize: 10, color: 'var(--danger)' }}>{error}</p>}
     </div>
@@ -61,11 +64,12 @@ const ESTADO_OPTIONS = [
   { value: 'SUSPENDIDO', label: 'Suspendido' },
 ];
 
-function FormSelect({ label, name, value, onChange, options, required }) {
+function FormSelect({ label, name, value, onChange, options, required, glossaryKey, ...rest }) {
   return (
     <div>
-      <label style={{ display: 'block', fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.07em', fontFamily: "'JetBrains Mono', monospace" }}>
-        {label} {required && <span style={{ color: 'var(--danger)' }}>*</span>}
+      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.07em', fontFamily: "'JetBrains Mono', monospace" }}>
+        <span>{label} {required && <span style={{ color: 'var(--danger)' }}>*</span>}</span>
+        {glossaryKey && <InfoTooltip glossaryKey={glossaryKey} position="top" />}
       </label>
       <select
         name={name}
@@ -87,6 +91,7 @@ function FormSelect({ label, name, value, onChange, options, required }) {
         }}
         onFocus={e => { e.target.style.borderColor = 'rgba(37, 99, 235, 0.4)'; e.target.style.background = 'var(--surface)'; }}
         onBlur={e => { e.target.style.borderColor = 'var(--border)'; e.target.style.background = 'var(--bg-topbar)'; }}
+        {...rest}
       >
         {options.map(opt => (
           <option key={opt.value} value={opt.value}>
@@ -193,6 +198,49 @@ export default function NewClientModal({ onClose, onSuccess }) {
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      const activeEl = document.activeElement;
+      if (!activeEl) return;
+
+      // Si es un botón o botón de submit, permitimos la acción por defecto
+      if (activeEl.tagName === 'BUTTON' || activeEl.type === 'submit') {
+        return;
+      }
+
+      // Si el elemento activo es un checkbox, al dar Enter lo seleccionamos
+      if (activeEl.type === 'checkbox') {
+        e.preventDefault();
+        activeEl.click();
+        return;
+      }
+
+      // Evitamos el envío del formulario por defecto
+      e.preventDefault();
+
+      const formEl = document.getElementById('new-client-form');
+      if (!formEl) return;
+
+      // Obtener todos los inputs, selects y textareas enfocables y visibles
+      const elements = Array.from(
+        formEl.querySelectorAll('input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])')
+      ).filter(el => {
+        return el.tabIndex !== -1 && el.offsetWidth > 0 && el.offsetHeight > 0;
+      });
+
+      const index = elements.indexOf(activeEl);
+      if (index > -1 && index < elements.length - 1) {
+        const nextEl = elements[index + 1];
+        nextEl.focus();
+
+        // Si el siguiente campo es un checkbox, lo seleccionamos
+        if (nextEl.type === 'checkbox') {
+          nextEl.click();
+        }
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
@@ -287,8 +335,9 @@ export default function NewClientModal({ onClose, onSuccess }) {
         {/* Body */}
         <div style={{ padding: '24px', overflowY: 'auto' }}>
           
-          <p style={{ margin: '0 0 12px', fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', fontFamily: "'JetBrains Mono', monospace" }}>
-            Tipo de Cliente
+          <p style={{ margin: '0 0 12px', fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', fontFamily: "'JetBrains Mono', monospace", display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <span>Tipo de Cliente</span>
+            <InfoTooltip glossaryKey="tipo_cliente" position="right" />
           </p>
           <div className="ncm-tipo-row" style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
             {[
@@ -331,7 +380,7 @@ export default function NewClientModal({ onClose, onSuccess }) {
             </div>
           )}
 
-          <form id="new-client-form" onSubmit={handleSubmit}>
+          <form id="new-client-form" onSubmit={handleSubmit} onKeyDown={handleKeyDown}>
             {/* Se eliminó el selector de Asignación de Tenant */}
             <div style={{ marginBottom: 16 }}>
               <SectionTitle icon={['M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0 1 12 2.944a11.955 11.955 0 0 1-8.618 3.04A12.02 12.02 0 0 0 3 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z']} title="Identificación Legal" />
@@ -339,17 +388,17 @@ export default function NewClientModal({ onClose, onSuccess }) {
                 {tipo === 'natural' ? (
                   <>
                     <div style={{ gridColumn: '1 / -1' }}>
-                      <FormField label="Nombre Completo" name="nombre_completo" value={form.nombre_completo} onChange={handleChange} error={errors.nombre_completo} placeholder="ej: Juan Pérez" required />
+                      <FormField label="Nombre Completo" name="nombre_completo" value={form.nombre_completo} onChange={handleChange} error={errors.nombre_completo} placeholder="ej: Juan Pérez" required glossaryKey="nombre_completo" />
                     </div>
-                    <FormField label="RUN" name="run" value={form.run} onChange={handleChange} error={errors.run} placeholder="ej: 12345678-9" required />
+                    <FormField label="RUN" name="run" value={form.run} onChange={handleChange} error={errors.run} placeholder="ej: 12345678-9" required glossaryKey="run" />
                   </>
                 ) : (
                   <>
                     <div style={{ gridColumn: '1 / -1' }}>
-                      <FormField label="Razón Social" name="razon_social" value={form.razon_social} onChange={handleChange} error={errors.razon_social} placeholder="ej: Acme Inc." required />
+                      <FormField label="Razón Social" name="razon_social" value={form.razon_social} onChange={handleChange} error={errors.razon_social} placeholder="ej: Acme Inc." required glossaryKey="razon_social" />
                     </div>
-                    <FormField label="RUT Empresa" name="rut" value={form.rut} onChange={handleChange} error={errors.rut} placeholder="ej: 76123456-7" required />
-                    <FormField label="Giro" name="giro" value={form.giro} onChange={handleChange} error={errors.giro} placeholder="ej: Servicios de Consultoría" required />
+                    <FormField label="RUT Empresa" name="rut" value={form.rut} onChange={handleChange} error={errors.rut} placeholder="ej: 76123456-7" required glossaryKey="rut_empresa" />
+                    <FormField label="Giro" name="giro" value={form.giro} onChange={handleChange} error={errors.giro} placeholder="ej: Servicios de Consultoría" required glossaryKey="giro" />
                   </>
                 )}
               </div>
@@ -359,9 +408,9 @@ export default function NewClientModal({ onClose, onSuccess }) {
               <SectionTitle icon={['M3 8l7.89 5.26a2 2 0 0 0 2.22 0L21 8M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z']} title="Contacto Principal" />
               <div className="ncm-grid">
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <FormField label="Email Principal" name="email_principal" type="email" value={form.email_principal} onChange={handleChange} error={errors.email_principal} placeholder="ej: contacto@empresa.com" required />
+                  <FormField label="Email Principal" name="email_principal" type="email" value={form.email_principal} onChange={handleChange} error={errors.email_principal} placeholder="ej: contacto@empresa.com" required glossaryKey="email_principal" />
                 </div>
-                <FormField label="Teléfono" name="telefono_contacto" value={form.telefono_contacto} onChange={handleChange} error={errors.telefono_contacto} placeholder="ej: +56912345678" />
+                <FormField label="Teléfono" name="telefono_contacto" value={form.telefono_contacto} onChange={handleChange} error={errors.telefono_contacto} placeholder="ej: +56912345678" glossaryKey="telefono_contacto" />
               </div>
             </div>
 
@@ -369,8 +418,8 @@ export default function NewClientModal({ onClose, onSuccess }) {
               <div style={{ marginBottom: 16, padding: '12px 16px', background: 'var(--bg-faint)', borderRadius: 8, border: '1px solid var(--neutral-200)' }}>
                 <SectionTitle icon={['M3 21h18', 'M5 21V7l7-4 7 4v14', 'M9 9h1', 'M9 13h1', 'M14 9h1', 'M14 13h1', 'M10 21v-4h4v4']} title="Suscripción & Plan (Tenant)" />
                 <div className="ncm-grid">
-                  <FormSelect label="Categoría (Plan)" name="categoria" value={form.categoria} onChange={handleChange} options={CATEGORIA_OPTIONS} required />
-                  <FormSelect label="Estado Suscripción" name="estado" value={form.estado} onChange={handleChange} options={ESTADO_OPTIONS} required />
+                  <FormSelect label="Categoría (Plan)" name="categoria" value={form.categoria} onChange={handleChange} options={CATEGORIA_OPTIONS} required glossaryKey="categoria_plan" />
+                  <FormSelect label="Estado Suscripción" name="estado" value={form.estado} onChange={handleChange} options={ESTADO_OPTIONS} required glossaryKey="estado_suscripcion" />
                 </div>
               </div>
             )}
@@ -379,10 +428,10 @@ export default function NewClientModal({ onClose, onSuccess }) {
               <div style={{ padding: '12px 16px', background: 'var(--bg-faint)', borderRadius: 8, border: '1px solid var(--neutral-200)' }}>
                 <SectionTitle icon={['M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2', 'M12 3a4 4 0 1 0 0 8 4 4 0 1 0 0-8z']} title="Representante Legal (Opcional)" />
                 <div className="ncm-grid">
-                  <FormField label="Nombre" name="contacto_nombre" value={form.contacto_nombre} onChange={handleChange} placeholder="ej: Carlos López" />
-                  <FormField label="Cargo" name="contacto_cargo" value={form.contacto_cargo} onChange={handleChange} placeholder="ej: Gerente General" />
-                  <FormField label="Email" name="contacto_email" type="email" value={form.contacto_email} onChange={handleChange} placeholder="ej: carlos@empresa.com" />
-                  <FormField label="Teléfono" name="contacto_telefono" value={form.contacto_telefono} onChange={handleChange} placeholder="ej: +56912345678" />
+                  <FormField label="Nombre" name="contacto_nombre" value={form.contacto_nombre} onChange={handleChange} placeholder="ej: Carlos López" glossaryKey="representante_legal" />
+                  <FormField label="Cargo" name="contacto_cargo" value={form.contacto_cargo} onChange={handleChange} placeholder="ej: Gerente General" glossaryKey="contacto_cargo" />
+                  <FormField label="Email" name="contacto_email" type="email" value={form.contacto_email} onChange={handleChange} placeholder="ej: carlos@empresa.com" glossaryKey="email_principal" />
+                  <FormField label="Teléfono" name="contacto_telefono" value={form.contacto_telefono} onChange={handleChange} placeholder="ej: +56912345678" glossaryKey="telefono_contacto" />
                 </div>
               </div>
             )}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useIncidencias } from '../hooks/useIncidencias';
-import { updateIncidencia, createComentario } from '../api';
+import { updateIncidencia, createComentarioIncidencia } from '../api';
 import NewIncidenciaModal from './NewIncidenciaModal';
 import Pagination from '../components/ui/Pagination';
 import StatusBadge from '../components/ui/StatusBadge';
@@ -90,7 +90,7 @@ function DetailPanel({ incidencia, detail, loading, onClose, isStaff, canManage,
       formData.append('mensaje', mensaje.trim());
       if (isStaff && esInterno) formData.append('es_interno', 'true');
       files.forEach(f => formData.append('adjuntos', f));
-      await createComentario(data.id, formData);
+      await createComentarioIncidencia(data.id, formData);
       setMensaje('');
       setEsInterno(false);
       setFiles([]);

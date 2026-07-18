@@ -549,7 +549,7 @@
 
 .cl-thead {
   display: grid;
-  grid-template-columns: 32px minmax(180px,2fr) minmax(120px,1.2fr) minmax(110px,0.9fr) minmax(130px,1fr) minmax(90px,0.75fr) minmax(100px,0.75fr) 116px;
+  grid-template-columns: 32px 36px minmax(180px,2fr) minmax(120px,1.2fr) minmax(110px,0.9fr) minmax(130px,1fr) minmax(90px,0.75fr) 116px;
   gap: 6px;
   padding: 8px 16px;
   background: var(--bg-topbar);
@@ -595,7 +595,7 @@
 
 .cl-row {
   display: grid;
-  grid-template-columns: 32px minmax(180px,2fr) minmax(120px,1.2fr) minmax(110px,0.9fr) minmax(130px,1fr) minmax(90px,0.75fr) minmax(100px,0.75fr) 116px;
+  grid-template-columns: 32px 36px minmax(180px,2fr) minmax(120px,1.2fr) minmax(110px,0.9fr) minmax(130px,1fr) minmax(90px,0.75fr) 116px;
   gap: 6px;
   padding: 10px 16px;
   border-bottom: 1px solid var(--bg-topbar);
@@ -1109,8 +1109,8 @@
 
 /* ── Responsive ── */
 @media (max-width: 1200px) {
-  .cl-thead, .cl-row {
-    grid-template-columns: 32px minmax(160px, 2fr) minmax(100px, 1fr) minmax(120px, 1.2fr) minmax(80px, 0.8fr) minmax(90px, 0.8fr) minmax(60px, 0.5fr) 72px;
+  .cl-thead,  .cl-row {
+    grid-template-columns: 32px 36px minmax(160px, 2fr) minmax(100px, 1fr) minmax(120px, 1.2fr) minmax(80px, 0.8fr) minmax(90px, 0.8fr) 72px;
   }
   .cl-thead > *:nth-child(4),
   .cl-row > *:nth-child(4) { /* Hide Sector */
@@ -1122,8 +1122,8 @@
 }
 
 @media (max-width: 992px) {
-  .cl-thead, .cl-row {
-    grid-template-columns: 32px minmax(160px, 2fr) minmax(120px, 1.5fr) minmax(80px, 0.8fr) minmax(90px, 0.8fr) 116px;
+  .cl-thead,  .cl-row {
+    grid-template-columns: 32px 36px minmax(160px, 2fr) minmax(120px, 1.5fr) minmax(80px, 0.8fr) minmax(90px, 0.8fr) 116px;
   }
   .cl-thead > *:nth-child(3), .cl-row > *:nth-child(3), /* Hide ID Fiscal */
   .cl-thead > *:nth-child(4), .cl-row > *:nth-child(4)  /* Sector */ {

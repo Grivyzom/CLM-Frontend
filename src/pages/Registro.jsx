@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate, useLocation, Navigate } from 'react-router-dom';
+import React, { useState, useRef } from 'react';
+import { useNavigate, useParams, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { apiRegisterCliente } from '../api';
 import gsap from 'gsap';
@@ -8,10 +8,9 @@ import '../styles/Login.css'; // Reusing Login styles for consistency
 
 export default function Registro() {
   const navigate = useNavigate();
-  const location = useLocation();
+  const { uid, token } = useParams();
   const { user, checking } = useAuth();
-  
-  const [email, setEmail] = useState('');
+
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -20,15 +19,6 @@ export default function Registro() {
   const [loading, setLoading] = useState(false);
 
   const containerRef = useRef(null);
-
-  useEffect(() => {
-    // Extract email from query params
-    const query = new URLSearchParams(location.search);
-    const emailParam = query.get('email');
-    if (emailParam) {
-      setEmail(emailParam);
-    }
-  }, [location]);
 
   useGSAP(() => {
     const tl = gsap.timeline();
@@ -81,13 +71,13 @@ export default function Registro() {
     setLoading(true);
 
     try {
-      const data = await apiRegisterCliente({ email, password });
-      setSuccess(data.success || 'Cuenta registrada exitosamente. Serás redirigido al inicio de sesión.');
+      const data = await apiRegisterCliente({ uid, token, password });
+      setSuccess(data.success || 'Cuenta activada exitosamente. Serás redirigido al inicio de sesión.');
       setTimeout(() => {
         navigate('/login');
       }, 3000);
     } catch (err) {
-      setError(err.message || 'Error al registrar la cuenta.');
+      setError(err.message || 'Error al activar la cuenta.');
     } finally {
       setLoading(false);
     }
@@ -95,6 +85,20 @@ export default function Registro() {
 
   if (checking) return null;
   if (user) return <Navigate to="/" replace />;
+  if (!uid || !token) {
+    return (
+      <div className="login-container" ref={containerRef}>
+        <div className="login-body">
+          <div className="login-card">
+            <h2>Enlace inválido</h2>
+            <p className="login-subtitle">
+              Este enlace de activación no es válido. Revisa el correo de bienvenida o contacta a soporte.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="login-container" ref={containerRef}>
@@ -131,20 +135,6 @@ export default function Registro() {
           <div className="form-slider">
             <div className="slider-content">
               <form className="login-form step-1" onSubmit={handleRegister}>
-                <div className="input-group">
-                  <label htmlFor="email">Correo Electrónico</label>
-                  <input
-                    type="email"
-                    id="email"
-                    placeholder="tucorreo@empresa.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    readOnly={!!new URLSearchParams(location.search).get('email')}
-                    style={new URLSearchParams(location.search).get('email') ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
-                  />
-                </div>
-                
                 <div className="input-group">
                   <label htmlFor="password">Nueva Contraseña</label>
                   <div className="password-field">

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { enviarCorreoCliente } from '../../api';
+import { enviarCorreoCliente, getArchivosAdjuntables } from '../../api';
 
 export default function EnviarCorreoModal({ clienteId, emailPrincipal, onClose, onSuccess }) {
   const [asunto, setAsunto] = useState('');
@@ -7,14 +7,43 @@ export default function EnviarCorreoModal({ clienteId, emailPrincipal, onClose, 
   const [destinatario, setDestinatario] = useState(emailPrincipal || '');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
+  
+  const [archivosDisponibles, setArchivosDisponibles] = useState([]);
+  const [loadingArchivos, setLoadingArchivos] = useState(true);
+  const [archivosSeleccionados, setArchivosSeleccionados] = useState([]);
+
   const firstFieldRef = useRef(null);
 
   useEffect(() => {
+    let mounted = true;
+    getArchivosAdjuntables(clienteId).then((res) => {
+      if (mounted) {
+        setArchivosDisponibles(res.results || []);
+        setLoadingArchivos(false);
+      }
+    }).catch((err) => {
+      if (mounted) {
+        console.error("Error cargando archivos adjuntables:", err);
+        setLoadingArchivos(false);
+      }
+    });
+
     firstFieldRef.current?.focus();
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+    return () => {
+      mounted = false;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [clienteId, onClose]);
+
+  const handleToggleArchivo = (archivo) => {
+    setArchivosSeleccionados((prev) => {
+      const exists = prev.find((a) => a.id === archivo.id);
+      if (exists) return prev.filter((a) => a.id !== archivo.id);
+      return [...prev, archivo];
+    });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -29,6 +58,11 @@ export default function EnviarCorreoModal({ clienteId, emailPrincipal, onClose, 
         asunto: asunto.trim(),
         cuerpo: cuerpo.trim(),
         destinatario: destinatario.trim() || undefined,
+        adjuntos: archivosSeleccionados.map(a => ({
+          tipo_entidad: a.tipo_entidad,
+          entidad_id: a.entidad_id,
+          campo: a.campo
+        }))
       });
       onSuccess();
     } catch (err) {
@@ -76,6 +110,33 @@ export default function EnviarCorreoModal({ clienteId, emailPrincipal, onClose, 
             placeholder="Escribe el mensaje que recibirá el cliente…"
           />
         </div>
+
+        {!loadingArchivos && archivosDisponibles.length > 0 && (
+          <div className="cw-field" style={{ marginBottom: '1.5rem' }}>
+            <label>Adjuntos (Opcional)</label>
+            <div style={{
+              maxHeight: '150px',
+              overflowY: 'auto',
+              border: '1px solid var(--border)',
+              borderRadius: '6px',
+              padding: '0.75rem',
+              backgroundColor: 'var(--bg-subtle, #f8f9fa)'
+            }}>
+              {archivosDisponibles.map((a) => (
+                <label key={a.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={archivosSeleccionados.some(sel => sel.id === a.id)}
+                    onChange={() => handleToggleArchivo(a)}
+                  />
+                  <span>
+                    <strong>{a.nombre}</strong> <span style={{ color: 'var(--text-muted)' }}>({a.origen})</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
 
         {error && <p className="cw-modal-error">{error}</p>}
 

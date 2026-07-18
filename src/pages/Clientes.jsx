@@ -1161,6 +1161,13 @@ export default function Clientes() {
             </span>
             <SortableHeader
               className="cl-th"
+              label=""
+              field="estado"
+              ordering={filters.ordering}
+              onSort={(next) => updateFilter('ordering', next)}
+            />
+            <SortableHeader
+              className="cl-th"
               label="Razón Social"
               field="razon_social"
               ordering={filters.ordering}
@@ -1191,13 +1198,6 @@ export default function Clientes() {
               className="cl-th"
               label="Tipo"
               field="tipo"
-              ordering={filters.ordering}
-              onSort={(next) => updateFilter('ordering', next)}
-            />
-            <SortableHeader
-              className="cl-th"
-              label="Estado"
-              field="estado"
               ordering={filters.ordering}
               onSort={(next) => updateFilter('ordering', next)}
             />
@@ -1236,6 +1236,16 @@ export default function Clientes() {
                         onClick={(e) => handleRowSelect(e, c.id, idx)}
                         aria-label={`Seleccionar ${c.razon_social}`}
                       />
+                    </div>
+
+                    {/* Estado */}
+                    <div className="cl-cell-status" title={c.estado} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span className="cl-status-dot" style={{
+                        display: 'inline-block',
+                        width: 10, height: 10, borderRadius: '50%',
+                        background: c.estado === 'Activo' ? 'var(--success)' : c.estado === 'En revisión' ? 'var(--warning-bright)' : 'var(--border-strong)',
+                        boxShadow: `0 0 0 2px ${c.estado === 'Activo' ? 'var(--success-border)' : c.estado === 'En revisión' ? 'var(--warning-border)' : 'var(--border)'}`
+                      }} />
                     </div>
 
                     {/* Razón Social */}
@@ -1289,15 +1299,18 @@ export default function Clientes() {
 
                     {/* Contacto */}
                     <div style={{ minWidth: 0 }}>
-                      <div className="cl-contact-name">{c.contacto_principal || c.razon_social}</div>
-                      <div className="cl-contact-tel">{c.contacto_tel || c.email}</div>
+                      <div className="cl-contact-name" style={{ color: c.email ? 'inherit' : 'var(--text-faint)', fontStyle: c.email ? 'normal' : 'italic' }}>
+                        {c.email || 'Correo no registrado'}
+                      </div>
+                      <div className="cl-contact-tel" style={{ color: c.telefono || c.contacto_tel ? 'inherit' : 'var(--text-faint)', fontStyle: c.telefono || c.contacto_tel ? 'normal' : 'italic', marginTop: '2px' }}>
+                        {c.telefono || c.contacto_tel || 'Teléfono no registrado'}
+                      </div>
                     </div>
 
                     {/* Tipo */}
-                    <TipoBadge tipo={c.tipo} />
-
-                    {/* Estado */}
-                    <StatusBadge estado={c.estado} />
+                    <div className="cl-cell-tipo" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                      {c.tipo === 'juridica' ? 'Jurídico' : 'Natural'}
+                    </div>
 
                     {/* Acciones */}
                     <div className="cl-cell-actions" onClick={e => e.stopPropagation()}>
