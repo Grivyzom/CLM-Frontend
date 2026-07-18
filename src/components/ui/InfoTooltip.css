@@ -1,0 +1,201 @@
+/* ═══════════════════════════════════════════════════════════════
+   InfoTooltip — Premium tooltip component
+   Designed to feel invisible until needed; subtle, elegant, warm.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Wrapper ─────────────────────────────────────────────────── */
+.info-tooltip-wrap {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+/* ── Trigger button ──────────────────────────────────────────── */
+.info-tooltip-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-full, 9999px);
+  color: var(--text-faint, #b0aaa3);
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: help;
+  transition: color 0.2s ease, background-color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.info-tooltip-trigger:hover,
+.info-tooltip-trigger:focus-visible,
+.info-tooltip-trigger.is-active {
+  color: var(--primary-bright, #3b82f6);
+}
+
+.info-tooltip-trigger:focus-visible {
+  outline: 2px solid var(--primary-soft, #93c5fd);
+  outline-offset: 1px;
+}
+
+/* ── SVG icon ────────────────────────────────────────────────── */
+.info-tooltip-svg {
+  width: 13px;
+  height: 13px;
+  display: block;
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Balloon  —  portal-rendered, always in <body>
+   ═══════════════════════════════════════════════════════════════ */
+.info-tooltip-balloon {
+  position: absolute;
+  z-index: 99999;
+  width: max-content;
+  max-width: 240px;
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    opacity 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Glass surface */
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  box-shadow:
+    0 4px 16px -2px rgba(0, 0, 0, 0.28),
+    0 1px 3px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.info-tooltip-balloon.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ── Content text ────────────────────────────────────────────── */
+.info-tooltip-text {
+  display: block;
+  padding: 7px 10px;
+  color: rgba(248, 250, 252, 0.92);
+  font-family: var(--font-family, 'Inter', system-ui, sans-serif);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  white-space: normal;
+  word-wrap: break-word;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Caret  —  rotated square, cleaner than border-triangle hack
+   ═══════════════════════════════════════════════════════════════ */
+.info-tooltip-caret {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Position variants
+   Each sets: initial transform (micro-slide) → visible transform,
+   and caret placement with border-side clipping.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── TOP ─────────────────────────────────────────────────────── */
+.info-tooltip-balloon.pos-top {
+  transform: translate(-50%, -100%) translateY(-6px) translateY(3px);
+}
+.info-tooltip-balloon.pos-top.is-visible {
+  transform: translate(-50%, -100%) translateY(-6px);
+}
+.info-tooltip-balloon.pos-top .info-tooltip-caret {
+  bottom: -5px;
+  left: 50%;
+  margin-left: -4px;
+  border-top-color: transparent;
+  border-left-color: transparent;
+}
+
+/* ── BOTTOM ──────────────────────────────────────────────────── */
+.info-tooltip-balloon.pos-bottom {
+  transform: translate(-50%, 0) translateY(6px) translateY(-3px);
+}
+.info-tooltip-balloon.pos-bottom.is-visible {
+  transform: translate(-50%, 0) translateY(6px);
+}
+.info-tooltip-balloon.pos-bottom .info-tooltip-caret {
+  top: -5px;
+  left: 50%;
+  margin-left: -4px;
+  border-bottom-color: transparent;
+  border-right-color: transparent;
+}
+
+/* ── LEFT ────────────────────────────────────────────────────── */
+.info-tooltip-balloon.pos-left {
+  transform: translate(-100%, -50%) translateX(-6px) translateX(3px);
+}
+.info-tooltip-balloon.pos-left.is-visible {
+  transform: translate(-100%, -50%) translateX(-6px);
+}
+.info-tooltip-balloon.pos-left .info-tooltip-caret {
+  right: -5px;
+  top: 50%;
+  margin-top: -4px;
+  border-left-color: transparent;
+  border-bottom-color: transparent;
+}
+
+/* ── RIGHT ───────────────────────────────────────────────────── */
+.info-tooltip-balloon.pos-right {
+  transform: translate(0, -50%) translateX(6px) translateX(-3px);
+}
+.info-tooltip-balloon.pos-right.is-visible {
+  transform: translate(0, -50%) translateX(6px);
+}
+.info-tooltip-balloon.pos-right .info-tooltip-caret {
+  left: -5px;
+  top: 50%;
+  margin-top: -4px;
+  border-right-color: transparent;
+  border-top-color: transparent;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Dark theme — invert to a light glass surface
+   ═══════════════════════════════════════════════════════════════ */
+[data-theme="dark"] .info-tooltip-trigger {
+  color: var(--text-faint, #746d64);
+}
+[data-theme="dark"] .info-tooltip-trigger:hover,
+[data-theme="dark"] .info-tooltip-trigger:focus-visible,
+[data-theme="dark"] .info-tooltip-trigger.is-active {
+  color: var(--primary-bright, #6ea1f7);
+}
+[data-theme="dark"] .info-tooltip-trigger:focus-visible {
+  outline-color: var(--primary-soft, #3c5a94);
+}
+
+[data-theme="dark"] .info-tooltip-balloon {
+  background: rgba(248, 250, 252, 0.95);
+  border-color: rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 4px 16px -2px rgba(0, 0, 0, 0.45),
+    0 1px 3px rgba(0, 0, 0, 0.20);
+}
+[data-theme="dark"] .info-tooltip-text {
+  color: rgba(15, 23, 42, 0.88);
+}
+[data-theme="dark"] .info-tooltip-caret {
+  background: rgba(248, 250, 252, 0.95);
+  border-color: rgba(0, 0, 0, 0.06);
+}

@@ -5,7 +5,8 @@ import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useActiveView } from '../../contexts/ActiveViewContext';
-import { apiLogout, getClientes, getContratoStats, getAuditoria, getIncidencias, getIncidenciaStats } from '../../api';
+import { apiLogout, getClientes, getContratoStats, getAuditoria, getIncidencias, getIncidenciaStats, getClientesStats, getSoftwareList } from '../../api';
+import { prefetchRoute, prefetchAllRoutesOnIdle } from '../../routeChunks';
 import './Sidebar.css';
 
 gsap.registerPlugin(useGSAP);
@@ -19,6 +20,12 @@ const GLOBAL_VIEW_LABEL = 'Administración Global';
 // `feature` = clave de la matriz de planes (tenants/plans.py del backend).
 // El sidebar oculta los módulos que el plan del tenant no incluye; el
 // backend igual rechaza el acceso directo por URL (gating real).
+const SYSTEM_NOTIFICATIONS = [
+  { id: 1, type: 'info', text: 'Actualización v2.0 disponible', paths: ['M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'] },
+  { id: 2, type: 'success', text: 'Sistemas operativos al 100%', paths: ['M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'] },
+  { id: 3, type: 'warning', text: 'Próximo mantenimiento en 2d', paths: ['M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z'] }
+];
+
 const NAV = [
   { id: 'inicio', path: '/inicio', label: 'Inicio', paths: ['M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', 'M9 22V12h6v10'] },
   { id: 'dashboard', path: '/', label: 'Dashboard', feature: 'contratos', paths: ['M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z'] },
@@ -67,6 +74,35 @@ const Icon = ({ paths = [], circles = [], className = '' }) => (
   </svg>
 );
 
+const IntelligentMarquee = ({ text, collapsed }) => {
+  const containerRef = useRef(null);
+  const textRef = useRef(null);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+
+  useEffect(() => {
+    const checkOverflow = () => {
+      if (containerRef.current && textRef.current && !collapsed) {
+        setIsOverflowing(textRef.current.scrollWidth > containerRef.current.clientWidth);
+      }
+    };
+    checkOverflow();
+    // Re-check on resize just in case
+    window.addEventListener('resize', checkOverflow);
+    return () => window.removeEventListener('resize', checkOverflow);
+  }, [text, collapsed]);
+
+  return (
+    <div className="sb-notif-text-container" ref={containerRef}>
+      <span 
+        className={`sb-notif-text ${isOverflowing ? 'marquee' : ''}`} 
+        ref={textRef}
+      >
+        {text}
+      </span>
+    </div>
+  );
+};
+
 export default function Sidebar() {
   const [isPinned, setIsPinned] = useState(() => {
     const saved = localStorage.getItem('clm_sidebar_preference');
@@ -75,6 +111,33 @@ export default function Sidebar() {
   const [isHovered, setIsHovered] = useState(false);
   // Drawer móvil: abierto/cerrado vía botón de menú del topbar
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [currentNotifIndex, setCurrentNotifIndex] = useState(0);
+  const [isHoveringNotif, setIsHoveringNotif] = useState(false);
+  const [isNotifVisible, setIsNotifVisible] = useState(() => {
+    const hiddenAt = localStorage.getItem('clm_notif_hidden_date');
+    if (!hiddenAt) return true;
+    // Vuelve a mostrar notificaciones si pasaron más de 12 horas desde que lo cerró
+    const isOld = Date.now() - parseInt(hiddenAt, 10) > 1000 * 60 * 60 * 12; 
+    if (isOld) {
+      localStorage.removeItem('clm_notif_hidden_date');
+      return true;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (isHoveringNotif) return;
+    const interval = setInterval(() => {
+      setCurrentNotifIndex((prev) => (prev + 1) % SYSTEM_NOTIFICATIONS.length);
+    }, 4500);
+    return () => clearInterval(interval);
+  }, [isHoveringNotif]);
+
+  const dismissNotif = (e) => {
+    e.stopPropagation();
+    setIsNotifVisible(false);
+    localStorage.setItem('clm_notif_hidden_date', Date.now().toString());
+  };
 
   const [contratosBadge, setContratosBadge] = useState(() => {
     const saved = localStorage.getItem('clm_contratos_badge');
@@ -88,6 +151,16 @@ export default function Sidebar() {
 
   const [incidenciasBadge, setIncidenciasBadge] = useState(() => {
     const saved = localStorage.getItem('clm_incidencias_badge');
+    return saved !== null ? parseInt(saved, 10) : 0;
+  });
+
+  const [clientesBadge, setClientesBadge] = useState(() => {
+    const saved = localStorage.getItem('clm_clientes_badge');
+    return saved !== null ? parseInt(saved, 10) : 0;
+  });
+
+  const [catalogoBadge, setCatalogoBadge] = useState(() => {
+    const saved = localStorage.getItem('clm_catalogo_badge');
     return saved !== null ? parseInt(saved, 10) : 0;
   });
   
@@ -123,6 +196,12 @@ export default function Sidebar() {
   useEffect(() => {
     setMobileOpen(false);
   }, [location.pathname]);
+
+  // Con sesión iniciada, precarga los chunks de las demás vistas en idle:
+  // el primer click a cada ruta deja de pagar la descarga del módulo.
+  useEffect(() => {
+    if (user) prefetchAllRoutesOnIdle();
+  }, [user]);
 
   // Con drawer abierto: Escape cierra y se bloquea el scroll de fondo
   useEffect(() => {
@@ -181,6 +260,28 @@ export default function Sidebar() {
             }
             setIncidenciasBadge(count);
             localStorage.setItem('clm_incidencias_badge', count.toString());
+          } catch (err) {}
+        })());
+      }
+
+      if (hasFeature('clientes') && canAccessClientes) {
+        tasks.push((async () => {
+          try {
+            const stats = await getClientesStats();
+            const count = stats.activos || 0;
+            setClientesBadge(count);
+            localStorage.setItem('clm_clientes_badge', count.toString());
+          } catch (err) {}
+        })());
+      }
+
+      if (hasFeature('catalogo')) {
+        tasks.push((async () => {
+          try {
+            const list = await getSoftwareList();
+            const count = list.length || 0;
+            setCatalogoBadge(count);
+            localStorage.setItem('clm_catalogo_badge', count.toString());
           } catch (err) {}
         })());
       }
@@ -545,6 +646,10 @@ export default function Sidebar() {
             if (sum > 0) {
               currentBadge = { n: sum, type: 'warning' };
             }
+          } else if (item.id === 'clientes' && clientesBadge > 0) {
+            currentBadge = { n: clientesBadge, type: 'info' };
+          } else if (item.id === 'catalogo' && catalogoBadge > 0) {
+            currentBadge = { n: catalogoBadge, type: 'info' };
           }
 
           return (
@@ -552,7 +657,6 @@ export default function Sidebar() {
               {hasSub ? (
                 <div
                   className={`sb-nav-item ${isActive ? 'active' : ''}`}
-                  title={collapsed ? item.label : ''}
                   onClick={() => {
                     setOpenSubmenus(prev => ({ ...prev, [item.id]: !prev[item.id] }));
                     if (collapsed) {
@@ -579,13 +683,25 @@ export default function Sidebar() {
                       <path d="M6 9l6 6 6-6"/>
                     </svg>
                   )}
+
+                  {collapsed && (
+                    <div className="sb-tooltip">
+                      {item.label}
+                      {currentBadge && (
+                        <span className={`sb-tooltip-badge ${currentBadge.type}`}>
+                          {currentBadge.n}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <Link
                   to={item.path}
                   className={`sb-nav-item ${isActive ? 'active' : ''}`}
-                  title={collapsed ? item.label : ''}
                   aria-current={isActive ? 'page' : undefined}
+                  onMouseEnter={() => prefetchRoute(item.path)}
+                  onFocus={() => prefetchRoute(item.path)}
                 >
                   <div className="sb-icon-container">
                     <Icon paths={item.paths} circles={item.circles} />
@@ -605,6 +721,17 @@ export default function Sidebar() {
                       {currentBadge.n}
                     </span>
                   )}
+
+                  {collapsed && (
+                    <div className="sb-tooltip">
+                      {item.label}
+                      {currentBadge && (
+                        <span className={`sb-tooltip-badge ${currentBadge.type}`}>
+                          {currentBadge.n}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </Link>
               )}
 
@@ -615,9 +742,11 @@ export default function Sidebar() {
                     const isSubActive = location.pathname === sub.path || location.pathname.startsWith(sub.path);
                     return (
                       <Link 
-                        key={sub.id} 
-                        to={sub.path} 
+                        key={sub.id}
+                        to={sub.path}
                         className={`sb-submenu-item ${isSubActive ? 'active' : ''}`}
+                        onMouseEnter={() => prefetchRoute(sub.path)}
+                        onFocus={() => prefetchRoute(sub.path)}
                         style={{
                           fontSize: '13px',
                           color: isSubActive ? 'var(--primary)' : 'var(--text-muted)',
@@ -647,6 +776,37 @@ export default function Sidebar() {
           );
         })}
       </nav>
+
+      {/* Slider de Notificaciones */}
+      {user && isNotifVisible && (
+        <div 
+          className="sb-notification-zone" 
+          title={collapsed ? SYSTEM_NOTIFICATIONS[currentNotifIndex].text : ''}
+          onMouseEnter={() => setIsHoveringNotif(true)}
+          onMouseLeave={() => setIsHoveringNotif(false)}
+        >
+          <div className="sb-notification-slider" key={SYSTEM_NOTIFICATIONS[currentNotifIndex].id}>
+            <div className={`sb-notif-content sb-notif-${SYSTEM_NOTIFICATIONS[currentNotifIndex].type}`}>
+              <div className="sb-notif-icon-wrapper">
+                <Icon paths={SYSTEM_NOTIFICATIONS[currentNotifIndex].paths} />
+              </div>
+              <IntelligentMarquee 
+                text={SYSTEM_NOTIFICATIONS[currentNotifIndex].text} 
+                collapsed={collapsed} 
+              />
+              <div className="sb-notif-progress" />
+            </div>
+          </div>
+          {!collapsed && (
+            <button className="sb-notif-close" onClick={dismissNotif} aria-label="Cerrar notificación" title="Cerrar (se reabrirá en 12h)">
+              <svg className="sb-notif-close-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Footer / Usuario y Colapsar */}
       <div className="sb-footer">

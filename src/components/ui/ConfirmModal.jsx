@@ -50,7 +50,7 @@ export default function ConfirmModal({
           right: 0,
           bottom: 0,
           background: 'rgba(15, 23, 42, 0.4)',
-          zIndex: 998,
+          zIndex: 9998,
           animation: 'fadeIn 0.15s ease-out',
         }}
       />
@@ -64,7 +64,7 @@ export default function ConfirmModal({
           border: '1px solid var(--border)',
           borderRadius: 8,
           boxShadow: '0 20px 25px rgba(0, 0, 0, 0.15)',
-          zIndex: 999,
+          zIndex: 9999,
           width: '90%',
           maxWidth: 380,
           padding: '24px',
@@ -74,7 +74,7 @@ export default function ConfirmModal({
         <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
           {title}
         </h3>
-        <p style={{ margin: bypassKey ? '0 0 16px' : '0 0 20px', fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+        <p style={{ margin: bypassKey ? '0 0 16px' : '0 0 20px', fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
           {message}
         </p>
 

@@ -120,7 +120,7 @@ function PaginationEllipsis({ totalPages, setPage }) {
   );
 }
 
-export default function Pagination({ page, totalPages, totalCount, pageSize, setPage, itemName = 'items' }) {
+export default function Pagination({ page, totalPages, totalCount, pageSize, setPage, itemName = 'items', compact = false }) {
   const from = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
   const to   = Math.min(page * pageSize, totalCount);
 
@@ -137,10 +137,12 @@ export default function Pagination({ page, totalPages, totalCount, pageSize, set
   }
 
   return (
-    <div className="ui-pagination">
-      <span className="ui-pagination-info">
-        Mostrando <b>{from}–{to}</b> de <b>{totalCount}</b> {itemName}
-      </span>
+    <div className={`ui-pagination ${compact ? 'compact' : ''}`} style={compact ? { justifyContent: 'center' } : {}}>
+      {!compact && (
+        <span className="ui-pagination-info">
+          Mostrando <b>{from}–{to}</b> de <b>{totalCount}</b> {itemName}
+        </span>
+      )}
       <div className="ui-pagination-btns">
         <button
           className="ui-page-btn"

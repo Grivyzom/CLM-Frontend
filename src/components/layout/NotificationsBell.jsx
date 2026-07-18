@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Bell, Check } from 'lucide-react';
 import {
   getNotificaciones,
@@ -12,15 +13,16 @@ const POLL_MS = 30000;
 
 // Campana con notificaciones reales para el usuario-cliente (rol CLIENTE).
 // Mismo patrón de polling que el badge de incidencias del Sidebar.
-export default function NotificationsBell() {
+export default function NotificationsBell({ forStaff = false }) {
   const [open, setOpen] = useState(false);
   const [count, setCount] = useState(0);
   const [items, setItems] = useState(null);
   const wrapRef = useRef(null);
   const isInitialLoad = useRef(true);
+  const navigate = useNavigate();
 
   const fetchCount = useCallback(() => {
-    getNotificacionesUnreadCount()
+    getNotificacionesUnreadCount({ para_staff: forStaff })
       .then((res) => {
         const newCount = res.count || 0;
         setCount((prevCount) => {
@@ -60,7 +62,7 @@ export default function NotificationsBell() {
   }, [fetchCount]);
 
   const fetchItems = useCallback(() => {
-    getNotificaciones({ limit: 10 })
+    getNotificaciones({ limit: 10, para_staff: forStaff })
       .then((res) => setItems(res.results || []))
       .catch(() => setItems([]));
   }, []);
@@ -131,7 +133,18 @@ export default function NotificationsBell() {
           ) : (
             <div className="tb-notif-list">
               {items.map((n) => (
-                <div className={`tb-notif-item ${n.leida ? 'read' : ''} tipo-${n.tipo}`} key={n.id}>
+                <div 
+                  className={`tb-notif-item ${n.leida ? 'read' : ''} tipo-${n.tipo}`} 
+                  key={n.id}
+                  onClick={() => {
+                    if (n.enlace) {
+                      setOpen(false);
+                      if (!n.leida) handleMarcarLeida(n.id);
+                      navigate(n.enlace);
+                    }
+                  }}
+                  style={{ cursor: n.enlace ? 'pointer' : 'default' }}
+                >
                   <div className="tb-notif-item-main">
                     <span className="tb-notif-item-title">{n.titulo}</span>
                     <span className="tb-notif-item-body">{n.cuerpo}</span>
@@ -140,7 +153,10 @@ export default function NotificationsBell() {
                   {!n.leida && (
                     <button
                       className="tb-notif-item-read"
-                      onClick={() => handleMarcarLeida(n.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleMarcarLeida(n.id);
+                      }}
                       title="Marcar como leída"
                       aria-label={`Marcar "${n.titulo}" como leída`}
                     >
