@@ -1,0 +1,163 @@
+/* ─── ClausulaEditor: editor de bloques de cláusulas del contrato ─────────── */
+
+.cle-root { display: flex; flex-direction: column; gap: 10px; }
+
+.cle-toolbar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.cle-count { font-size: 11px; color: var(--text-muted); margin-right: auto; }
+
+.cle-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 5px; cursor: pointer;
+  font-size: 11px; font-weight: 600; font-family: inherit;
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--text-primary); transition: background 0.15s, border-color 0.15s;
+}
+.cle-btn:hover { background: var(--bg-inset); }
+.cle-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.cle-btn-primary {
+  border-color: var(--primary); background: var(--primary-bg); color: var(--primary);
+}
+.cle-btn-primary:hover { background: var(--primary-bg); border-color: var(--primary); filter: brightness(0.97); }
+
+/* ── Sugerencias de estructura (apertura/cierre profesional) ── */
+.cle-sugerencias {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 12px; border-radius: 6px;
+  border: 1px dashed var(--primary-border, var(--primary));
+  background: var(--primary-bg); color: var(--primary);
+  font-size: 11px;
+}
+.cle-sug-texto { color: var(--text-primary); }
+.cle-sug-btn {
+  padding: 4px 10px; border-radius: 999px; cursor: pointer;
+  font-size: 10px; font-weight: 700; font-family: inherit;
+  border: 1px solid var(--primary-border, var(--primary));
+  background: var(--surface); color: var(--primary); white-space: nowrap;
+  transition: background 0.15s;
+}
+.cle-sug-btn:hover { background: var(--primary-bg); }
+.cle-sug-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+.cle-sug-vacio { font-size: 10px; color: var(--text-muted); }
+
+/* ── Panel de biblioteca ── */
+.cle-lib {
+  border: 1px solid var(--primary-border, var(--border));
+  border-radius: 8px; background: var(--bg-faint); overflow: hidden;
+}
+.cle-lib-head {
+  display: flex; gap: 8px; padding: 10px; border-bottom: 1px solid var(--border);
+  background: var(--bg-topbar);
+}
+.cle-lib-search {
+  flex: 1; padding: 7px 10px; font-size: 12px; font-family: inherit;
+  border: 1px solid var(--border); border-radius: 5px; outline: none;
+  background: var(--surface); color: var(--text-primary);
+}
+.cle-lib-search:focus { border-color: var(--primary); }
+.cle-lib-cat {
+  padding: 7px 8px; font-size: 11px; font-family: inherit;
+  border: 1px solid var(--border); border-radius: 5px; outline: none;
+  background: var(--surface); color: var(--text-primary); max-width: 160px;
+}
+.cle-lib-list { max-height: 260px; overflow-y: auto; }
+.cle-lib-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; border-bottom: 1px solid var(--border);
+}
+.cle-lib-item:last-child { border-bottom: none; }
+.cle-lib-item-info { flex: 1; min-width: 0; }
+.cle-lib-item-name {
+  font-size: 12px; font-weight: 600; color: var(--text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cle-lib-item-meta { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+.cle-lib-empty { padding: 14px; font-size: 11px; color: var(--text-muted); text-align: center; }
+.cle-lib-added { font-size: 10px; font-weight: 600; color: var(--success-deep, var(--success)); }
+
+.cle-ver-btn {
+  padding: 4px 9px; border-radius: 4px; cursor: pointer;
+  font-size: 10px; font-weight: 600; font-family: inherit;
+  border: 1px solid var(--primary-border, var(--primary)); background: var(--surface);
+  color: var(--primary); white-space: nowrap;
+}
+.cle-ver-btn:hover { background: var(--primary-bg); }
+.cle-ver-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+/* ── Badges ── */
+.cle-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 7px; border-radius: 999px;
+  font-size: 10px; font-weight: 600; line-height: 1.5; white-space: nowrap;
+}
+.cle-badge-riesgo-alto { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-soft, var(--danger)); }
+.cle-badge-riesgo-medio { background: var(--warning-bg); color: var(--warning-deep); border: 1px solid var(--warning-border); }
+.cle-badge-riesgo-bajo { background: var(--success-bg); color: var(--success-deep, var(--success)); border: 1px solid var(--success-border); }
+.cle-badge-origen { background: var(--bg-inset); color: var(--text-muted); border: 1px solid var(--border); }
+.cle-badge-tipo { background: var(--primary-bg); color: var(--primary); border: 1px solid var(--primary-border, var(--primary)); }
+.cle-badge-editada { background: var(--warning-bg); color: var(--warning-deep); border: 1px solid var(--warning-border); }
+
+/* ── Bloques ── */
+.cle-bloques { display: flex; flex-direction: column; gap: 8px; }
+.cle-bloque {
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); overflow: hidden;
+}
+.cle-bloque-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px; background: var(--bg-topbar);
+  border-bottom: 1px solid var(--border);
+}
+.cle-bloque-num {
+  width: 20px; height: 20px; border-radius: 999px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--primary-bg); color: var(--primary);
+  font-size: 10px; font-weight: 700;
+}
+.cle-bloque-titulo {
+  flex: 1; min-width: 0; padding: 5px 8px;
+  font-size: 12px; font-weight: 600; font-family: inherit;
+  border: 1px solid transparent; border-radius: 4px; outline: none;
+  background: transparent; color: var(--text-primary);
+  text-transform: uppercase;
+}
+.cle-bloque-titulo:hover { border-color: var(--border); }
+.cle-bloque-titulo:focus { border-color: var(--primary); background: var(--surface); }
+.cle-bloque-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+.cle-icon-btn {
+  width: 24px; height: 24px; border: none; border-radius: 4px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  background: none; color: var(--text-muted); font-family: inherit;
+}
+.cle-icon-btn:hover:not(:disabled) { background: var(--bg-inset); color: var(--text-primary); }
+.cle-icon-btn:disabled { opacity: 0.3; cursor: default; }
+.cle-icon-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+.cle-icon-btn-danger:hover:not(:disabled) { background: var(--danger-bg); color: var(--danger); }
+
+.cle-bloque-texto {
+  width: 100%; box-sizing: border-box; display: block;
+  min-height: 84px; padding: 10px 12px; resize: vertical;
+  border: none; outline: none;
+  font-size: 12px; line-height: 1.6; font-family: inherit;
+  background: transparent; color: var(--text-primary);
+}
+.cle-bloque-texto::placeholder { color: var(--text-faint); }
+
+.cle-bloque-foot {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  padding: 6px 10px; border-top: 1px solid var(--border);
+  background: var(--bg-faint);
+}
+.cle-restaurar {
+  margin-left: auto; border: none; background: none; cursor: pointer;
+  font-size: 10px; font-weight: 600; font-family: inherit;
+  color: var(--primary); text-decoration: underline; padding: 2px 4px;
+}
+.cle-restaurar:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+.cle-empty {
+  padding: 18px 14px; border: 1px dashed var(--border); border-radius: 8px;
+  background: var(--bg-faint); text-align: center;
+  font-size: 11.5px; color: var(--text-soft, var(--text-muted));
+}

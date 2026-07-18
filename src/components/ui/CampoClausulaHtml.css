@@ -1,0 +1,70 @@
+/* ─── CampoClausulaHtml: campo de plantilla HTML con inserción de cláusulas ── */
+
+.ccl-field { display: flex; flex-direction: column; }
+
+.ccl-label {
+  display: block; margin: 0 0 4px;
+  font-size: 11px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+
+.ccl-select {
+  width: 100%; margin-bottom: 8px; box-sizing: border-box;
+  padding: 6px 10px; font-size: 11.5px; font-family: inherit;
+  border: 1px solid var(--border); border-radius: 5px; outline: none;
+  color: var(--text-primary); background: var(--bg-topbar); cursor: pointer;
+}
+.ccl-select:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+/* Sin candidatas para la sección */
+.ccl-empty {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin-bottom: 8px; padding: 6px 10px;
+  border: 1px dashed var(--border); border-radius: 5px; background: var(--bg-faint);
+  font-size: 11px; color: var(--text-muted);
+}
+.ccl-add-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 8px; border: 1px solid var(--primary); border-radius: 4px;
+  background: transparent; color: var(--primary);
+  font-size: 10px; font-weight: 700; font-family: inherit;
+  cursor: pointer; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.4px;
+}
+.ccl-add-btn:hover { background: var(--primary-bg); }
+.ccl-add-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+/* Buscador del resto de la biblioteca */
+.ccl-search { position: relative; margin-bottom: 8px; }
+.ccl-search-input {
+  width: 100%; box-sizing: border-box; padding: 6px 10px;
+  font-size: 11.5px; font-family: inherit;
+  border: 1px dashed var(--border); border-radius: 5px; outline: none;
+  color: var(--text-primary); background: var(--bg-faint);
+}
+.ccl-search-input:focus { border-style: solid; border-color: var(--primary); }
+.ccl-drop {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 30; margin-top: 2px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 5px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  max-height: 220px; overflow-y: auto;
+}
+.ccl-drop-empty { padding: 8px 10px; font-size: 11px; color: var(--text-muted); }
+.ccl-res {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; padding: 7px 10px; text-align: left; cursor: pointer;
+  border: none; border-bottom: 1px solid var(--bg-topbar); background: transparent;
+  font-family: inherit;
+}
+.ccl-res:last-child { border-bottom: none; }
+.ccl-res-activo { background: var(--bg-hover); }
+.ccl-res:disabled { cursor: not-allowed; opacity: 0.5; }
+.ccl-res-nombre { font-size: 11.5px; font-weight: 600; color: var(--text-primary); }
+.ccl-res-cat { font-size: 10px; color: var(--text-muted); white-space: nowrap; }
+
+/* Descalce sección ↔ cláusula insertada */
+.ccl-warning {
+  margin: 0 0 8px; padding: 6px 10px;
+  font-size: 11px; border-radius: 5px;
+  background: var(--warning-bg); color: var(--warning-deep);
+  border: 1px solid var(--warning-border);
+}
