@@ -6,32 +6,36 @@ import { ActiveViewProvider } from './contexts/ActiveViewContext';
 import { ConfirmProvider } from './contexts/ConfirmContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ProtectedRoute, { RequireAccess } from './components/auth/ProtectedRoute';
+import { routeChunks } from './routeChunks';
 
 // Code splitting por ruta: cada página se descarga solo cuando se navega a ella.
 // recharts (Dashboard/Analytics/Auditoría) y Catalogo quedan fuera del bundle inicial.
-const Dashboard      = lazy(() => import('./pages/Dashboard'));
+// Las vistas del sidebar usan los loaders de routeChunks para que el prefetch
+// (hover + idle) comparta el mismo import() y el chunk ya esté caliente al navegar.
+const Dashboard      = lazy(routeChunks['/']);
 const ContractDetail = lazy(() => import('./pages/ContractDetail'));
 const ContractEditor = lazy(() => import('./pages/ContractEditor'));
-const Contratos      = lazy(() => import('./pages/Contratos'));
-const Clientes       = lazy(() => import('./pages/Clientes'));
-const Catalogo       = lazy(() => import('./pages/Catalogo'));
-const Ajustes        = lazy(() => import('./pages/Ajustes'));
-const Faq            = lazy(() => import('./pages/Faq'));
-const AuditoriaLegal = lazy(() => import('./pages/AuditoriaLegal'));
-const Analytics      = lazy(() => import('./pages/Analytics'));
+const Contratos      = lazy(routeChunks['/contratos']);
+const Clientes       = lazy(routeChunks['/clientes']);
+const Catalogo       = lazy(routeChunks['/catalogo']);
+const Ajustes        = lazy(routeChunks['/ajustes']);
+const Faq            = lazy(routeChunks['/faq']);
+const AuditoriaLegal = lazy(routeChunks['/auditoria']);
+const Analytics      = lazy(routeChunks['/analytics']);
 const Login          = lazy(() => import('./pages/Login'));
 const Recuperar      = lazy(() => import('./pages/Recuperar'));
+const FirmarContrato = lazy(() => import('./pages/FirmarContrato'));
 const Registro       = lazy(() => import('./pages/Registro'));
 const Inicio         = lazy(() => import('./pages/Inicio'));
-const Historial      = lazy(() => import('./pages/Historial'));
-const Membresias     = lazy(() => import('./pages/Membresias'));
-const Tarifas        = lazy(() => import('./pages/Tarifas'));
-const Beneficios     = lazy(() => import('./pages/Beneficios'));
-const Novedades      = lazy(() => import('./pages/Novedades'));
-const Reporte        = lazy(() => import('./pages/Reporte'));
+const Historial      = lazy(routeChunks['/historial']);
+const Membresias     = lazy(routeChunks['/membresias']);
+const Tarifas        = lazy(routeChunks['/tarifas']);
+const Beneficios     = lazy(routeChunks['/membresias/beneficio']);
+const Novedades      = lazy(routeChunks['/novedades']);
+const Reporte        = lazy(routeChunks['/reportes']);
 const ClienteWorkspace   = lazy(() => import('./pages/ClienteWorkspace'));
 const ProductoWorkspace  = lazy(() => import('./pages/ProductoWorkspace'));
-const Usuarios           = lazy(() => import('./pages/Usuarios'));
+const Usuarios           = lazy(routeChunks['/usuarios']);
 
 function RouteFallback() {
   return <div className="route-fallback" aria-busy="true" />;
@@ -44,14 +48,18 @@ function App() {
       <AuthProvider>
         <ActiveViewProvider>
         <ConfirmProvider>
-          <Suspense fallback={<RouteFallback />}>
-            <Layout>
+          <Layout>
+            {/* Suspense DENTRO de Layout: el sidebar sigue montado mientras
+                baja el chunk de la vista; antes toda la app se reemplazaba
+                por el fallback en la primera visita a cada ruta lazy. */}
+            <Suspense fallback={<RouteFallback />}>
               <Routes>
                 <Route path="/inicio" element={<Inicio />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/recuperar" element={<Recuperar />} />
                 <Route path="/recuperar/confirmar/:uid/:token" element={<Recuperar />} />
-                <Route path="/registro" element={<Registro />} />
+                <Route path="/firmar/:token" element={<FirmarContrato />} />
+                <Route path="/registro/:uid/:token" element={<Registro />} />
                 <Route path="/*" element={
                   <ProtectedRoute>
                     <Routes>
@@ -114,8 +122,8 @@ function App() {
                   </ProtectedRoute>
                 } />
               </Routes>
-            </Layout>
-          </Suspense>
+            </Suspense>
+          </Layout>
         </ConfirmProvider>
         </ActiveViewProvider>
       </AuthProvider>

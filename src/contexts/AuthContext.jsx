@@ -24,6 +24,7 @@ export function buildUserFromApi(data) {
   return {
     id: data.id,
     name: data.username,
+    fullName: data.full_name || '',
     initials: data.username.substring(0, 2).toUpperCase(),
     role: data.is_superadmin ? 'Superadmin' : (ROLE_LABELS[rawRole] || 'Usuario'),
     rawRole,
