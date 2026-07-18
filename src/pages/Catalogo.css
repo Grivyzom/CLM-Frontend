@@ -233,10 +233,114 @@
   border-color: var(--border-strong);
 }
 
+/* Salida de card al borrar la última versión de una familia: fade + escala
+   breve antes de sacarla del estado (PlantillasTab.handleDeleteTemplate). */
+.catalogo-card-removing {
+  animation: catalogoCardOut 0.22s ease forwards;
+  pointer-events: none;
+}
+
+@keyframes catalogoCardOut {
+  to {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .catalogo-card-removing {
+    animation: none;
+    opacity: 0;
+  }
+}
+
 .catalogo-card-header {
   display: flex;
   align-items: flex-start;
   gap: 10px;
+}
+
+/* Miniatura tipo "hoja": el documento completo (proporción A4) apoyado sobre
+   un fondo de escritorio, con sombra de papel. La imagen del backend ya es la
+   primera página entera, así que contain no deja bandas. */
+.catalogo-card-cover {
+  width: 100%;
+  height: 240px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 40%, transparent), transparent 60%),
+    var(--bg-faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+}
+
+.catalogo-card-sheet {
+  height: calc(100% - 28px);
+  aspect-ratio: 210 / 297;
+  /* Papel real: blanco fijo, igual que la propia imagen JPG, en ambos temas */
+  background: #fff;
+  border-radius: 3px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.08),
+    0 8px 18px rgba(0, 0, 0, 0.14);
+  overflow: hidden;
+}
+
+/* Indicador "previsualizar": siempre visible pero tenue; al pasar el cursor
+   por la miniatura toma protagonismo (toda la cover es el área clickeable). */
+.catalogo-card-preview-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  opacity: 0.45;
+  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+  pointer-events: none;
+}
+
+.catalogo-card-cover:hover .catalogo-card-preview-btn {
+  opacity: 1;
+  background: var(--surface);
+  color: var(--primary);
+  border-color: var(--primary-border);
+}
+
+.catalogo-card-sheet img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.catalogo-card-sheet-fallback {
+  display: none;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+.catalogo-card-sheet-fallback span {
+  font-size: 22px;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: -0.02em;
 }
 
 .catalogo-card-abbr {
@@ -547,7 +651,8 @@
   border: 1px solid var(--border);
   border-radius: 6px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -560,6 +665,7 @@
   padding: 7px 16px;
   background: var(--bg-topbar);
   border-bottom: 1px solid var(--border);
+  min-width: 820px;
 }
 
 .catalogo-productos-header span {
@@ -600,6 +706,7 @@
   font-size: 11px;
   color: var(--text-primary);
   transition: background-color 0.15s;
+  min-width: 820px;
 }
 
 .catalogo-productos-row:hover {
@@ -806,6 +913,17 @@
     width: 100%;
     max-height: 200px;
   }
+
+  /* Tabla: ocultar Descripción (col 3) para ahorrar espacio */
+  .catalogo-productos-header,
+  .catalogo-productos-row {
+    grid-template-columns: 100px 1.2fr 1fr 0.8fr 0.7fr 90px;
+    min-width: 640px;
+  }
+  .catalogo-productos-header > *:nth-child(3),
+  .catalogo-productos-row > *:nth-child(3) {
+    display: none;
+  }
 }
 
 @media (max-width: 768px) {
@@ -821,9 +939,68 @@
     flex-direction: column;
   }
 
-  .catalogo-productos-header,
+  /* Tabla → tarjetas apiladas en móvil */
+  .catalogo-productos-header {
+    display: none;
+  }
+
   .catalogo-productos-row {
-    grid-template-columns: 80px 1fr 0.8fr;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    padding: 14px 16px;
+    min-width: 0;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+
+  /* SKU – etiqueta destacada arriba */
+  .catalogo-productos-row > *:nth-child(1) {
+    order: 1;
+    font-size: 10px;
+  }
+
+  /* Nombre – ancho completo, prominente */
+  .catalogo-productos-row > *:nth-child(2) {
+    order: 2;
+    width: 100%;
+    font-size: 13px;
+  }
+
+  /* Descripción – ancho completo debajo del nombre */
+  .catalogo-productos-row > *:nth-child(3) {
+    order: 3;
+    width: 100%;
+    display: block;
+    white-space: normal;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  /* Categoría */
+  .catalogo-productos-row > *:nth-child(4) {
+    order: 4;
+  }
+
+  /* Precio */
+  .catalogo-productos-row > *:nth-child(5) {
+    order: 5;
+    margin-left: auto;
+  }
+
+  /* Moneda */
+  .catalogo-productos-row > *:nth-child(6) {
+    order: 6;
+  }
+
+  /* Acciones – fila completa al final */
+  .catalogo-productos-row > *:nth-child(7) {
+    order: 7;
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: 4px;
+    padding-top: 8px;
+    border-top: 1px solid var(--bg-topbar);
   }
 }
 
@@ -840,6 +1017,66 @@
 @keyframes spin {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
+}
+
+@keyframes catalogoSheetIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+/* Foco visible por teclado en todos los controles del catálogo */
+.catalogo-container button:focus-visible,
+.catalogo-container input:focus-visible,
+.catalogo-container select:focus-visible,
+.catalogo-container [role="button"]:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Skeleton de carga del grid de plantillas — misma silueta que .catalogo-card:
+   portada con hoja A4 centrada, título, fila de estado y footer. */
+.catalogo-skeleton-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--surface);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+}
+.catalogo-skeleton-cover {
+  width: 100%;
+  height: 240px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 40%, transparent), transparent 60%),
+    var(--bg-faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.catalogo-skeleton-sheet {
+  height: calc(100% - 28px);
+  aspect-ratio: 210 / 297;
+  border-radius: 3px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.08);
+}
+.catalogo-skeleton-line {
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--bg-faint) 25%, var(--bg-inset) 50%, var(--bg-faint) 75%);
+  background-size: 200% 100%;
+  animation: catalogoShimmer 1.4s ease-in-out infinite;
+}
+@keyframes catalogoShimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .catalogo-skeleton-line { animation: none; }
 }
 
 /* ─── Implementaciones en Contratos (Premium) ────────────────────────────────────────── */

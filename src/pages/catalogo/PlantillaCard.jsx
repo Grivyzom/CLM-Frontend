@@ -3,7 +3,9 @@ import { Icon, StatusBadge } from './ui';
 
 // ─── Plantilla Card ───────────────────────────────────────────────────────────
 // memo: el grid puede tener decenas de cards; solo re-renderiza la que cambia.
-function PlantillaCard({ p, setPreviewTemplate, handleOpenContextMenu, handleEditTemplate }) {
+// `p` es el representante de la familia (versión activa, o la más reciente si
+// ninguna está activa); `versionCount`/`onOpenVersions` habilitan ver las demás.
+function PlantillaCard({ p, setPreviewTemplate, handleOpenContextMenu, handleEditTemplate, versionCount = 1, totalUsos, onOpenVersions, onOpenFamilyContratos, onToggleActiva, removing = false }) {
   const containerRef = useRef(null);
   const textRef = useRef(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
@@ -26,14 +28,41 @@ function PlantillaCard({ p, setPreviewTemplate, handleOpenContextMenu, handleEdi
 
   return (
     <div
-      className="catalogo-card"
+      className={`catalogo-card${removing ? ' catalogo-card-removing' : ''}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onClick={() => onOpenVersions?.(p)}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenVersions?.(p); } }}
+      role="button"
+      tabIndex={0}
+      title="Ver versiones y contratos de esta familia"
+      style={{ cursor: 'pointer' }}
     >
-      <div className="catalogo-card-header">
-        <div className="catalogo-card-abbr" style={{ background: p.bg }}>
-          <span style={{ color: p.color }}>{p.abbr}</span>
+      <div className="catalogo-card-header" style={{ paddingBottom: 0, flexDirection: 'column', alignItems: 'stretch' }}>
+        <div
+          className="catalogo-card-cover"
+          title="Previsualizar documento"
+          onClick={e => { e.stopPropagation(); setPreviewTemplate(p); }}
+        >
+          <span className="catalogo-card-preview-btn" aria-hidden="true">
+            <Icon d={['M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z','M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z']} w={14} color="currentColor" />
+          </span>
+          <div className="catalogo-card-sheet">
+            <img
+              src={`/api/plantillas/plantillas/${p.id}/preview-img/?v=ultra`}
+              alt={`Portada de ${p.name}`}
+              loading="lazy"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+                if (e.currentTarget.nextSibling) e.currentTarget.nextSibling.style.display = 'flex';
+              }}
+            />
+            <div className="catalogo-card-sheet-fallback" style={{ background: p.bg }}>
+              <span style={{ color: p.color }}>{p.abbr}</span>
+            </div>
+          </div>
         </div>
+        <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start' }}>
         <div className="catalogo-card-title" style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
           <div
             ref={containerRef}
@@ -62,6 +91,18 @@ function PlantillaCard({ p, setPreviewTemplate, handleOpenContextMenu, handleEdi
           </div>
           <p className="catalogo-card-meta">{p.cat} · {p.version}</p>
         </div>
+        {versionCount > 1 && (
+          <span
+            title={`${versionCount} versiones de esta familia — clic para verlas`}
+            style={{
+              flexShrink: 0, fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 10,
+              background: 'var(--primary)', color: 'var(--text-on-accent)', whiteSpace: 'nowrap',
+            }}
+          >
+            {versionCount} versiones
+          </span>
+        )}
+        </div>
       </div>
 
       <div className="catalogo-card-status">
@@ -69,7 +110,25 @@ function PlantillaCard({ p, setPreviewTemplate, handleOpenContextMenu, handleEdi
         {p.vars !== null && (
           <span style={{ fontSize: 10, color: 'var(--text-faint)', marginLeft: 2 }}>{p.vars} variables</span>
         )}
-        <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>{p.uses} usos</span>
+        <span 
+          style={{ 
+            marginLeft: 'auto', 
+            fontSize: 10, 
+            color: (totalUsos ?? p.uses) > 0 ? 'var(--primary)' : 'var(--text-muted)', 
+            fontWeight: 600,
+            cursor: (totalUsos ?? p.uses) > 0 ? 'pointer' : 'default',
+            textDecoration: (totalUsos ?? p.uses) > 0 ? 'underline' : 'none'
+          }}
+          title={(totalUsos ?? p.uses) > 0 ? "Ver contratos" : ""}
+          onClick={e => {
+            if ((totalUsos ?? p.uses) > 0 && onOpenFamilyContratos) {
+              e.stopPropagation();
+              onOpenFamilyContratos();
+            }
+          }}
+        >
+          {totalUsos ?? p.uses} usos
+        </span>
       </div>
 
       <div className="catalogo-card-footer">
@@ -88,11 +147,13 @@ function PlantillaCard({ p, setPreviewTemplate, handleOpenContextMenu, handleEdi
           
           <div className="catalogo-action-group" onClick={e => e.stopPropagation()}>
             <button
-              title="Vista previa"
+              title={p.status === 'Aprobado' ? 'Archivar versión' : 'Activar versión'}
               className="catalogo-action-group-btn"
-              onClick={e => { e.stopPropagation(); setPreviewTemplate(p); }}
+              onClick={e => { e.stopPropagation(); if (onToggleActiva) onToggleActiva(p); }}
             >
-              <Icon d={['M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z','M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z']} w={14} color="currentColor" />
+              {p.status === 'Aprobado'
+                ? <Icon d={['M21 8v13H3V8', 'M1 3h22v5H1z', 'M10 12h4']} w={14} color="currentColor" />
+                : <Icon d={['M22 11.08V12a10 10 0 1 1-5.93-9.14', 'M22 4L12 14.01l-3-3']} w={14} color="currentColor" />}
             </button>
             <button
               title="Editar"
@@ -100,6 +161,13 @@ function PlantillaCard({ p, setPreviewTemplate, handleOpenContextMenu, handleEdi
               onClick={e => { e.stopPropagation(); if(handleEditTemplate) handleEditTemplate(p); }}
             >
               <Icon d={['M12 20h9', 'M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z']} w={14} color="currentColor" />
+            </button>
+            <button
+              title="Ver contratos"
+              className="catalogo-action-group-btn"
+              onClick={e => { e.stopPropagation(); if(onOpenFamilyContratos) onOpenFamilyContratos(); }}
+            >
+              <Icon d={['M9 12h6', 'M9 16h6', 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z', 'M14 2v6h6']} w={14} color="currentColor" />
             </button>
             <button
               title="Más opciones"

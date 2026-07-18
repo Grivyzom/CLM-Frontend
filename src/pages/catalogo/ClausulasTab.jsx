@@ -1,17 +1,57 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Icon, RiskBadge } from './ui';
+import EditClauseModal from '../EditClauseModal';
+import InsertarClausulaModal from './InsertarClausulaModal';
+import ImportClausesModal from '../ImportClausesModal';
+import { TIPOS_TEXTO, labelTipoTexto } from '../../utils/tiposTexto';
 
 const CLAUSES_PER_PAGE = 10;
+
+function TipoTextoBadge({ tipo }) {
+  if (!tipo || tipo === 'CLAUSULA') return null;
+  return (
+    <span style={{
+      padding: '2px 7px', borderRadius: 4, fontSize: 10, fontWeight: 700,
+      background: 'var(--bg-active)', color: 'var(--primary)', whiteSpace: 'nowrap',
+    }}>
+      {labelTipoTexto(tipo)}
+    </span>
+  );
+}
 
 // ─── Tab: Cláusulas ──────────────────────────────────────────────────────────
 export default function ClausulasTab({
   apiClausulas, allClauseCategories,
-  loading, error,
-  selectedClause, setSelectedClause,
-  clauseAlt, setClauseAlt,
-  selectedClauseData, selectedAlt,
-  onNewClause, onEditClause, onInsert, onImport, onExport
+  loading, error, fetchClausulasData, onClausulaSaved
 }) {
+  const [selectedClause, setSelectedClause] = useState(0);
+  const [clauseAlt, setClauseAlt] = useState(0);
+
+  const [isClauseModalOpen, setIsClauseModalOpen] = useState(false);
+  const [clauseToEdit, setClauseToEdit] = useState(null);
+  const [isInsertModalOpen, setIsInsertModalOpen] = useState(false);
+  const [isImportClausesModalOpen, setIsImportClausesModalOpen] = useState(false);
+
+  const [clauseFormCache, setClauseFormCache] = useState({
+    name: '',
+    cat: '',
+    risk: 'Medio',
+    tipo_texto: 'CLAUSULA',
+    versions: [
+      { label: 'Estándar', tag: 'Estándar', text: '' }
+    ]
+  });
+
+  // Filtro por tipo de texto (cláusulas, saludos, despedidas, cierres, …).
+  const [tipoFiltro, setTipoFiltro] = useState('TODOS');
+  const clausulasVisibles = useMemo(() => (
+    tipoFiltro === 'TODOS'
+      ? apiClausulas
+      : apiClausulas.filter(c => (c.tipo_texto || 'CLAUSULA') === tipoFiltro)
+  ), [apiClausulas, tipoFiltro]);
+
+  const selectedClauseData = apiClausulas.find(c => c.id === selectedClause) || apiClausulas[0];
+  const selectedAlt = selectedClauseData ? (selectedClauseData.versions[clauseAlt] || selectedClauseData.versions[0]) : null;
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [searchCat, setSearchCat] = useState('');
   const [searchClause, setSearchClause] = useState('');
@@ -23,25 +63,32 @@ export default function ClausulasTab({
     setClausePage(1);
     
     if (selectedCategory) {
-      const clausesInCat = apiClausulas.filter(c => c.cat === selectedCategory);
+      const clausesInCat = clausulasVisibles.filter(c => c.cat === selectedCategory);
       if (clausesInCat.length > 0 && (!selectedClause || !clausesInCat.find(c => c.id === selectedClause))) {
         setSelectedClause(clausesInCat[0].id);
         setClauseAlt(0);
       }
     }
-  }, [selectedCategory, apiClausulas]);
+  }, [selectedCategory, clausulasVisibles]);
+
+  // Con filtro de tipo activo, las categorías derivan del subconjunto visible.
+  const categoriasVisibles = useMemo(() => (
+    tipoFiltro === 'TODOS'
+      ? allClauseCategories
+      : Array.from(new Set(clausulasVisibles.map(c => c.cat)))
+  ), [allClauseCategories, clausulasVisibles, tipoFiltro]);
 
   const filteredCategories = useMemo(() => {
-    if (!searchCat) return allClauseCategories;
-    return allClauseCategories.filter(cat => 
+    if (!searchCat) return categoriasVisibles;
+    return categoriasVisibles.filter(cat =>
       cat.toLowerCase().includes(searchCat.toLowerCase())
     );
-  }, [allClauseCategories, searchCat]);
+  }, [categoriasVisibles, searchCat]);
 
   const clausesInCategory = useMemo(() => {
     if (!selectedCategory) return [];
-    return apiClausulas.filter(c => c.cat === selectedCategory && (!searchClause || c.name.toLowerCase().includes(searchClause.toLowerCase())));
-  }, [apiClausulas, selectedCategory, searchClause]);
+    return clausulasVisibles.filter(c => c.cat === selectedCategory && (!searchClause || c.name.toLowerCase().includes(searchClause.toLowerCase())));
+  }, [clausulasVisibles, selectedCategory, searchClause]);
 
   const totalClausePages = Math.ceil(clausesInCategory.length / CLAUSES_PER_PAGE);
   const paginatedClausulas = clausesInCategory.slice((clausePage - 1) * CLAUSES_PER_PAGE, clausePage * CLAUSES_PER_PAGE);
@@ -66,8 +113,8 @@ export default function ClausulasTab({
       <div className="catalogo-clausulas-categories" style={{ padding: '32px', flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
            <div>
-             <h2 style={{ fontSize: 24, margin: '0 0 8px 0', color: 'var(--text-primary)' }}>Librería de Cláusulas</h2>
-             <p style={{ margin: 0, color: 'var(--text-faint)', fontSize: 14 }}>Selecciona una categoría general para acceder a sus variantes y configuraciones.</p>
+             <h2 style={{ fontSize: 24, margin: '0 0 8px 0', color: 'var(--text-primary)' }}>Librería de Cláusulas y Textos</h2>
+             <p style={{ margin: 0, color: 'var(--text-faint)', fontSize: 14 }}>Cláusulas, saludos, despedidas y otros textos útiles, clasificados por tipo y categoría.</p>
            </div>
            <div style={{ display: 'flex', gap: '12px' }}>
              <div className="catalogo-search" style={{ width: 320 }}>
@@ -76,7 +123,14 @@ export default function ClausulasTab({
              </div>
              <button
                 className="catalogo-btn-secondary"
-                onClick={onExport}
+                onClick={async () => {
+                  try {
+                    const { exportClausulas } = await import('../../api');
+                    await exportClausulas();
+                  } catch (e) {
+                    alert('Error al exportar: ' + e.message);
+                  }
+                }}
                 style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-panel)', border: '1px solid var(--border)' }}
              >
                 <Icon d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" color="currentColor" w={16} />
@@ -84,7 +138,7 @@ export default function ClausulasTab({
              </button>
              <button
                 className="catalogo-btn-primary"
-                onClick={onImport}
+                onClick={() => setIsImportClausesModalOpen(true)}
                 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
              >
                 <Icon d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" color="currentColor" w={16} />
@@ -92,9 +146,35 @@ export default function ClausulasTab({
              </button>
            </div>
         </div>
+
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 24 }}>
+          {[{ value: 'TODOS', label: 'Todos' }, ...TIPOS_TEXTO].map(t => {
+            const activo = tipoFiltro === t.value;
+            const count = t.value === 'TODOS'
+              ? apiClausulas.length
+              : apiClausulas.filter(c => (c.tipo_texto || 'CLAUSULA') === t.value).length;
+            if (t.value !== 'TODOS' && count === 0) return null;
+            return (
+              <button
+                key={t.value}
+                onClick={() => setTipoFiltro(activo ? 'TODOS' : t.value)}
+                style={{
+                  padding: '5px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600,
+                  cursor: 'pointer', transition: 'all 0.15s ease',
+                  border: `1px solid ${activo ? 'var(--primary)' : 'var(--border)'}`,
+                  background: activo ? 'var(--bg-active)' : 'var(--bg-panel)',
+                  color: activo ? 'var(--primary)' : 'var(--text-muted)',
+                }}
+              >
+                {t.label} <span style={{ fontWeight: 500, opacity: 0.7 }}>{count}</span>
+              </button>
+            );
+          })}
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
            {filteredCategories.map(cat => {
-              const count = apiClausulas.filter(c => c.cat === cat).length;
+              const count = clausulasVisibles.filter(c => c.cat === cat).length;
               return (
                 <div 
                   key={cat} 
@@ -181,8 +261,9 @@ export default function ClausulasTab({
                 style={{ width: '100%', marginBottom: 8 }}
               >
                 <span>{c.name}</span>
-                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
                   <RiskBadge risk={c.risk} />
+                  <TipoTextoBadge tipo={c.tipo_texto} />
                   <span style={{ fontSize: 10, color: 'var(--text-faint)' }}>{c.versions.length} versiones</span>
                 </div>
               </button>
@@ -207,7 +288,7 @@ export default function ClausulasTab({
           )}
           <button
             className="catalogo-btn-primary"
-            onClick={onNewClause}
+            onClick={() => { setClauseToEdit(null); setIsClauseModalOpen(true); }}
             style={{ width: '100%' }}
           >
             + Nueva Cláusula
@@ -222,21 +303,22 @@ export default function ClausulasTab({
               <div>
                 <p className="catalogo-clausulas-cat">{selectedClauseData.cat}</p>
                 <h3>{selectedClauseData.name}</h3>
-                <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                <div style={{ display: 'flex', gap: 6, marginTop: 6, alignItems: 'center' }}>
                   <RiskBadge risk={selectedClauseData.risk} />
+                  <TipoTextoBadge tipo={selectedClauseData.tipo_texto} />
                   <span style={{ fontSize: 10, color: 'var(--text-faint)' }}>{selectedClauseData.versions.length} versiones disponibles</span>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                 <button
                   className="catalogo-btn-secondary"
-                  onClick={() => onEditClause(selectedClauseData)}
+                  onClick={() => { setClauseToEdit(selectedClauseData); setIsClauseModalOpen(true); }}
                 >
                   Editar
                 </button>
                 <button
                   className="catalogo-btn-primary"
-                  onClick={onInsert}
+                  onClick={() => setIsInsertModalOpen(true)}
                 >
                   Insertar en contrato
                 </button>
@@ -279,6 +361,41 @@ export default function ClausulasTab({
           </div>
         )}
       </div>
+
+      {isInsertModalOpen && (
+        <InsertarClausulaModal
+          clauseText={selectedClauseData?.versions[clauseAlt]?.text}
+          clauseName={selectedClauseData?.name}
+          clauseId={selectedClauseData?.id}
+          onClose={() => setIsInsertModalOpen(false)}
+        />
+      )}
+
+      {isClauseModalOpen && (
+        <EditClauseModal
+          clause={clauseToEdit}
+          createForm={clauseFormCache}
+          setCreateForm={setClauseFormCache}
+          onClose={() => setIsClauseModalOpen(false)}
+          onSuccess={(guardada) => {
+            setIsClauseModalOpen(false);
+            // El server devuelve la cláusula completa: upsert local sin refetch;
+            // el refetch queda solo como red de seguridad si no vino cuerpo.
+            if (guardada?.id && onClausulaSaved) onClausulaSaved(guardada);
+            else fetchClausulasData();
+          }}
+        />
+      )}
+
+      {isImportClausesModalOpen && (
+        <ImportClausesModal
+          onClose={() => setIsImportClausesModalOpen(false)}
+          onSuccess={() => {
+            setIsImportClausesModalOpen(false);
+            fetchClausulasData();
+          }}
+        />
+      )}
     </div>
   );
 }

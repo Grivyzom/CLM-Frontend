@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { getPlantillas, updatePlantilla } from '../../api';
 import { Icon } from './ui';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 // ─── Insert Clause Modal ──────────────────────────────────────────────────────
 export default function InsertarClausulaModal({ clauseText, clauseName, clauseId, onClose }) {
+  const { alert: alertModal } = useConfirm();
   const [plantillas, setPlantillas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedPlantilla, setSelectedPlantilla] = useState(null);
@@ -145,12 +147,12 @@ export default function InsertarClausulaModal({ clauseText, clauseName, clauseId
                        const formData = new FormData();
                        formData.append('clausulas_seleccionadas', JSON.stringify([...currentClausulas, clauseId]));
                        await updatePlantilla(selectedPlantilla.id, formData);
-                       alert('Cláusula incrustada con éxito.');
+                       alertModal({ title: 'Cláusula incrustada', message: `«${clauseName}» quedó incrustada en la plantilla ${selectedPlantilla.nombre}.` });
                     } else {
-                       alert('Esta cláusula ya está incrustada en la plantilla.');
+                       alertModal({ title: 'Sin cambios', message: 'Esta cláusula ya está incrustada en la plantilla.' });
                     }
                   } catch(e) {
-                     alert('Error: ' + e);
+                     alertModal({ title: 'Error', message: e.message || String(e), isDangerous: true });
                   }
                   onClose();
                 }}>Confirmar Incrustación</button>

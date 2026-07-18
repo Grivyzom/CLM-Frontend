@@ -65,7 +65,9 @@ export function ActionDropdown({ anchorRef, items, onClose }) {
   );
 }
 
-export function ContextMenu({ pos, onClose, onPreview, onUse, onEdit, onRegenerate }) {
+// `estado`: 'Borrador' (nunca confirmada — eliminable, no usable en contratos),
+// 'Aprobado' (confirmada y activa) o 'Inactivo' (confirmada archivada — solo reactivable).
+export function ContextMenu({ pos, onClose, onUse, onRegenerate, onDuplicate, onToggleActiva, onDelete, estado = 'Aprobado' }) {
   const [menuPos, setMenuPos] = useState({ top: pos.y, left: pos.x });
   const menuRef = useRef(null);
 
@@ -87,6 +89,12 @@ export function ContextMenu({ pos, onClose, onPreview, onUse, onEdit, onRegenera
     setMenuPos({ top, left });
   }, [pos]);
 
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   const itemStyle = (danger = false) => ({
     display: 'flex', alignItems: 'center', gap: 8, width: '100%',
     padding: '9px 12px', border: 'none', background: 'none',
@@ -96,35 +104,34 @@ export function ContextMenu({ pos, onClose, onPreview, onUse, onEdit, onRegenera
 
   return (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 998 }} />
+      {/* z-index por encima de NewTemplateModal (1100) y PlantillaVersionsModal (1090):
+          este menú puede abrirse desde una fila del modal de versiones. */}
+      <div onClick={onClose} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1199 }} />
       <div
         ref={menuRef}
         style={{
           position: 'fixed', top: menuPos.top, left: menuPos.left,
           background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 999, minWidth: 180,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 1200, minWidth: 180,
           animation: 'dropIn 0.15s ease-out', overflow: 'hidden'
         }}
       >
-        <button
-          style={itemStyle()}
-          onClick={() => { onPreview?.(); onClose(); }}
-          onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-topbar)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'none'}
-        >
-          <Icon d={['M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z','M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z']} w={14} />
-          Vista previa
-        </button>
-        <button
-          style={itemStyle()}
-          onClick={() => { onUse?.(); onClose(); }}
-          onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-topbar)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'none'}
-        >
-          <Icon d="M5 12h14M12 5l7 7-7 7" w={14} />
-          Usar plantilla
-        </button>
-        <div style={{ height: 1, background: 'var(--neutral-200)', margin: '2px 0' }} />
+        {/* Vista previa y Editar viven como botones directos en la card y en las
+            filas del modal de versiones: acá solo van las acciones secundarias. */}
+        {estado === 'Aprobado' && (
+          <>
+            <button
+              style={itemStyle()}
+              onClick={() => { onUse?.(); onClose(); }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-topbar)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'none'}
+            >
+              <Icon d="M5 12h14M12 5l7 7-7 7" w={14} />
+              Usar plantilla
+            </button>
+            <div style={{ height: 1, background: 'var(--neutral-200)', margin: '2px 0' }} />
+          </>
+        )}
         <button
           style={itemStyle()}
           onClick={() => { onRegenerate?.(); onClose(); }}
@@ -136,32 +143,41 @@ export function ContextMenu({ pos, onClose, onPreview, onUse, onEdit, onRegenera
         </button>
         <button
           style={itemStyle()}
-          onClick={() => { onEdit?.(); onClose(); }}
-          onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-topbar)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'none'}
-        >
-          <Icon d={['M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7','M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z']} w={14} />
-          Editar
-        </button>
-        <button
-          style={itemStyle()}
-          onClick={onClose}
+          onClick={() => { onDuplicate?.(); onClose(); }}
           onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-topbar)'}
           onMouseLeave={e => e.currentTarget.style.background = 'none'}
         >
           <Icon d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" w={14} />
-          Duplicar
+          Duplicar como nueva versión
         </button>
         <div style={{ height: 1, background: 'var(--neutral-200)', margin: '2px 0' }} />
+        {/* Activar confirma el borrador (una sola vía); una confirmada solo
+            alterna entre activa y archivada. */}
         <button
-          style={itemStyle(true)}
-          onClick={onClose}
-          onMouseEnter={e => e.currentTarget.style.background = 'var(--danger-tint)'}
+          style={itemStyle(estado === 'Aprobado')}
+          onClick={() => { onToggleActiva?.(); onClose(); }}
+          onMouseEnter={e => e.currentTarget.style.background = estado === 'Aprobado' ? 'var(--danger-tint)' : 'var(--bg-topbar)'}
           onMouseLeave={e => e.currentTarget.style.background = 'none'}
         >
-          <Icon d={['M19 7l-1 12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 7m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3','M10 11v6','M14 11v6']} color="var(--danger)" w={14} />
-          Eliminar
+          {estado === 'Aprobado'
+            ? <Icon d={['M21 8v13H3V8', 'M1 3h22v5H1z', 'M10 12h4']} color="var(--danger)" w={14} />
+            : <Icon d={['M9 12l2 2 4-4', 'M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z']} w={14} />}
+          {estado === 'Aprobado' ? 'Archivar' : estado === 'Borrador' ? 'Confirmar y activar' : 'Activar'}
         </button>
+        {/* Eliminar ahora existe para borradores y para plantillas inactivas.
+            El backend además responde 409 si se intenta eliminar una plantilla que
+            tiene documentos generados, independientemente de su estado. */}
+        {(estado === 'Borrador' || estado === 'Inactivo') && (
+          <button
+            style={itemStyle(true)}
+            onClick={() => { onDelete?.(); onClose(); }}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--danger-tint)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'none'}
+          >
+            <Icon d={['M3 6h18', 'M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6', 'M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2', 'M10 11v6', 'M14 11v6']} color="var(--danger)" w={14} />
+            {estado === 'Borrador' ? 'Eliminar borrador' : 'Eliminar plantilla'}
+          </button>
+        )}
       </div>
     </>
   );
@@ -216,7 +232,9 @@ export function FilterDropdown({ onClose, filters, updateFilter, anchorRef }) {
         <div>
           <p style={{ margin: '0 0 8px 0', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Estado</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {['Todos', 'Aprobado', 'Borrador', 'En revisión'].map(op => (
+            {/* Estados reales de plantilla: borrador (no confirmada), activa (Aprobado)
+                o archivada (Inactivo) */}
+            {['Todos', 'Borrador', 'Aprobado', 'Inactivo'].map(op => (
               <button
                 key={op}
                 onClick={() => updateFilter('estado', op)}
@@ -238,7 +256,8 @@ export function FilterDropdown({ onClose, filters, updateFilter, anchorRef }) {
         <div>
           <p style={{ margin: '0 0 8px 0', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Categoría</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {['Todos', 'Legal', 'Operaciones', 'Comercial', 'Tecnología'].map(op => (
+            {/* Derivadas de TIPO_CAT (helpers.js): las únicas categorías que existen */}
+            {['Todos', 'Comercial', 'Legal', 'Operaciones'].map(op => (
               <button
                 key={op}
                 onClick={() => updateFilter('categoria', op)}

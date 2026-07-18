@@ -2,85 +2,80 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
 import './Catalogo.css';
-import { getPlantillas, getClausulas, getProductos, deleteProducto, regenerarPreviewPlantilla } from '../api';
-import EditClauseModal from './EditClauseModal';
+import { getPlantillas, getClausulas, getProductos, deleteProducto } from '../api';
 import TopbarActions from '../components/layout/TopbarActions';
 import { useConfirm } from '../contexts/ConfirmContext';
 
-import { normalizeApiPlantilla, getTagStyles, PRODUCTO_VACIO, TEMPLATE_VACIO } from './catalogo/helpers';
+import { normalizeApiPlantilla, getTagStyles } from './catalogo/helpers';
 import { Icon } from './catalogo/ui';
-import { ContextMenu } from './catalogo/dropdowns';
 import PlantillasTab from './catalogo/PlantillasTab';
 import ClausulasTab from './catalogo/ClausulasTab';
 import ProductosTab from './catalogo/ProductosTab';
-import ReglasTab from './catalogo/ReglasTab';
-import PreviewModal from './catalogo/PreviewModal';
-import UseTemplateModal from './catalogo/UseTemplateModal';
-import InsertarClausulaModal from './catalogo/InsertarClausulaModal';
-import ProductModal from './catalogo/ProductModal';
-import NewTemplateModal from './catalogo/NewTemplateModal';
-import ImportClausesModal from './ImportClausesModal';
+import ReglasTab, { REGLAS_DEMO_COUNT } from './catalogo/ReglasTab';
 
 gsap.registerPlugin(useGSAP);
 
-const CLAUSES_PER_PAGE = 10;
-
 export default function Catalogo() {
   const { confirm, alert: alertModal } = useConfirm();
-  const [tab, setTab] = useState('plantillas');
-  const [selectedClause, setSelectedClause] = useState(0);
-  const [clauseAlt, setClauseAlt] = useState(0);
-  const [clausePage, setClausePage] = useState(1);
-
-  const [isClauseModalOpen, setIsClauseModalOpen] = useState(false);
-  const [clauseToEdit, setClauseToEdit] = useState(null);
-  const [isInsertModalOpen, setIsInsertModalOpen] = useState(false);
-  const [isImportClausesModalOpen, setIsImportClausesModalOpen] = useState(false);
-
-  // Los modales de cláusulas se renderizan a nivel de página: al cambiar de tab
-  // deben cerrarse explícitamente.
-  useEffect(() => {
-    setIsInsertModalOpen(false);
-    setIsClauseModalOpen(false);
-    setIsImportClausesModalOpen(false);
-  }, [tab]);
-
-  // Cache state for creation modals
-  const [productFormCache, setProductFormCache] = useState(PRODUCTO_VACIO);
-  const [clauseFormCache, setClauseFormCache] = useState({
-    name: '',
-    cat: '',
-    risk: 'Medio',
-    versions: [
-      { label: 'Estándar', tag: 'Estándar', text: '' }
-    ]
+  // Tab inicial vía URL (?tab=clausulas): permite enlazar directo, p.ej. desde
+  // el botón "Añadir cláusula" del workspace de contrato.
+  const [tab, setTab] = useState(() => {
+    const t = new URLSearchParams(window.location.search).get('tab');
+    return ['plantillas', 'clausulas', 'productos', 'reglas'].includes(t) ? t : 'plantillas';
   });
-  const [templateFormCache, setTemplateFormCache] = useState(TEMPLATE_VACIO);
-  const [isNewTemplateModalOpen, setIsNewTemplateModalOpen] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState(null);
-  const [contextMenuTarget, setContextMenuTarget] = useState(null);
-  const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
-  const [filters, setFilters] = useState({ estado: 'Todos', categoria: 'Todos', search: '' });
-  const [previewTemplate, setPreviewTemplate] = useState(null);
-  const [useTemplate, setUseTemplate] = useState(null);
 
   // ── Carga de plantillas desde la API ────────────────────────────────────────
   const [apiPlantillas, setApiPlantillas] = useState([]);
   const [loadingPlantillas, setLoadingPlantillas] = useState(true);
   const [errorPlantillas, setErrorPlantillas] = useState(null);
 
+  // Tras la primera carga exitosa, los refetch son silenciosos: actualizan los
+  // datos en su lugar sin volver a mostrar el skeleton (la vista no parpadea).
+  const plantillasCargadasRef = useRef(false);
+
   const fetchPlantillasData = useCallback(() => {
-    setLoadingPlantillas(true);
+    if (!plantillasCargadasRef.current) setLoadingPlantillas(true);
     setErrorPlantillas(null);
     getPlantillas()
       .then(data => {
         setApiPlantillas((data || []).map(normalizeApiPlantilla));
+        plantillasCargadasRef.current = true;
         setLoadingPlantillas(false);
       })
       .catch(err => {
         setErrorPlantillas(err.message || 'Error al cargar plantillas');
         setLoadingPlantillas(false);
       });
+  }, []);
+
+  // Borrado puntual: saca solo la plantilla eliminada del estado, sin refetch
+  // ni skeleton — la vista no "parpadea" al eliminar una card.
+  const removePlantillaLocal = useCallback((id) => {
+    setApiPlantillas(prev => prev.filter(p => p.id !== id));
+  }, []);
+
+  // Crear/editar/activar/archivar puntual: inserta o reemplaza solo la
+  // plantilla afectada con la respuesta del POST/PATCH. Espejo del backend
+  // (PlantillaDocumento.save): al quedar activa una versión, cualquier otra
+  // activa del mismo (tipo_contrato, software) se archiva en silencio — se
+  // replica aquí sin refetch.
+  const upsertPlantillaLocal = useCallback((raw) => {
+    setApiPlantillas(prev => {
+      const conEspejo = prev.map(p => {
+        if (p.id === raw.id) return normalizeApiPlantilla(raw);
+        if (
+          raw.activa && p._raw?.activa &&
+          p._raw?.tipo_contrato === raw.tipo_contrato &&
+          (p._raw?.software_id ?? null) === (raw.software_id ?? null)
+        ) {
+          return normalizeApiPlantilla({ ...p._raw, activa: false });
+        }
+        return p;
+      });
+      return conEspejo.some(p => p.id === raw.id)
+        ? conEspejo
+        : [normalizeApiPlantilla(raw), ...conEspejo];
+    });
   }, []);
 
   useEffect(() => {
@@ -156,29 +151,43 @@ export default function Catalogo() {
   const [loadingClausulas, setLoadingClausulas] = useState(true);
   const [errorClausulas, setErrorClausulas] = useState(null);
 
+  const normalizeClausula = (c) => ({
+    ...c,
+    versions: (c.versions || []).map(v => ({
+      ...v,
+      label: v.etiqueta,
+      tag: v.tipo,
+      text: v.texto,
+      ...getTagStyles(v.tipo)
+    }))
+  });
+
+  // Igual que plantillas: spinner solo en la primera carga; refetch posteriores
+  // (ej. importación masiva) actualizan en su lugar sin parpadeo.
+  const clausulasCargadasRef = useRef(false);
+
   const fetchClausulasData = useCallback(() => {
-    setLoadingClausulas(true);
+    if (!clausulasCargadasRef.current) setLoadingClausulas(true);
     setErrorClausulas(null);
     getClausulas()
       .then(data => {
-        const normalized = (data || []).map(c => ({
-          ...c,
-          versions: c.versions.map(v => ({
-            ...v,
-            label: v.etiqueta,
-            tag: v.tipo,
-            text: v.texto,
-            ...getTagStyles(v.tipo)
-          }))
-        }));
-        setApiClausulas(normalized);
+        setApiClausulas((data || []).map(normalizeClausula));
+        clausulasCargadasRef.current = true;
         setLoadingClausulas(false);
-        setSelectedClause(prev => (prev === 0 && normalized.length > 0) ? normalized[0].id : prev);
       })
       .catch(err => {
         setErrorClausulas(err.message || 'Error al cargar cláusulas');
         setLoadingClausulas(false);
       });
+  }, []);
+
+  // Crear/editar cláusula: el POST/PUT devuelve la cláusula completa (mismo
+  // shape que el listado) — se inserta o reemplaza solo esa, sin refetch.
+  const upsertClausulaLocal = useCallback((raw) => {
+    const norm = normalizeClausula(raw);
+    setApiClausulas(prev => prev.some(c => c.id === norm.id)
+      ? prev.map(c => (c.id === norm.id ? norm : c))
+      : [...prev, norm]);
   }, []);
 
   useEffect(() => {
@@ -191,12 +200,17 @@ export default function Catalogo() {
   const [errorProductos, setErrorProductos] = useState(null);
   const [productoFilters, setProductoFilters] = useState({ search: '', categoria: 'Todos' });
 
+  // Productos ya mutan localmente (handleProductModalSaved / handleDeleteProduct);
+  // este guard deja el spinner solo para la primera carga, por consistencia.
+  const productosCargadosRef = useRef(false);
+
   const fetchProductosData = useCallback(() => {
-    setLoadingProductos(true);
+    if (!productosCargadosRef.current) setLoadingProductos(true);
     setErrorProductos(null);
     getProductos()
       .then(data => {
         setApiProductos(data || []);
+        productosCargadosRef.current = true;
         setLoadingProductos(false);
       })
       .catch(err => {
@@ -285,10 +299,6 @@ export default function Catalogo() {
     return () => container.removeEventListener('mouseover', handleMouseOver);
   }, { scope: catalogoContainerRef });
 
-  const [productModalOpen, setProductModalOpen] = useState(false);
-  const [productModalMode, setProductModalMode] = useState('create');
-  const [selectedProduct, setSelectedProduct] = useState(null);
-
   const handleProductModalSaved = (producto, mode) => {
     if (mode === 'create') {
       setApiProductos(prev => [...prev, producto]);
@@ -360,55 +370,6 @@ export default function Catalogo() {
     ? (productoSort.direction === 'desc' ? `-${productoSort.key}` : productoSort.key)
     : '';
 
-  const updateFilter = useCallback((key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-  }, []);
-
-  const activeFilterCount = [
-    filters.estado !== 'Todos',
-    filters.categoria !== 'Todos'
-  ].filter(Boolean).length;
-
-  const handleOpenContextMenu = useCallback((e, item) => {
-    e.stopPropagation();
-    e.preventDefault();
-    setContextMenuTarget(item);
-    setContextMenuPos({ x: e.clientX, y: e.clientY });
-  }, []);
-
-  const handleEditTemplate = useCallback((template) => {
-    setEditingTemplate(template);
-    setTemplateFormCache({
-       nombre: template.name,
-       tipo_contrato: template.tipo_contrato,
-       version_codigo: template.version,
-       software_id: template.software_id || '',
-       modo_origen: template.modo_origen,
-       archivo_docx: null,
-       ruta_plantilla_html: template.ruta_plantilla_html || '',
-       codigo_prefijo: template._raw?.codigo_prefijo || '',
-       requiere_sla_facturacion: template.requiere_sla_facturacion !== false
-    });
-    setIsNewTemplateModalOpen(true);
-  }, []);
-
-  const handleCreateTemplateFromScratch = useCallback(() => {
-    setTemplateFormCache(TEMPLATE_VACIO);
-    setEditingTemplate(null);
-    setIsNewTemplateModalOpen(true);
-  }, []);
-
-  const handleRegeneratePreview = useCallback(async (template) => {
-    try {
-      await regenerarPreviewPlantilla(template.id);
-      alertModal({ title: 'Éxito', message: 'Se ha forzado la regeneración del documento/vista previa correctamente.' });
-    } catch (err) {
-      alertModal({ title: 'Error', message: 'Error al regenerar: ' + err.message, isDangerous: true });
-    }
-  }, [alertModal]);
-
-  const selectedClauseData = apiClausulas.find(c => c.id === selectedClause) || apiClausulas[0];
-  const selectedAlt = selectedClauseData ? (selectedClauseData.versions[clauseAlt] || selectedClauseData.versions[0]) : null;
 
   const allClauseCategories = Array.from(new Set(apiClausulas.map(c => c.cat)));
 
@@ -420,7 +381,9 @@ export default function Catalogo() {
           <h1 className="catalogo-header-title">Catálogo</h1>
         </div>
         <div className="catalogo-header-info">
-          <span className="catalogo-date">Vie 4 jul 2026</span>
+          <span className="catalogo-date">
+            {new Date().toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }).replace(/\./g, '').replace(/^./, c => c.toUpperCase())}
+          </span>
           <div className="catalogo-divider"></div>
           <TopbarActions />
         </div>
@@ -428,10 +391,11 @@ export default function Catalogo() {
 
       <div className="catalogo-tabs">
         {[
-          { id: 'plantillas', label: 'Plantillas', count: loadingPlantillas ? '…' : apiPlantillas.length, icon: ['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z', 'M14 2v6h6'] },
+          // Cuenta familias (cards visibles en el grid), no versiones individuales.
+          { id: 'plantillas', label: 'Plantillas', count: loadingPlantillas ? '…' : new Set(apiPlantillas.map(p => p._raw?.codigo_prefijo || p.name)).size, icon: ['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z', 'M14 2v6h6'] },
           { id: 'clausulas', label: 'Cláusulas', count: loadingClausulas ? '…' : apiClausulas.length, icon: ['M8 6h13', 'M8 12h13', 'M8 18h13', 'M3 6h.01', 'M3 12h.01', 'M3 18h.01'] },
           { id: 'productos', label: 'Productos / Tarifas', count: loadingProductos ? '…' : apiProductos.length, icon: ['M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z', 'M3 6h18', 'M16 10a4 4 0 0 1-8 0'] },
-          { id: 'reglas', label: 'Reglas de Negocio', count: 7, icon: ['M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z', 'M9 12l2 2 4-4'] },
+          { id: 'reglas', label: 'Reglas de Negocio', count: REGLAS_DEMO_COUNT, icon: ['M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z', 'M9 12l2 2 4-4'] },
         ].map(t => (
           <button
             key={t.id}
@@ -452,13 +416,10 @@ export default function Catalogo() {
             loading={loadingPlantillas}
             error={errorPlantillas}
             onRetry={fetchPlantillasData}
-            filters={filters}
-            updateFilter={updateFilter}
-            activeFilterCount={activeFilterCount}
-            setPreviewTemplate={setPreviewTemplate}
-            handleOpenContextMenu={handleOpenContextMenu}
-            handleEditTemplate={handleEditTemplate}
-            onCreateFromScratch={handleCreateTemplateFromScratch}
+            fetchPlantillasData={fetchPlantillasData}
+            onPlantillaDeleted={removePlantillaLocal}
+            onPlantillaPatched={upsertPlantillaLocal}
+            apiProductos={apiProductos}
           />
         )}
 
@@ -468,24 +429,8 @@ export default function Catalogo() {
             allClauseCategories={allClauseCategories}
             loading={loadingClausulas}
             error={errorClausulas}
-            selectedClause={selectedClause}
-            setSelectedClause={setSelectedClause}
-            clauseAlt={clauseAlt}
-            setClauseAlt={setClauseAlt}
-            selectedClauseData={selectedClauseData}
-            selectedAlt={selectedAlt}
-            onNewClause={() => { setClauseToEdit(null); setIsClauseModalOpen(true); }}
-            onEditClause={(clause) => { setClauseToEdit(clause); setIsClauseModalOpen(true); }}
-            onInsert={() => setIsInsertModalOpen(true)}
-            onImport={() => setIsImportClausesModalOpen(true)}
-            onExport={async () => {
-              try {
-                const { exportClausulas } = await import('../api');
-                await exportClausulas();
-              } catch (e) {
-                alertModal({ title: 'Error', message: 'No se pudo exportar: ' + e.message, isDangerous: true });
-              }
-            }}
+            fetchClausulasData={fetchClausulasData}
+            onClausulaSaved={upsertClausulaLocal}
           />
         )}
 
@@ -499,105 +444,13 @@ export default function Catalogo() {
             setProductoFilters={setProductoFilters}
             ordering={productoOrdering}
             onSort={handleProductoSort}
-            onCreate={() => { setSelectedProduct(null); setProductModalMode('create'); setProductModalOpen(true); }}
-            onView={(p) => { setSelectedProduct(p); setProductModalMode('view'); setProductModalOpen(true); }}
-            onEdit={(p) => { setSelectedProduct(p); setProductModalMode('edit'); setProductModalOpen(true); }}
             onDelete={handleDeleteProduct}
+            onProductSaved={handleProductModalSaved}
           />
         )}
 
         {tab === 'reglas' && <ReglasTab />}
       </div>
-
-      {contextMenuTarget && (
-        <ContextMenu
-          pos={contextMenuPos}
-          onClose={() => setContextMenuTarget(null)}
-          onPreview={() => { setPreviewTemplate(contextMenuTarget); setContextMenuTarget(null); }}
-          onUse={() => { setUseTemplate(contextMenuTarget); setContextMenuTarget(null); }}
-          onRegenerate={() => { handleRegeneratePreview(contextMenuTarget); setContextMenuTarget(null); }}
-          onEdit={() => {
-            handleEditTemplate(contextMenuTarget);
-            setContextMenuTarget(null);
-          }}
-        />
-      )}
-
-      {previewTemplate && (
-        <PreviewModal
-          plantilla={previewTemplate}
-          onClose={() => setPreviewTemplate(null)}
-          onUse={() => { setUseTemplate(previewTemplate); setPreviewTemplate(null); }}
-        />
-      )}
-
-      {useTemplate && (
-        <UseTemplateModal plantilla={useTemplate} onClose={() => setUseTemplate(null)} />
-      )}
-
-      {isNewTemplateModalOpen && (
-        <NewTemplateModal
-          createForm={templateFormCache}
-          setCreateForm={setTemplateFormCache}
-          softwareList={apiProductos}
-          editingTemplate={editingTemplate}
-          onClose={() => {
-            setIsNewTemplateModalOpen(false);
-            setEditingTemplate(null);
-          }}
-          onSuccess={() => {
-            setIsNewTemplateModalOpen(false);
-            setEditingTemplate(null);
-            fetchPlantillasData();
-          }}
-        />
-      )}
-
-      {productModalOpen && (
-        <ProductModal
-          mode={productModalMode}
-          product={selectedProduct}
-          createForm={productFormCache}
-          setCreateForm={setProductFormCache}
-          onClose={() => {
-            setProductModalOpen(false);
-            setSelectedProduct(null);
-          }}
-          onSaved={handleProductModalSaved}
-        />
-      )}
-
-      {isInsertModalOpen && (
-        <InsertarClausulaModal
-          clauseText={selectedClauseData?.versions[clauseAlt]?.text}
-          clauseName={selectedClauseData?.name}
-          clauseId={selectedClauseData?.id}
-          onClose={() => setIsInsertModalOpen(false)}
-        />
-      )}
-
-      {isClauseModalOpen && (
-        <EditClauseModal
-          clause={clauseToEdit}
-          createForm={clauseFormCache}
-          setCreateForm={setClauseFormCache}
-          onClose={() => setIsClauseModalOpen(false)}
-          onSuccess={() => {
-            setIsClauseModalOpen(false);
-            fetchClausulasData();
-          }}
-        />
-      )}
-
-      {isImportClausesModalOpen && (
-        <ImportClausesModal
-          onClose={() => setIsImportClausesModalOpen(false)}
-          onSuccess={() => {
-            setIsImportClausesModalOpen(false);
-            fetchClausulasData();
-          }}
-        />
-      )}
     </div>
   );
 }

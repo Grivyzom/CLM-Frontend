@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { getClientes, getSLAs, createContrato, togglePlantillaActiva, generarDocumentoContrato, getCamposPlantilla } from '../../api';
+import { getClientes, getSLAs, createContrato, generarDocumentoContrato, getCamposPlantilla } from '../../api';
 import { Icon } from './ui';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 // ─── Use Template Modal (wizard: cliente → configuración → creado) ──────────
 export default function UseTemplateModal({ plantilla, onClose }) {
+  const { alert: alertModal } = useConfirm();
   const [step, setStep] = useState(1);
   const [clientSearch, setClientSearch] = useState('');
   const [selectedClient, setSelectedClient] = useState(null);
@@ -36,11 +38,13 @@ export default function UseTemplateModal({ plantilla, onClose }) {
     }
   }, [plantilla.id, plantilla.modo_origen]);
 
+  // Escape no cierra mientras se está creando el contrato (evita abandonar
+  // el wizard a mitad de una creación en curso).
   useEffect(() => {
-    const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
+    const handleKey = (e) => { if (e.key === 'Escape' && !isCreating) onClose(); };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [onClose]);
+  }, [onClose, isCreating]);
 
   const filteredClients = clientes.filter(c => {
     const name = c.razon_social || c.nombre_comercial || '';
@@ -66,10 +70,9 @@ export default function UseTemplateModal({ plantilla, onClose }) {
         fecha_inicio: new Date().toISOString().split('T')[0],
         frecuencia_facturacion: finalTipoContrato === 'RECURRENTE' ? 'MENSUAL' : undefined,
       });
-      // Setear la plantilla como activa globalmente para este tipo de contrato y producto
-      await togglePlantillaActiva(plantilla.id, true);
-
-      // Generar el documento para el contrato recién creado a partir de esta plantilla
+      // Generar el documento con ESTA plantilla explícita (plantilla_id):
+      // no hace falta activarla globalmente — y activar aquí archivaría en
+      // silencio la versión activa de la misma familia como efecto colateral.
       await generarDocumentoContrato({
         contrato_id: nuevoContrato.id,
         plantilla_id: plantilla.id,
@@ -78,7 +81,7 @@ export default function UseTemplateModal({ plantilla, onClose }) {
 
       setStep(3);
     } catch (e) {
-      alert('Error creando contrato: ' + (e.message || e));
+      alertModal({ title: 'Error creando contrato', message: e.message || String(e), isDangerous: true });
     } finally {
       setIsCreating(false);
     }

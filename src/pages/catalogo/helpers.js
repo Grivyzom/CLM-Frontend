@@ -39,7 +39,9 @@ export function normalizeApiPlantilla(p) {
     cat:     TIPO_CAT[p.tipo_contrato] || 'General',
     version: p.version_codigo,
     vars:    null,   // el backend no expone conteo de variables por ahora
-    status:  p.activa ? 'Aprobado' : 'Inactivo',
+    // Borrador = nunca confirmada (eliminable); Aprobado = confirmada y activa;
+    // Inactivo = confirmada pero archivada (solo reactivable, no eliminable).
+    status:  p.confirmada === false ? 'Borrador' : (p.activa ? 'Aprobado' : 'Inactivo'),
     updated: formatearFecha(p.fecha_creacion),
     uses:    p.usos || 0,
     color:   tc.color,
@@ -70,4 +72,38 @@ export function formatPrecio(price) {
 export const PRODUCTO_VACIO = { name: '', desc: '', cat: 'Software', tipo_licencia: 'Comercial', price: '', currency: 'USD', unit: '', status: 'Activo', datos_adicionales: {} };
 
 export const TEMPLATE_VACIO = { nombre: '', tipo_contrato: 'RECURRENTE', version_codigo: '', software_id: '', modo_origen: 'archivo', archivo_docx: null, clausulas_seleccionadas: [], ruta_plantilla_html: '', codigo_prefijo: '', requiere_sla_facturacion: true };
+
+/**
+ * Agrupa plantillas normalizadas (normalizeApiPlantilla) por familia de documento
+ * (codigo_prefijo, ej. NDA) — cada familia trae todas sus versiones ordenadas de
+ * más reciente a más antigua, y un "representante" (la versión activa, o si
+ * ninguna está activa, la más reciente) para mostrar en la card del catálogo.
+ */
+export function groupPlantillasByFamilia(plantillas) {
+  const mapa = new Map();
+  for (const p of plantillas) {
+    const clave = p._raw?.codigo_prefijo || p.name;
+    if (!mapa.has(clave)) mapa.set(clave, []);
+    mapa.get(clave).push(p);
+  }
+
+  const familias = [];
+  for (const [prefijo, versiones] of mapa) {
+    const ordenadas = [...versiones].sort(
+      (a, b) => new Date(b._raw?.fecha_creacion || 0) - new Date(a._raw?.fecha_creacion || 0)
+    );
+    const representante = ordenadas.find(v => v.status === 'Aprobado') || ordenadas[0];
+    familias.push({
+      prefijo,
+      representante,
+      versiones: ordenadas,
+      totalVersiones: ordenadas.length,
+      totalUsos: ordenadas.reduce((acc, v) => acc + (v.uses || 0), 0),
+      fechaUltima: ordenadas[0]._raw?.fecha_creacion,
+    });
+  }
+
+  familias.sort((a, b) => new Date(b.fechaUltima || 0) - new Date(a.fechaUltima || 0));
+  return familias;
+}
 

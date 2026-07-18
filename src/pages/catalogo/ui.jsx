@@ -11,6 +11,7 @@ export function StatusBadge({ status }) {
     'Aprobado': { color: 'var(--success-deep)', bg: 'var(--success-bg)', border: 'var(--success-border)' },
     'Borrador': { color: 'var(--warning)', bg: 'var(--warning-bg)', border: 'var(--warning-border)' },
     'En revisión': { color: 'var(--violet)', bg: 'var(--violet-bg)', border: 'var(--violet-border)' },
+    'Inactivo': { color: 'var(--text-faint)', bg: 'var(--bg-faint)', border: 'var(--border)' },
   };
   const c = cfg[status] || cfg['Aprobado'];
   return (

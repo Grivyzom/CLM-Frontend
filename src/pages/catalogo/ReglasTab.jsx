@@ -1,6 +1,10 @@
 import { Icon } from './ui';
 
 // Reglas de negocio: datos estáticos de demo hasta que exista el endpoint.
+// REGLAS_DEMO_COUNT alimenta el contador del tab en Catalogo.jsx — así el
+// número del tab siempre coincide con lo que la vista realmente muestra.
+export const REGLAS_DEMO_COUNT = 2;
+
 const RULES = [
   { id: 1, name: 'Aprobación por monto alto', status: 'Activa', priority: 1,
     conditions: [{ field: 'Valor del contrato', op: 'mayor que', value: '$50,000 USD' }],

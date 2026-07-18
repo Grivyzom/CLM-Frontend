@@ -1,13 +1,65 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { getClausulas, createPlantilla, updatePlantilla, getAvailableHtmlTemplates } from '../../api';
 import { Icon } from './ui';
 import { TEMPLATE_VACIO } from './helpers';
+import { useConfirm } from '../../contexts/ConfirmContext';
+
+// Palabras que no aportan a la sigla de la familia (ej: "Contrato de Prestación
+// de Servicios" → CPS, no CDPDS).
+const STOPWORDS_SIGLA = new Set(['de', 'del', 'la', 'el', 'los', 'las', 'y', 'o', 'a', 'en', 'para', 'por', 'con', 'un', 'una', 'al']);
+
+const sinAcentos = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+// Deriva la familia (codigo_prefijo) desde el nombre de la plantilla: si el
+// nombre termina en una sigla explícita (ej: "... CPS") se usa esa; con una
+// sola palabra, sus primeras 3 letras; si no, iniciales de las significativas.
+function derivarPrefijo(nombre) {
+  const palabras = sinAcentos((nombre || '').trim()).split(/\s+/).filter(w => w && !STOPWORDS_SIGLA.has(w.toLowerCase()));
+  if (!palabras.length) return '';
+  const ultima = palabras[palabras.length - 1];
+  if (/^[A-Z]{2,6}$/.test(ultima)) return ultima;
+  if (palabras.length === 1) return palabras[0].slice(0, 3).toUpperCase();
+  return palabras.map(w => w[0]).join('').toUpperCase().slice(0, 6);
+}
 
 // ─── New Template Modal ─────────────────────────────────────────────────────
-export default function NewTemplateModal({ onClose, onSuccess, createForm, setCreateForm, softwareList, editingTemplate }) {
+export default function NewTemplateModal({ onClose, onSuccess, createForm, setCreateForm, softwareList, editingTemplate, existingPlantillas }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const isEdit = !!editingTemplate;
+  const { confirm } = useConfirm();
+
+  // Familias (codigo_prefijo) ya existentes en el catálogo, para sugerir al
+  // escribir y para avisar cuántas versiones tiene ya la familia elegida.
+  const familias = useMemo(() => {
+    const mapa = new Map();
+    for (const p of existingPlantillas || []) {
+      const prefijo = p._raw?.codigo_prefijo;
+      if (!prefijo) continue;
+      if (!mapa.has(prefijo)) mapa.set(prefijo, { prefijo, nombre: p.name, count: 0 });
+      mapa.get(prefijo).count += 1;
+    }
+    return [...mapa.values()].sort((a, b) => a.prefijo.localeCompare(b.prefijo));
+  }, [existingPlantillas]);
+
+  // Familia y versión se autogeneran desde el nombre; si el usuario las toca a
+  // mano dejan de recalcularse (y al editar nunca se recalculan).
+  const [autoOverride, setAutoOverride] = useState({ prefijo: isEdit, version: isEdit });
+
+  const familiaActual = createForm.codigo_prefijo
+    ? familias.find(f => f.prefijo === createForm.codigo_prefijo.trim().toUpperCase())
+    : null;
+  // Al editar, la propia plantilla ya cuenta dentro de familiaActual — no es "otra versión".
+  const otrasVersionesFamilia = familiaActual
+    ? familiaActual.count - (isEdit && editingTemplate?._raw?.codigo_prefijo === familiaActual.prefijo ? 1 : 0)
+    : 0;
+
+  // Escape cierra el modal (salvo mientras guarda, para no perder el envío en curso)
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape' && !saving) onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose, saving]);
 
   const [searchSoft, setSearchSoft] = useState('');
   const [showSoft, setShowSoft] = useState(false);
@@ -35,9 +87,30 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
 
   const setField = (field, value) => setCreateForm(prev => ({ ...prev, [field]: value }));
 
+  // Familia autogenerada desde el nombre (mientras el usuario no la sobrescriba).
+  useEffect(() => {
+    if (autoOverride.prefijo) return;
+    const prefijo = derivarPrefijo(createForm.nombre);
+    if (prefijo !== createForm.codigo_prefijo) setField('codigo_prefijo', prefijo);
+  }, [createForm.nombre, autoOverride.prefijo]);
+
+  // Versión autogenerada según cuántas versiones tenga ya la familia elegida.
+  useEffect(() => {
+    if (autoOverride.version) return;
+    const familia = familias.find(f => f.prefijo === (createForm.codigo_prefijo || '').trim().toUpperCase());
+    const version = `v${(familia?.count || 0) + 1}.0`;
+    if (version !== createForm.version_codigo) setField('version_codigo', version);
+  }, [createForm.codigo_prefijo, familias, autoOverride.version]);
+
+  // En modo HTML el nombre de la plantilla se toma del archivo HTML elegido.
+  const handleHtmlTemplateChange = (ruta) => {
+    const opcion = htmlTemplatesOpciones.find(o => o.ruta === ruta);
+    setCreateForm(prev => ({ ...prev, ruta_plantilla_html: ruta, ...(opcion?.nombre ? { nombre: opcion.nombre } : {}) }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!createForm.nombre || !createForm.tipo_contrato || !createForm.version_codigo || !createForm.software_id) {
+    if (!createForm.nombre || !createForm.tipo_contrato || !createForm.version_codigo || !createForm.software_id || !createForm.codigo_prefijo?.trim()) {
       setError('Por favor, completa todos los campos obligatorios.');
       return;
     }
@@ -50,32 +123,49 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
       return;
     }
 
+    const fd = new FormData();
+    fd.append('nombre', createForm.nombre);
+    fd.append('tipo_contrato', createForm.tipo_contrato);
+    fd.append('version_codigo', createForm.version_codigo);
+    fd.append('software', createForm.software_id);
+    fd.append('modo_origen', createForm.modo_origen);
+    fd.append('codigo_prefijo', createForm.codigo_prefijo.trim().toUpperCase());
+    fd.append('requiere_sla_facturacion', createForm.requiere_sla_facturacion !== false ? 'true' : 'false');
+    if (createForm.archivo_docx) fd.append('archivo_docx', createForm.archivo_docx);
+    if (createForm.modo_origen === 'clausulas') {
+      fd.append('clausulas_seleccionadas', JSON.stringify(createForm.clausulas_seleccionadas || []));
+    }
+    if (createForm.modo_origen === 'html') {
+      fd.append('ruta_plantilla_html', createForm.ruta_plantilla_html || '');
+    }
+    if (!isEdit) {
+      // Las plantillas nuevas nacen como borrador: revisables y eliminables, y sin
+      // aparecer en Nuevo Contrato hasta que se confirmen (Activar en el catálogo).
+      fd.append('activa', 'false');
+    }
+
+    const enviar = () => (isEdit ? updatePlantilla(editingTemplate.id, fd) : createPlantilla(fd));
+
     setSaving(true);
     setError(null);
     try {
-      const fd = new FormData();
-      fd.append('nombre', createForm.nombre);
-      fd.append('tipo_contrato', createForm.tipo_contrato);
-      fd.append('version_codigo', createForm.version_codigo);
-      fd.append('software', createForm.software_id);
-      fd.append('modo_origen', createForm.modo_origen);
-      fd.append('requiere_sla_facturacion', createForm.requiere_sla_facturacion !== false ? 'true' : 'false');
-      if (createForm.archivo_docx) fd.append('archivo_docx', createForm.archivo_docx);
-      if (createForm.modo_origen === 'clausulas') {
-        fd.append('clausulas_seleccionadas', JSON.stringify(createForm.clausulas_seleccionadas || []));
-      }
-      if (createForm.modo_origen === 'html') {
-        fd.append('ruta_plantilla_html', createForm.ruta_plantilla_html || '');
-        fd.append('codigo_prefijo', createForm.codigo_prefijo || '');
-      }
-
-      if (isEdit) {
-        await updatePlantilla(editingTemplate.id, fd);
-      } else {
-        await createPlantilla(fd);
+      // La respuesta del POST/PATCH es la plantilla creada/actualizada: se pasa
+      // a onSuccess para que el catálogo la inserte/parche sin refetch.
+      let guardada;
+      try {
+        guardada = await enviar();
+      } catch (err) {
+        if (err.status === 409 && /confirma/i.test(err.message)) {
+          const ok = await confirm({ title: 'Nueva versión activa', message: err.message, isDangerous: true });
+          if (!ok) { setSaving(false); return; }
+          fd.append('confirmar', 'true');
+          guardada = await enviar();
+        } else {
+          throw err;
+        }
       }
       setCreateForm(TEMPLATE_VACIO);
-      onSuccess();
+      onSuccess(guardada);
     } catch (err) {
       setError(err.message || 'Error al guardar la plantilla');
     } finally {
@@ -109,6 +199,9 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
       }}
     >
       <form
+        role="dialog"
+        aria-modal="true"
+        aria-label={isEdit ? 'Editar plantilla de contrato' : 'Nueva plantilla de contrato'}
         onClick={e => e.stopPropagation()}
         onSubmit={handleSubmit}
         style={{
@@ -141,16 +234,41 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
         {/* Body */}
         <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-          {/* Nombre */}
+          {/* Modo origen — primera decisión: define qué se pide después */}
           <div>
-            <label style={labelStyle}>Nombre de Plantilla *</label>
-            <input
-              style={inputStyle}
-              value={createForm.nombre}
-              onChange={e => setField('nombre', e.target.value)}
-              placeholder="Ej: Contrato de Prestación de Servicios CPS"
-              required
-            />
+            <label style={labelStyle}>Modo de generación del documento *</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                style={modeBtn(createForm.modo_origen === 'archivo')}
+                onClick={() => setField('modo_origen', 'archivo')}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <Icon d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8" w={14} color={createForm.modo_origen === 'archivo' ? 'var(--primary)' : 'var(--text-muted)'} />
+                  Subir documento (.docx)
+                </span>
+              </button>
+              <button
+                type="button"
+                style={modeBtn(createForm.modo_origen === 'clausulas')}
+                onClick={() => setField('modo_origen', 'clausulas')}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <Icon d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z M3.27 6.96L12 12.01l8.73-5.05 M12 22.08V12" w={14} color={createForm.modo_origen === 'clausulas' ? 'var(--primary)' : 'var(--text-muted)'} />
+                  Generar con cláusulas
+                </span>
+              </button>
+              <button
+                type="button"
+                style={modeBtn(createForm.modo_origen === 'html')}
+                onClick={() => setField('modo_origen', 'html')}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <Icon d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" w={14} color={createForm.modo_origen === 'html' ? 'var(--primary)' : 'var(--text-muted)'} />
+                  Código HTML
+                </span>
+              </button>
+            </div>
           </div>
 
           {/* Software + Tipo */}
@@ -204,73 +322,6 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
                 <option value="PRO_BONO">Pro Bono</option>
                 <option value="INTERNO">Interno / Propio</option>
               </select>
-            </div>
-          </div>
-
-          {/* Version */}
-          <div>
-            <label style={labelStyle}>Versión / Código *</label>
-            <input
-              style={inputStyle}
-              value={createForm.version_codigo}
-              onChange={e => setField('version_codigo', e.target.value)}
-              placeholder="Ej: v1.0"
-              required
-            />
-          </div>
-
-          {/* Documento administrativo (sin SLA/facturación) */}
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '10px 12px', background: 'var(--bg-faint)', border: '1px solid var(--border)', borderRadius: 6 }}>
-            <input
-              type="checkbox"
-              id="requiere_sla_facturacion"
-              checked={createForm.requiere_sla_facturacion !== false}
-              onChange={e => setField('requiere_sla_facturacion', e.target.checked)}
-              style={{ marginTop: 2 }}
-            />
-            <label htmlFor="requiere_sla_facturacion" style={{ fontSize: 11.5, color: 'var(--text-primary)', cursor: 'pointer' }}>
-              <strong>Requiere SLA y facturación</strong>
-              <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 2 }}>
-                Desmárcalo para documentos administrativos (NDA, memorándums, fichas de requerimientos) —
-                el wizard "Nuevo Contrato" no pedirá SLA, monto ni días de gracia para esta plantilla.
-              </div>
-            </label>
-          </div>
-
-          {/* Modo origen */}
-          <div>
-            <label style={labelStyle}>Modo de generación del documento *</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                type="button"
-                style={modeBtn(createForm.modo_origen === 'archivo')}
-                onClick={() => setField('modo_origen', 'archivo')}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                  <Icon d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8" w={14} color={createForm.modo_origen === 'archivo' ? 'var(--primary)' : 'var(--text-muted)'} />
-                  Subir documento (.docx)
-                </span>
-              </button>
-              <button
-                type="button"
-                style={modeBtn(createForm.modo_origen === 'clausulas')}
-                onClick={() => setField('modo_origen', 'clausulas')}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                  <Icon d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z M3.27 6.96L12 12.01l8.73-5.05 M12 22.08V12" w={14} color={createForm.modo_origen === 'clausulas' ? 'var(--primary)' : 'var(--text-muted)'} />
-                  Generar con cláusulas
-                </span>
-              </button>
-              <button
-                type="button"
-                style={modeBtn(createForm.modo_origen === 'html')}
-                onClick={() => setField('modo_origen', 'html')}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                  <Icon d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" w={14} color={createForm.modo_origen === 'html' ? 'var(--primary)' : 'var(--text-muted)'} />
-                  Código HTML
-                </span>
-              </button>
             </div>
           </div>
 
@@ -347,7 +398,7 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
               <select
                 style={inputStyle}
                 value={createForm.ruta_plantilla_html || ''}
-                onChange={e => setField('ruta_plantilla_html', e.target.value)}
+                onChange={e => handleHtmlTemplateChange(e.target.value)}
                 required
               >
                 <option value="">-- Seleccionar archivo HTML --</option>
@@ -361,21 +412,86 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
                 Solo se listan plantillas del tipo seleccionado y las globales.
                 Nomenclatura de archivo: <code>TIPO__Nombre.dc.html</code> (ej: <code>INTERNO__Memorandum.dc.html</code>).
               </p>
-
-              <label style={{ ...labelStyle, marginTop: 4 }}>Prefijo de Referencia</label>
-              <input
-                style={inputStyle}
-                value={createForm.codigo_prefijo || ''}
-                onChange={e => setField('codigo_prefijo', e.target.value.toUpperCase().slice(0, 20))}
-                placeholder="Ej: NDA, MSA, TOS, REQ"
-              />
               <p style={{ margin: 0, fontSize: 10, color: 'var(--text-muted)' }}>
                 El sistema arma el código de "Referencia" del documento como <code>PREFIJO-AÑO-NNN</code> (ej: <code>NDA-2026-004</code>)
-                y lo asigna solo al generar el documento — nunca se pide al usuario. Plantillas con el mismo prefijo comparten
-                el mismo correlativo. Déjalo vacío para usar <code>DOC</code>.
+                usando la <strong>Familia de Documento</strong> generada abajo — se asigna solo al generar el documento,
+                nunca se pide al usuario.
               </p>
             </div>
           )}
+
+          {/* Nombre — en modo HTML se toma de la plantilla seleccionada */}
+          <div>
+            <label style={labelStyle}>Nombre de Plantilla *</label>
+            <input
+              style={inputStyle}
+              value={createForm.nombre}
+              onChange={e => setField('nombre', e.target.value)}
+              placeholder={createForm.modo_origen === 'html' ? 'Se toma de la plantilla HTML seleccionada' : 'Ej: Contrato de Prestación de Servicios CPS'}
+              required
+            />
+          </div>
+
+          {/* Familia + Versión — autogeneradas desde el nombre; editables si hace falta */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={labelStyle}>
+                Familia de Documento *
+                {!autoOverride.prefijo && <span style={{ marginLeft: 6, fontWeight: 600, letterSpacing: 0, textTransform: 'none', color: 'var(--primary)' }}>auto</span>}
+              </label>
+              <input
+                style={inputStyle}
+                list="familias-plantilla"
+                value={createForm.codigo_prefijo || ''}
+                onChange={e => { setAutoOverride(prev => ({ ...prev, prefijo: true })); setField('codigo_prefijo', e.target.value.toUpperCase().slice(0, 20)); }}
+                placeholder="Se genera desde el nombre"
+                required
+              />
+              <datalist id="familias-plantilla">
+                {familias.map(f => <option key={f.prefijo} value={f.prefijo} />)}
+              </datalist>
+            </div>
+            <div>
+              <label style={labelStyle}>
+                Versión / Código *
+                {!autoOverride.version && <span style={{ marginLeft: 6, fontWeight: 600, letterSpacing: 0, textTransform: 'none', color: 'var(--primary)' }}>auto</span>}
+              </label>
+              <input
+                style={inputStyle}
+                value={createForm.version_codigo}
+                onChange={e => { setAutoOverride(prev => ({ ...prev, version: true })); setField('version_codigo', e.target.value); }}
+                placeholder="Ej: v1.0"
+                required
+              />
+            </div>
+          </div>
+
+          {otrasVersionesFamilia > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', background: 'var(--primary-bg)', border: '1px solid var(--primary-border)', borderRadius: 6 }}>
+              <Icon d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M12 16v-4 M12 8h.01" w={14} color="var(--primary)" />
+              <p style={{ margin: 0, fontSize: 11, color: 'var(--primary)' }}>
+                La familia <strong>{familiaActual.prefijo}</strong> ya tiene {otrasVersionesFamilia} versión{otrasVersionesFamilia === 1 ? '' : 'es'} registrada{otrasVersionesFamilia === 1 ? '' : 's'} ("{familiaActual.nombre}"). Esta quedará como una versión más de esa familia.
+              </p>
+            </div>
+          )}
+
+          {/* Documento administrativo (sin SLA/facturación) */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '10px 12px', background: 'var(--bg-faint)', border: '1px solid var(--border)', borderRadius: 6 }}>
+            <input
+              type="checkbox"
+              id="requiere_sla_facturacion"
+              checked={createForm.requiere_sla_facturacion !== false}
+              onChange={e => setField('requiere_sla_facturacion', e.target.checked)}
+              style={{ marginTop: 2 }}
+            />
+            <label htmlFor="requiere_sla_facturacion" style={{ fontSize: 11.5, color: 'var(--text-primary)', cursor: 'pointer' }}>
+              <strong>Requiere SLA y facturación</strong>
+              <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 2 }}>
+                Desmárcalo para documentos administrativos (NDA, memorándums, fichas de requerimientos) —
+                el wizard "Nuevo Contrato" no pedirá SLA, monto ni días de gracia para esta plantilla.
+              </div>
+            </label>
+          </div>
 
           {error && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--danger)', fontSize: 12 }}>
@@ -388,8 +504,13 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
         {/* Footer */}
         <div style={{
           padding: '12px 20px', borderTop: '1px solid var(--neutral-200)',
-          display: 'flex', justifyContent: 'flex-end', gap: 8, background: 'var(--bg-faint)', flexShrink: 0
+          display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, background: 'var(--bg-faint)', flexShrink: 0
         }}>
+          {!isEdit && (
+            <span style={{ marginRight: 'auto', fontSize: 10, color: 'var(--text-muted)' }}>
+              Se creará como <strong>borrador</strong>: actívala desde el catálogo para usarla en contratos.
+            </span>
+          )}
           <button
             type="button"
             onClick={onClose}

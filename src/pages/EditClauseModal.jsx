@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createClausula, updateClausula } from '../api';
+import { TIPOS_TEXTO } from '../utils/tiposTexto';
 
 function Svg({ paths = [], circles = [], size = 14, color = 'var(--text-muted)', strokeWidth = 1.8 }) {
   return (
@@ -85,6 +86,7 @@ export default function EditClauseModal({ clause, onClose, onSuccess, createForm
     name: '',
     cat: '',
     risk: 'Medio',
+    tipo_texto: 'CLAUSULA',
     versions: [
       { label: 'Estándar', tag: 'Estándar', text: '' }
     ]
@@ -99,6 +101,7 @@ export default function EditClauseModal({ clause, onClose, onSuccess, createForm
         name: clause.name || '',
         cat: clause.cat || '',
         risk: clause.risk || 'Medio',
+        tipo_texto: clause.tipo_texto || 'CLAUSULA',
         versions: (clause.versions && clause.versions.length > 0) 
           ? clause.versions.map(v => ({
               id: v.id,
@@ -146,22 +149,26 @@ export default function EditClauseModal({ clause, onClose, onSuccess, createForm
     setLoading(true);
     setError(null);
     try {
+      // La respuesta trae la cláusula completa (con IDs de versiones nuevos):
+      // el catálogo la upsertea localmente sin refetchear la biblioteca.
+      let guardada;
       if (isEditing) {
-        await updateClausula(clause.id, formData);
+        guardada = await updateClausula(clause.id, formData);
       } else {
-        await createClausula(formData);
+        guardada = await createClausula(formData);
         if (setCreateForm) {
           setCreateForm({
             name: '',
             cat: '',
             risk: 'Medio',
+            tipo_texto: 'CLAUSULA',
             versions: [
               { label: 'Estándar', tag: 'Estándar', text: '' }
             ]
           });
         }
       }
-      onSuccess();
+      onSuccess(guardada);
     } catch (err) {
       setError(err.message || 'Error al guardar la cláusula');
     } finally {
@@ -270,6 +277,15 @@ export default function EditClauseModal({ clause, onClose, onSuccess, createForm
                 ]}
               />
             </div>
+          </div>
+
+          <div style={{ maxWidth: 260 }}>
+            <SelectField
+              label="Tipo de Texto"
+              value={formData.tipo_texto || 'CLAUSULA'}
+              onChange={(e) => setFormData(prev => ({ ...prev, tipo_texto: e.target.value }))}
+              options={TIPOS_TEXTO}
+            />
           </div>
 
           <div style={{ marginTop: 8 }}>
