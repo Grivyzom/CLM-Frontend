@@ -5,15 +5,6 @@ import { Icon } from './ui';
 import { PRODUCTO_CATEGORIAS, formatPrecio, PRODUCTO_VACIO } from './helpers';
 import ProductModal from './ProductModal';
 
-const CAT_COLORS = {
-  'Bot': 'var(--cyan)',
-  'Agente': 'var(--violet-bright)',
-  'Script': 'var(--success-alt)',
-  'Software': 'var(--primary)',
-  'Auditoría': 'var(--danger)',
-  'Consultoría': 'var(--warning-bright)',
-};
-
 function renderCuratedBadges(p) {
   const extra = p.datos_adicionales;
   if (!extra || Object.keys(extra).length === 0) return null;

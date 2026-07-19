@@ -3,7 +3,6 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 
-const MAX_TITULO_BLOQUE = 300;
 const MAX_TEXTO_BLOQUE = 20000;
 
 export default function ClausulaBloqueRichText({
