@@ -6,6 +6,7 @@ import { apiLogout } from '../api';
 import TopbarActions from '../components/layout/TopbarActions';
 import './Ajustes.css';
 import InfoTooltip from '../components/ui/InfoTooltip';
+import SEO from '../components/SEO';
 
 const Icon = ({ d, color = 'currentColor', w = 16 }) => (
   <svg width={w} height={w} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -95,6 +96,7 @@ export default function Ajustes() {
 
   return (
     <div className="ajustes-container fade-in">
+      <SEO title="Ajustes | KyoCLM" description="Configuraciones generales y perfil de usuario." />
       <div className="ajustes-header glass-panel">
         <div className="ajustes-header-left">
           <div className="ajustes-header-icon-wrap">

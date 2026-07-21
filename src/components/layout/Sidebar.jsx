@@ -519,11 +519,11 @@ export default function Sidebar() {
       <div className="sb-header">
         <div className="sb-logo-section">
           <div className="sb-logo-icon">
-            <span>E</span>
+            <img src="/android-chrome-192x192.png" alt="Enfoque Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '4px' }} />
           </div>
           <div className="sb-logo-text">
-            <div className="sb-logo-title">Enfoque</div>
-            <div className="sb-logo-subtitle">Platform</div>
+            <div className="sb-logo-title">KyoCLM</div>
+            <div className="sb-logo-subtitle">v0.3 Alpha</div>
           </div>
           
           <button

@@ -181,6 +181,117 @@
   }
 }
 
+/* Panorama de inicio: mi actividad / recomendaciones / resumen semanal / notificaciones. */
+.db-panel-row-inicio {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .db-panel-row-inicio {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1440px) {
+  .db-panel-row-inicio {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.db-panel-row-inicio .db-panel-card {
+  max-height: 340px;
+}
+
+/* Skeleton de carga del panorama de inicio */
+@keyframes db-inicio-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.db-inicio-skel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.db-inicio-skel-line {
+  height: 32px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--bg-subtle) 25%, var(--bg-topbar) 50%, var(--bg-subtle) 75%);
+  background-size: 200% 100%;
+  animation: db-inicio-shimmer 1.5s infinite;
+}
+
+/* Recomendaciones */
+.db-reco-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.db-reco-item {
+  display: flex;
+  gap: 0.625rem;
+  padding: 0.5rem;
+  border-radius: 6px;
+  border-left: 3px solid var(--border);
+  background: var(--bg-subtle);
+}
+
+.db-reco-item.db-reco-alta { border-left-color: var(--danger); }
+.db-reco-item.db-reco-media { border-left-color: var(--warning); }
+.db-reco-item.db-reco-baja { border-left-color: var(--text-muted); }
+
+.db-reco-icon { flex-shrink: 0; margin-top: 2px; color: var(--text-muted); }
+.db-reco-item.db-reco-alta .db-reco-icon { color: var(--danger); }
+.db-reco-item.db-reco-media .db-reco-icon { color: var(--warning); }
+
+.db-reco-body { min-width: 0; }
+
+.db-reco-titulo {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.db-reco-mensaje {
+  margin: 2px 0 4px 0;
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* Resumen semanal */
+.db-week-stat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.db-week-stat-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  flex: 1;
+}
+
+.db-week-stat-value {
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-heading);
+}
+
 /* Las dos cards laterales se reparten la altura de la tabla,
    así ambas columnas terminan exactamente en la misma línea. */
 .db-side-col > .db-panel-card { flex: 1; }
@@ -204,6 +315,9 @@
 }
 
 .db-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
   font-size: 12px;
   font-weight: 700;
   font-family: 'JetBrains Mono', monospace;

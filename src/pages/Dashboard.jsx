@@ -16,6 +16,9 @@ import {
 } from 'lucide-react';
 import { useDashboard } from '../hooks/useDashboard';
 import TopbarActions from '../components/layout/TopbarActions';
+import SEO from '../components/SEO';
+import InicioResumenSection from '../components/dashboard/InicioResumenSection';
+import { tiempoRelativo } from '../utils/formatters';
 import './Dashboard.css';
 import './Analytics.css';
 
@@ -61,15 +64,6 @@ function fmtCompact(value) {
   }
   if (value >= 1_000) return `$${Math.round(value / 1_000)}k`;
   return fmtCLP(value);
-}
-
-function tiempoRelativo(iso) {
-  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
-  if (mins < 1) return 'ahora';
-  if (mins < 60) return `hace ${mins} min`;
-  const horas = Math.floor(mins / 60);
-  if (horas < 24) return `hace ${horas} h`;
-  return `hace ${Math.floor(horas / 24)} d`;
 }
 
 // ── Tooltip para la serie MRR (valores en $k) ────────────────────────────────
@@ -442,6 +436,7 @@ export default function Dashboard() {
 
   return (
     <div className="db-container" ref={dashboardRef}>
+      <SEO title="Dashboard | KyoCLM" description="Vista general y métricas de tu gestión de contratos en KyoCLM." />
 
       <div className="db-topbar">
         <div>
@@ -469,6 +464,8 @@ export default function Dashboard() {
           <ErrorBanner message={error} onRetry={refetch} />
         ) : (
           <>
+            <InicioResumenSection />
+
             {/* KPIs */}
             <div className="db-kpi-bar">
               {kpiCards.map((kpi, i) => (

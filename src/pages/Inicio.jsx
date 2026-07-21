@@ -4,6 +4,7 @@ import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Play } from 'lucide-react';
+import SEO from '../components/SEO';
 import './Inicio.css';
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
@@ -89,6 +90,10 @@ export default function Inicio() {
 
   return (
     <div className="in-page" ref={pageRef}>
+      <SEO 
+        title="Inicio" 
+        description="CLM-Kyo: La plataforma que automatiza el ciclo de vida completo de tus contratos."
+      />
       {/* ══════════ NAV ══════════ */}
       <header className={`in-nav${scrolled ? ' scrolled' : ''}`}>
         <div className="in-nav-inner">

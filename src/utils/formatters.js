@@ -31,3 +31,12 @@ export function clienteIdDisplay(id) {
   return `CLI-${String(id).padStart(6, '0')}`;
 }
 
+export function tiempoRelativo(iso) {
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 1) return 'ahora';
+  if (mins < 60) return `hace ${mins} min`;
+  const horas = Math.floor(mins / 60);
+  if (horas < 24) return `hace ${horas} h`;
+  return `hace ${Math.floor(horas / 24)} d`;
+}
+

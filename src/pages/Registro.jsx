@@ -102,12 +102,7 @@ export default function Registro() {
 
   return (
     <div className="login-container" ref={containerRef}>
-      <div className="login-header">
-        <div>
-          <p className="login-header-label">Enfoque Platform</p>
-          <h1 className="login-header-title">Activación</h1>
-        </div>
-      </div>
+
 
       <div className="login-body">
         <div className="login-card">

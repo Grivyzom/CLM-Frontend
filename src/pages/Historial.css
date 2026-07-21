@@ -1,0 +1,134 @@
+.hs-container {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+}
+
+.hs-header-actions {
+  display: flex;
+  gap: 12px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-faint);
+  align-items: center;
+}
+
+.hs-search {
+  flex: 1;
+  position: relative;
+}
+
+.hs-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+}
+
+.hs-search input {
+  width: 100%;
+  padding: 10px 16px 10px 40px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.hs-search input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-tint);
+}
+
+.hs-filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.hs-filter-btn:hover {
+  background: var(--bg-faint);
+  border-color: var(--text-soft);
+}
+
+.hs-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.hs-row {
+  display: flex;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border-strong);
+  transition: background 0.2s;
+}
+
+.hs-row:last-child {
+  border-bottom: none;
+}
+
+.hs-row:hover {
+  background: var(--bg-faint);
+}
+
+.hs-icon-wrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 16px;
+}
+
+.hs-content {
+  flex: 1;
+}
+
+.hs-title {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-heading);
+}
+
+.hs-meta {
+  font-size: 13px;
+  color: var(--text-soft);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hs-meta span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.hs-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.hs-type-system { background: var(--violet-bg); color: var(--violet-bright); }
+.hs-type-user { background: var(--sky-bg); color: var(--sky-deep); }
+.hs-type-contract { background: var(--success-bg); color: var(--success-deep); }
+.hs-type-security { background: var(--warning-bg); color: var(--warning-deep); }

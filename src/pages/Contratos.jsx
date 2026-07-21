@@ -11,6 +11,7 @@ import Pagination from '../components/ui/Pagination';
 import { fmtMoney, fmtDate, contratoIdDisplay } from '../utils/formatters';
 import TopbarActions from '../components/layout/TopbarActions';
 import { useAuth } from '../contexts/AuthContext';
+import SEO from '../components/SEO';
 
 // ─── Paleta de etapas (workflow legal real: EtapaContrato) ────────────────────
 const ETAPA_CFG = {
@@ -462,6 +463,7 @@ export default function Contratos() {
 
   return (
     <div className="ct-container" ref={containerRef}>
+      <SEO title="Contratos" description="Gestión, seguimiento y control de tus contratos activos y en proceso en KyoCLM." />
       <div className="ct-header">
         <div>
           <p className="ct-header-label">Enfoque Platform</p>

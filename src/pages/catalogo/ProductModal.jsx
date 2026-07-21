@@ -519,6 +519,65 @@ export default function ProductModal({ onClose, onSaved, mode = 'create', produc
               </div>
             </div>
 
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12, marginTop: 12 }}>
+              <div>
+                <label style={labelStyle}>Repositorios de GitHub</label>
+                {(form.datos_adicionales?.github_repos || []).map((repo, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                    <input
+                      style={{ ...inputStyle, flex: 1 }}
+                      value={repo}
+                      onChange={e => {
+                        const newRepos = [...(form.datos_adicionales?.github_repos || [])];
+                        newRepos[i] = e.target.value;
+                        setExtraField('github_repos', newRepos);
+                      }}
+                      disabled={isView}
+                      placeholder="https://github.com/org/repo"
+                    />
+                    {!isView && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newRepos = [...(form.datos_adicionales?.github_repos || [])];
+                          newRepos.splice(i, 1);
+                          setExtraField('github_repos', newRepos);
+                        }}
+                        style={{ padding: '0 12px', borderRadius: 6, border: '1px solid var(--danger)', background: 'var(--surface)', color: 'var(--danger)', cursor: 'pointer' }}
+                        title="Eliminar Repositorio"
+                      >
+                        Eliminar
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {!isView && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newRepos = [...(form.datos_adicionales?.github_repos || [])];
+                      newRepos.push('');
+                      setExtraField('github_repos', newRepos);
+                    }}
+                    style={{ fontSize: 12, padding: '6px 12px', borderRadius: 6, border: '1px dashed var(--border)', background: 'var(--surface)', color: 'var(--text-primary)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                  >
+                    + Añadir Repositorio
+                  </button>
+                )}
+              </div>
+
+              <div>
+                <label style={labelStyle}>Subir Archivos (Próximamente)</label>
+                <input
+                  type="file"
+                  multiple
+                  disabled
+                  style={{ ...inputStyle, opacity: 0.6, cursor: 'not-allowed' }}
+                  title="Esta opción estará disponible próximamente"
+                />
+              </div>
+            </div>
+
             {error && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--danger)', fontSize: 12, marginTop: 8 }}>
                 <Icon d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01" color="var(--danger)" w={14} />

@@ -665,6 +665,49 @@ export async function getCamposPlantilla({ contratoId, plantillaId } = {}) {
   return request(`/plantillas/documentos/campos/?${qs.toString()}`);
 }
 
+/**
+ * Obtiene el formulario dinámico asociado a una plantilla.
+ * @param {number} plantillaId 
+ * @returns {{plantilla_id: number, preguntas: Array<{id, texto, tipo, orden, opciones}>}}
+ */
+export async function getFormularioPlantilla(plantillaId) {
+  return request(`/plantillas/plantillas/${plantillaId}/formulario/`);
+}
+
+/**
+ * Evalúa las respuestas de un formulario dinámico y retorna las cláusulas que deben incluirse.
+ * @param {number} plantillaId 
+ * @param {Object} respuestas - { pregunta_id: valor }
+ * @returns {{clausulas: Array<{clausula_id, version_id, titulo, texto, tipo_texto}>}}
+ */
+export async function evaluarFormularioPlantilla(plantillaId, respuestas) {
+  return request(`/plantillas/plantillas/${plantillaId}/evaluar-formulario/`, {
+    method: 'POST',
+    body: JSON.stringify({ respuestas }),
+  });
+}
+
+/**
+ * Obtiene el estado actual del formulario para el constructor (Admin/Moderador).
+ * @param {number} plantillaId 
+ * @returns {{plantilla_id: number, preguntas: Array}}
+ */
+export async function getFormularioBuilder(plantillaId) {
+  return request(`/plantillas/plantillas/${plantillaId}/formulario-builder/`);
+}
+
+/**
+ * Guarda el formulario completo desde el constructor.
+ * @param {number} plantillaId 
+ * @param {Array} preguntas 
+ */
+export async function saveFormularioBuilder(plantillaId, preguntas) {
+  return request(`/plantillas/plantillas/${plantillaId}/formulario-builder/`, {
+    method: 'PUT',
+    body: JSON.stringify({ preguntas }),
+  });
+}
+
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
 /**
@@ -678,6 +721,21 @@ export async function getDashboard(params = {}) {
   if (params.cliente) qs.set('cliente', params.cliente);
   const query = qs.toString() ? `?${qs.toString()}` : '';
   return request(`/dashboard/${query}`);
+}
+
+/**
+ * Panorama de inicio: actividad propia del usuario logueado, recomendaciones
+ * priorizadas server-side y comparativo semanal vs. la semana anterior.
+ * Se pide una sola vez al entrar (sin polling), a diferencia de getDashboard().
+ * @param {Object} [params]
+ * @param {number} [params.cliente] - Acota las métricas a un cliente (Vista activa)
+ * @returns {{ mi_actividad, recomendaciones, resumen_semanal }}
+ */
+export async function getResumenInicio(params = {}) {
+  const qs = new URLSearchParams();
+  if (params.cliente) qs.set('cliente', params.cliente);
+  const query = qs.toString() ? `?${qs.toString()}` : '';
+  return request(`/dashboard/resumen-inicio/${query}`);
 }
 
 // ─── Analytics ────────────────────────────────────────────────────────────────
@@ -1166,6 +1224,32 @@ export async function getRequerimientos(params = {}) {
 /** Detalle de un Requerimiento (incluye la plantilla de preguntas usada). */
 export async function getRequerimientoDetail(id) {
   return request(`/requerimientos/${id}/`);
+}
+
+// --- Guest Portal Endpoints ---
+export function apiGenerateGuestLink(contratoId, data) {
+  return request(`/contratos/${contratoId}/guest-link/`, {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+}
+
+export function apiGetGuestContract(token) {
+  return request(`/guest/contracts/${token}/`);
+}
+
+export function apiGuestComment(token, data) {
+  return request(`/guest/contracts/${token}/comments/`, {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+}
+
+export function apiGuestSign(token, data) {
+  return request(`/guest/contracts/${token}/sign/`, {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
 }
 
 /**

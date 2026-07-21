@@ -4,6 +4,7 @@ import { useAuth, buildUserFromApi } from '../contexts/AuthContext';
 import { apiLogin } from '../api';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
+import SEO from '../components/SEO';
 import '../styles/Login.css';
 
 function todayLabel() {
@@ -126,13 +127,7 @@ export default function Login() {
 
   return (
     <div className="login-container" ref={containerRef}>
-      <div className="login-header">
-        <div>
-          <p className="login-header-label">Enfoque Platform</p>
-          <h1 className="login-header-title">Acceso</h1>
-        </div>
-        <span className="login-header-date">{todayLabel()}</span>
-      </div>
+      <SEO title="Iniciar Sesión" description="Accede a tu cuenta de KyoCLM para gestionar tus contratos." />
 
       <div className="login-body">
         {/* Fondo SVG: mismo lenguaje que el hero de la landing (grid + paths + pulsos) */}

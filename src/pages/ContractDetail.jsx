@@ -7,7 +7,7 @@ import {
   getPlantillas, togglePlantillaActiva, getCamposPlantilla, syncExternalContract, manageSignature,
   getAnalisisIA, runAnalisisIA, getClausulas,
   getComentariosContrato, createComentarioContrato, deleteComentario,
-  previewBorradorPdf
+  previewBorradorPdf, apiGenerateGuestLink
 } from '../api';
 import ClausulaEditor, { bloquesDesdeGuardado, bloquesAPayload, nuevoUid } from '../components/ui/ClausulaEditor';
 import { fmtDate, fmtMoney, contratoIdDisplay } from '../utils/formatters';
@@ -745,6 +745,23 @@ export default function ContractDetail() {
     }
   }
 
+  async function handleGenerateGuestLink() {
+    setBusy(true);
+    try {
+      const data = await apiGenerateGuestLink(contrato.id, {
+        can_comment: true,
+        can_sign: contrato.etapa === 'PENDIENTE_FIRMA'
+      });
+      const link = `${window.location.origin}/guest/${data.token}`;
+      await navigator.clipboard.writeText(link);
+      alertModal({ title: 'Enlace Generado', message: 'Se ha copiado el enlace mágico al portapapeles. Compártelo con la contraparte de forma segura.' });
+    } catch (err) {
+      alertModal({ title: 'Error', message: err.message || 'Error al generar el enlace', isDangerous: true });
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleEliminar() {
     const tieneDocumentos = contrato.documentos.length > 0;
     try {
@@ -856,6 +873,10 @@ export default function ContractDetail() {
               </button>
             </>
           )}
+          <button className="ct-btn-secondary" disabled={busy} onClick={handleGenerateGuestLink} title="Generar enlace seguro para terceros">
+            <Icon d={['M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1']} color="var(--primary)" w={13} />
+            Portal Guest
+          </button>
           {siguientes.map(s => (
             <button key={s.etapa}
               className={s.danger ? 'ct-btn-danger' : s.primary ? 'ct-btn-primary' : 'ct-btn-secondary'}

@@ -15,6 +15,7 @@ import TopbarActions from '../components/layout/TopbarActions';
 import { useAuth } from '../contexts/AuthContext';
 import { getAuditoria } from '../api';
 import './AuditoriaLegal.css';
+import SEO from '../components/SEO';
 
 const RISK_FILTERS = [
   { id: 'all', label: 'Todos' },
@@ -282,6 +283,7 @@ export default function AuditoriaLegal() {
 
   return (
     <div className="auditoria-page" ref={pageRef}>
+      <SEO title="Auditoría Legal | KyoCLM" description="Registro de trazabilidad, eventos y compliance legal." />
       {/* ── Topbar ── */}
       <div className="al-topbar">
         <div className="al-topbar-left">

@@ -71,7 +71,7 @@ function renderCuratedBadges(p) {
               color: 'var(--text-muted)',
               fontFamily: 'monospace'
             }}>
-              <strong>{k.replace('_', ' ')}:</strong> {v}
+              <strong>{k.replace('_', ' ')}:</strong> {typeof v === 'object' && v !== null ? (Array.isArray(v) ? v.join(', ') : JSON.stringify(v)) : String(v)}
             </span>
           );
         })}

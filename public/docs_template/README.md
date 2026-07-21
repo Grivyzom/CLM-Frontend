@@ -13,6 +13,8 @@ declara para qué tipo de contrato/documento sirve la plantilla:
 | `PERPETUO__` | Contrato perpetuo |
 | `PRO_BONO__` | Contrato pro bono |
 | `INTERNO__` | Documento interno / propio |
+| `REQUERIMIENTO__` | Ficha de Requerimiento |
+| `ERS__` | Especificación de Requerimientos |
 | *(sin prefijo)* | **Global** — sirve para cualquier tipo |
 
 Ejemplos: `INTERNO__Memorandum Grivyzom.dc.html`, `RECURRENTE__Contrato SaaS.dc.html`.

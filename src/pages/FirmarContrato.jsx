@@ -69,13 +69,7 @@ export default function FirmarContrato() {
 
   return (
     <div className="login-container" ref={containerRef}>
-      <div className="login-header">
-        <div>
-          <p className="login-header-label">Enfoque Platform</p>
-          <h1 className="login-header-title">Firma Electrónica</h1>
-        </div>
-        <span className="login-header-date">{todayLabel()}</span>
-      </div>
+
 
       <div className="login-body">
         <svg

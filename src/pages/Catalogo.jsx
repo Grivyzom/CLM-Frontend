@@ -5,6 +5,7 @@ import './Catalogo.css';
 import { getPlantillas, getClausulas, getProductos, deleteProducto } from '../api';
 import TopbarActions from '../components/layout/TopbarActions';
 import { useConfirm } from '../contexts/ConfirmContext';
+import SEO from '../components/SEO';
 
 import { normalizeApiPlantilla, getTagStyles } from './catalogo/helpers';
 import { Icon } from './catalogo/ui';
@@ -375,6 +376,7 @@ export default function Catalogo() {
 
   return (
     <div className="catalogo-container" ref={catalogoContainerRef}>
+      <SEO title="Catálogo | KyoCLM" description="Catálogo de plantillas, cláusulas y reglas de negocio." />
       <div className="catalogo-header">
         <div>
           <p className="catalogo-header-label">Enfoque Platform</p>

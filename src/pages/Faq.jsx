@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import TopbarActions from '../components/layout/TopbarActions';
 import './Faq.css';
+import SEO from '../components/SEO';
 
 const Icon = ({ d, color = 'var(--text-muted)', w = 14 }) => (
   <svg width={w} height={w} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -38,6 +39,7 @@ export default function Faq() {
 
   return (
     <div className="faq-container">
+      <SEO title="Preguntas Frecuentes | KyoCLM" description="Preguntas frecuentes y soporte." />
       <div className="faq-header">
         <div>
           <p className="faq-header-label">Enfoque Platform</p>

@@ -5,6 +5,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ActiveViewProvider } from './contexts/ActiveViewContext';
 import { ConfirmProvider } from './contexts/ConfirmContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { TourProvider } from './contexts/TourContext';
 import ProtectedRoute, { RequireAccess } from './components/auth/ProtectedRoute';
 import { routeChunks } from './routeChunks';
 
@@ -36,6 +37,7 @@ const Reporte        = lazy(routeChunks['/reportes']);
 const ClienteWorkspace   = lazy(() => import('./pages/ClienteWorkspace'));
 const ProductoWorkspace  = lazy(() => import('./pages/ProductoWorkspace'));
 const Usuarios           = lazy(routeChunks['/usuarios']);
+const GuestPortal        = lazy(() => import('./pages/GuestPortal'));
 
 function RouteFallback() {
   return <div className="route-fallback" aria-busy="true" />;
@@ -48,7 +50,8 @@ function App() {
       <AuthProvider>
         <ActiveViewProvider>
         <ConfirmProvider>
-          <Layout>
+          <TourProvider>
+            <Layout>
             {/* Suspense DENTRO de Layout: el sidebar sigue montado mientras
                 baja el chunk de la vista; antes toda la app se reemplazaba
                 por el fallback en la primera visita a cada ruta lazy. */}
@@ -59,6 +62,7 @@ function App() {
                 <Route path="/recuperar" element={<Recuperar />} />
                 <Route path="/recuperar/confirmar/:uid/:token" element={<Recuperar />} />
                 <Route path="/firmar/:token" element={<FirmarContrato />} />
+                <Route path="/guest/:token" element={<GuestPortal />} />
                 <Route path="/registro/:uid/:token" element={<Registro />} />
                 <Route path="/*" element={
                   <ProtectedRoute>
@@ -123,7 +127,8 @@ function App() {
                 } />
               </Routes>
             </Suspense>
-          </Layout>
+            </Layout>
+          </TourProvider>
         </ConfirmProvider>
         </ActiveViewProvider>
       </AuthProvider>

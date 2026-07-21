@@ -275,7 +275,7 @@ export default function Analytics() {
                   <p className="db-section-label">Riesgo</p>
                   <h3 className="db-table-title">Salud de cobranza</h3>
                 </div>
-                <span className={`db-kpi-value-compact ${salud_cartera.pct_riesgo >= 15 ? 'color-red' : salud_cartera.pct_riesgo > 0 ? 'color-amber' : 'color-emerald'}`}>
+                <span className={`an-salud-badge ${salud_cartera.pct_riesgo >= 15 ? 'color-red' : salud_cartera.pct_riesgo > 0 ? 'color-amber' : 'color-emerald'}`}>
                   {salud_cartera.pct_riesgo}% de la cartera en riesgo
                 </span>
               </div>

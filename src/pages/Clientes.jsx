@@ -26,6 +26,7 @@ import ActionDropdown from '../components/ui/ActionDropdown';
 import Toast from '../components/ui/Toast';
 import TopbarActions from '../components/layout/TopbarActions';
 import { fmtMoney, fmtDate, contratoIdDisplay, clienteIdDisplay } from '../utils/formatters';
+import SEO from '../components/SEO';
 
 // ─── Constantes visuales ─────────────────────────────────────────────────────
 const FILTER_ESTADOS  = ['Todos', 'Activo', 'En revisión', 'Inactivo'];
@@ -913,6 +914,7 @@ export default function Clientes() {
 
   return (
     <div className="clientes-page" ref={clientesPageRef}>
+      <SEO title="Clientes | KyoCLM" description="Gestión de clientes y contrapartes en KyoCLM." />
       {/* ── Topbar ── */}
       <div className="cl-topbar">
         <div className="cl-topbar-left">

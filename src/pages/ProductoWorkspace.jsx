@@ -8,6 +8,7 @@ import {
 import { fmtMoney } from '../utils/formatters';
 import { PRODUCTO_CATEGORIAS, formatPrecio } from './catalogo/helpers';
 import { useConfirm } from '../contexts/ConfirmContext';
+import TechIcon from '../components/TechIcon';
 
 // ─── Paleta de categorías (espejo de ProductosTab) ────────────────────────────
 const CAT_CFG = {
@@ -1431,11 +1432,103 @@ export default function ProductoWorkspace() {
                       <div key={k} className="pw-row">
                         <span className="pw-row-label">{fmtKey(k)}</span>
                         <span className="pw-row-value" style={{ maxWidth: 200, fontFamily: 'inherit', fontSize: 11, textTransform: 'none', letterSpacing: 0 }}>
-                          {v}
+                          {typeof v === 'object' && v !== null ? (Array.isArray(v) ? v.join(', ') : JSON.stringify(v)) : String(v)}
                         </span>
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* Desarrollo / Tecnologías (Solo para Software) */}
+            {producto.cat === 'Software' && (
+              <div className="pw-card" style={{ gridColumn: '1 / -1' }}>
+                <p className="pw-card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <Icon d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" color="var(--cyan)" w={14} />
+                    Información de Desarrollo
+                  </span>
+                  <span style={{ fontSize: '10px', background: 'var(--cyan-tint)', color: 'var(--cyan)', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+                    Tech Stack
+                  </span>
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '24px', marginTop: '16px' }}>
+                  
+                  {/* Lenguajes */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Composición de Código</span>
+                    {(() => {
+                      const str = producto.datos_adicionales?.lenguajes_porcentajes || 'JS:60, TS:25, CSS:15';
+                      const parts = str.split(',').map(s => s.trim()).filter(Boolean);
+                      const colors = ['#f1e05a', '#3178c6', '#563d7c', '#e34c26', '#b07219', '#ffac45'];
+                      const data = parts.map((p, i) => {
+                        const [name, val] = p.split(':').map(x => x.trim());
+                        return { name: name || 'Desconocido', val: Number(val) || 0, color: colors[i % colors.length] };
+                      });
+                      const total = data.reduce((acc, curr) => acc + curr.val, 0) || 100;
+                      
+                      return (
+                        <>
+                          <div style={{ width: '100%', height: '8px', borderRadius: '4px', display: 'flex', overflow: 'hidden' }}>
+                            {data.map((d, i) => (
+                              <div key={i} style={{ width: `${(d.val / total) * 100}%`, background: d.color, height: '100%' }} title={`${d.name}: ${d.val}%`}></div>
+                            ))}
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '11px' }}>
+                            {data.map((d, i) => (
+                              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <TechIcon name={d.name} color={d.color} size={12} fallback={false} />
+                                {!['js', 'ts', 'html', 'css', 'python', 'ruby', 'go'].includes(d.name.toLowerCase()) && (
+                                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: d.color, display: (['react', 'node.js'].includes(d.name.toLowerCase()) ? 'none' : 'block') }}></div>
+                                )}
+                                <span style={{ color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  {d.name} <span style={{ color: 'var(--text-muted)' }}>({((d.val / total) * 100).toFixed(0)}%)</span>
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Tecnologías */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Stack Tecnológico</span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {(producto.datos_adicionales?.stack_tecnologico || 'React, Node.js, PostgreSQL, Docker').split(',').map(t => t.trim()).filter(Boolean).map((tech, i) => (
+                        <span key={i} style={{ padding: '4px 10px', background: 'var(--bg-topbar)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '11px', color: 'var(--text-primary)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <TechIcon name={tech} size={12} />
+                          {tech}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Protocolos */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Protocolos & Seguridad</span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {(producto.datos_adicionales?.protocolos_seguridad || '2FA (MFA), OAuth 2.0, Email / SMTP').split(',').map(p => p.trim()).filter(Boolean).map((prot, i) => {
+                        let icon = 'M4 12a8 8 0 018-8 8 8 0 018 8m-8-4a4 4 0 00-4 4 4 4 0 004 4m-2 6a10 10 0 01-10-10 10 10 0 0110-10 10 10 0 0110 10';
+                        let color = 'var(--cyan)';
+                        const lp = prot.toLowerCase();
+                        if (lp.includes('2fa') || lp.includes('mfa')) { icon = 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'; color = 'var(--success-deep)'; }
+                        else if (lp.includes('oauth') || lp.includes('saml') || lp.includes('jwt') || lp.includes('sso')) { icon = 'M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4'; color = 'var(--violet-bright)'; }
+                        else if (lp.includes('email') || lp.includes('smtp') || lp.includes('msg')) { icon = 'M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z M22 6l-10 7L2 6'; color = 'var(--primary)'; }
+                        else if (lp.includes('wss') || lp.includes('webhooks')) { icon = 'M4 12a8 8 0 018-8 8 8 0 018 8m-8-4a4 4 0 00-4 4 4 4 0 004 4m-2 6a10 10 0 01-10-10 10 10 0 0110-10 10 10 0 0110 10'; color = 'var(--warning-bright)'; }
+                        
+                        return (
+                          <span key={i} style={{ padding: '4px 10px', background: 'var(--bg-topbar)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '11px', color: 'var(--text-primary)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Icon d={icon} w={12} color={color} />
+                            {prot}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                 </div>
               </div>
             )}
@@ -1701,6 +1794,59 @@ export default function ProductoWorkspace() {
                         <option value="Inactivo">Inactivo</option>
                       </select>
                     </div>
+                    
+
+                    <div className="pw-field">
+                      <label>Repositorios de GitHub</label>
+                      {(editForm.datos_adicionales?.github_repos || []).map((repo, i) => (
+                        <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                          <input
+                            style={{ flex: 1 }}
+                            value={repo}
+                            onChange={e => {
+                              const newRepos = [...(editForm.datos_adicionales?.github_repos || [])];
+                              newRepos[i] = e.target.value;
+                              setExtraField('github_repos', newRepos);
+                            }}
+                            placeholder="https://github.com/org/repo"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newRepos = [...(editForm.datos_adicionales?.github_repos || [])];
+                              newRepos.splice(i, 1);
+                              setExtraField('github_repos', newRepos);
+                            }}
+                            style={{ padding: '0 12px', borderRadius: 6, border: '1px solid var(--danger)', background: 'var(--surface)', color: 'var(--danger)', cursor: 'pointer' }}
+                            title="Eliminar Repositorio"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newRepos = [...(editForm.datos_adicionales?.github_repos || [])];
+                          newRepos.push('');
+                          setExtraField('github_repos', newRepos);
+                        }}
+                        style={{ fontSize: 12, padding: '6px 12px', borderRadius: 6, border: '1px dashed var(--border)', background: 'var(--surface)', color: 'var(--text-primary)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}
+                      >
+                        + Añadir Repositorio
+                      </button>
+                    </div>
+
+                    <div className="pw-field">
+                      <label>Subir Archivos (Próximamente)</label>
+                      <input
+                        type="file"
+                        multiple
+                        disabled
+                        style={{ opacity: 0.6, cursor: 'not-allowed' }}
+                        title="Esta opción estará disponible próximamente"
+                      />
+                    </div>
                   </div>
 
                   {/* Right: Dynamic side panel (same as ProductModal) */}
@@ -1778,6 +1924,31 @@ export default function ProductoWorkspace() {
                               <option>Propiedad del Cliente (Traspaso total)</option>
                               <option>Código Abierto (Open Source)</option>
                             </select>
+                          </div>
+                          
+                          <div className="pw-field">
+                            <label>Lenguajes (ej: JS:60, TS:30, CSS:10)</label>
+                            <input
+                              value={editForm.datos_adicionales?.lenguajes_porcentajes || ''}
+                              onChange={e => setExtraField('lenguajes_porcentajes', e.target.value)}
+                              placeholder="JS:60, TS:30, CSS:10"
+                            />
+                          </div>
+                          <div className="pw-field">
+                            <label>Stack Tecnológico</label>
+                            <input
+                              value={editForm.datos_adicionales?.stack_tecnologico || ''}
+                              onChange={e => setExtraField('stack_tecnologico', e.target.value)}
+                              placeholder="React, Node.js, PostgreSQL..."
+                            />
+                          </div>
+                          <div className="pw-field">
+                            <label>Protocolos y Seguridad</label>
+                            <input
+                              value={editForm.datos_adicionales?.protocolos_seguridad || ''}
+                              onChange={e => setExtraField('protocolos_seguridad', e.target.value)}
+                              placeholder="2FA, OAuth, SMTP, WSS..."
+                            />
                           </div>
 
                           {['App Android', 'App iOS', 'App Multiplataforma'].includes(editForm.datos_adicionales?.tipo_software) && (
