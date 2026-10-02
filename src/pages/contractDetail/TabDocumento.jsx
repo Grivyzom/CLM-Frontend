@@ -400,7 +400,12 @@ export default function TabDocumento({
                 <div className="ct-anexo-info">
                   <Icon d={['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z', 'M14 2v6h6']} color="var(--text-muted)" w={14} />
                   <div>
-                    <p className="ct-anexo-name">{a.nombre}</p>
+                    <p className="ct-anexo-name">
+                      {/* a.archivo es una URL /api/... que valida sesión y alcance */}
+                      {a.archivo ? (
+                        <a href={a.archivo} target="_blank" rel="noopener noreferrer">{a.nombre}</a>
+                      ) : a.nombre}
+                    </p>
                     <p className="ct-anexo-date">{fmtDate(a.fecha_subida)}</p>
                   </div>
                 </div>
