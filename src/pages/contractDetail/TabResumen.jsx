@@ -282,10 +282,11 @@ export default function TabResumen({
               </p>
 
               <div className="ct-firma-options" role="radiogroup" aria-label="Proveedor de firma">
+                {/* DocuSign/Adobe eran simuladores: permitían que un usuario interno
+                    marcara el contrato como firmado sin intervención del cliente.
+                    Se retiran hasta que exista una integración real. */}
                 {[
-                  { id: 'OTP', nombre: 'Firma OTP Nativa', desc: 'SMS/Email de un solo uso' },
-                  { id: 'DOCUSIGN', nombre: 'DocuSign', desc: 'Simulador de sobre' },
-                  { id: 'ADOBE', nombre: 'Adobe Sign', desc: 'Simulador de acuerdo' },
+                  { id: 'OTP', nombre: 'Firma OTP Nativa', desc: 'Enlace de un solo uso al correo del cliente' },
                 ].map(opt => (
                   <button
                     key={opt.id}

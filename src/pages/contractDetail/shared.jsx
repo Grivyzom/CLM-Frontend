@@ -81,7 +81,8 @@ export const ETAPA_SIGUIENTE = {
   BORRADOR: [{ etapa: 'REVISION', label: 'Enviar a Revisión', icon: 'M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z' }],
   REVISION: [{ etapa: 'APROBADO', label: 'Aprobar', icon: 'M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z' }],
   APROBADO: [{ etapa: 'PENDIENTE_FIRMA', label: 'Enviar a Firma', icon: 'M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z' }],
-  PENDIENTE_FIRMA: [{ etapa: 'ACTIVO', label: 'Registrar Firma', icon: 'M20 6L9 17l-5-5', primary: true, color: 'var(--sky)' }],
+  // Pasa a ACTIVO solo cuando el cliente confirma la firma por el enlace de su correo.
+  PENDIENTE_FIRMA: [],
   ACTIVO: [
     { etapa: 'ENMENDADO', label: 'Crear Enmienda', icon: ['M12 5v14', 'M5 12h14'] },
     { etapa: 'TERMINADO', label: 'Terminar', icon: 'M18 6 6 18M6 6l12 12', danger: true, confirm: '¿Terminar este contrato? Esta acción marca el contrato como Terminado / Expirado.' },
