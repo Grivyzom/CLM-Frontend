@@ -494,3 +494,27 @@
     max-width: calc(100% - 32px);
   }
 }
+
+/* Firma electrónica: el documento se revisa dentro de la tarjeta antes de firmar */
+.login-card.firma-card {
+  max-width: 860px;
+}
+
+.firma-visor {
+  width: 100%;
+  height: 60vh;
+  min-height: 360px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  margin: 8px 0 12px;
+}
+
+.firma-hash {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  word-break: break-all;
+  margin: 4px 0 12px;
+}

@@ -1,9 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { apiFirmaTokenInfo, apiFirmaTokenConfirmar } from '../api';
+import { apiFirmaTokenInfo, apiFirmaTokenConfirmar, apiFirmaTokenDocumento } from '../api';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import '../styles/Login.css';
+
+async function sha256Hex(blob) {
+  // crypto.subtle solo existe en contexto seguro (HTTPS/localhost).
+  if (!globalThis.crypto?.subtle) return '';
+  const digest = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer());
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 function todayLabel() {
   const s = new Intl.DateTimeFormat('es-CL', {
@@ -20,19 +27,31 @@ export default function FirmarContrato() {
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
   const [pdfUrl, setPdfUrl] = useState(null);
+  const [firmadoHash, setFirmadoHash] = useState('');
+  // Documento a firmar: se muestra completo ANTES de habilitar la firma.
+  const [docUrl, setDocUrl] = useState(null);
+  const [docError, setDocError] = useState('');
+  const [acepto, setAcepto] = useState(false);
 
   const containerRef = useRef(null);
 
   useEffect(() => {
     let cancelado = false;
     apiFirmaTokenInfo(token)
-      .then((data) => { if (!cancelado) setInfo(data); })
+      .then((data) => {
+        if (cancelado) return;
+        setInfo(data);
+        return apiFirmaTokenDocumento(data.documento_url)
+          .then((blob) => { if (!cancelado) setDocUrl(URL.createObjectURL(blob)); })
+          .catch((err) => { if (!cancelado) setDocError(err.message || 'No se pudo cargar el documento.'); });
+      })
       .catch((err) => { if (!cancelado) setError(err.message || 'El enlace de firma es inválido o ya expiró.'); })
       .finally(() => { if (!cancelado) setLoading(false); });
     return () => { cancelado = true; };
   }, [token]);
 
   useEffect(() => () => { if (pdfUrl) URL.revokeObjectURL(pdfUrl); }, [pdfUrl]);
+  useEffect(() => () => { if (docUrl) URL.revokeObjectURL(docUrl); }, [docUrl]);
 
   useGSAP(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -58,7 +77,8 @@ export default function FirmarContrato() {
     setError('');
     setConfirming(true);
     try {
-      const blob = await apiFirmaTokenConfirmar(token);
+      const blob = await apiFirmaTokenConfirmar(token, { documentoHash: info.documento_hash, acepto });
+      setFirmadoHash(await sha256Hex(blob));
       setPdfUrl(URL.createObjectURL(blob));
     } catch (err) {
       setError(err.message || 'No se pudo confirmar la firma.');
@@ -91,7 +111,7 @@ export default function FirmarContrato() {
           <circle className="lg-bg-pulse d3" cx="1330" cy="420" r="2.5" fill="var(--warning)" fillOpacity="0.35" />
         </svg>
 
-        <div className="login-card">
+        <div className={`login-card${docUrl && !pdfUrl ? ' firma-card' : ''}`}>
           <div className="login-card-icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
@@ -112,9 +132,13 @@ export default function FirmarContrato() {
             <>
               <h2>Firma confirmada</h2>
               <p className="login-subtitle">
-                Tu firma electrónica quedó registrada junto con el certificado de validación. Puedes descargar tu copia del documento firmado.
+                Tu firma electrónica quedó registrada junto con el certificado de validación, y el documento
+                quedó sellado digitalmente: cualquier modificación posterior invalida el sello. Descarga tu copia.
               </p>
-              <a className="login-back-link" href={pdfUrl} download="documento_firmado.pdf" style={{ display: 'inline-block', marginBottom: 8 }}>
+              {firmadoHash && (
+                <p className="firma-hash">Huella SHA-256 de tu copia: {firmadoHash}</p>
+              )}
+              <a className="login-back-link" href={pdfUrl} download="contrato_firmado.pdf" style={{ display: 'block', marginBottom: 12 }}>
                 ⬇ Descargar mi copia
               </a>
             </>
@@ -125,16 +149,40 @@ export default function FirmarContrato() {
             </>
           ) : (
             <>
-              <h2>Confirmar firma</h2>
+              <h2>Revisa y firma el documento</h2>
               <p className="login-subtitle">
                 {info?.cliente_nombre ? `${info.cliente_nombre}, se` : 'Se'} solicita tu firma electrónica para el contrato
-                {info?.contrato_nombre ? ` "${info.contrato_nombre}"` : ''} con Grivyzom. Al confirmar, quedará registrada tu identidad
-                (correo, fecha y dirección IP) en un certificado anexado al documento, conforme a la Ley 19.799.
+                {info?.contrato_nombre ? ` "${info.contrato_nombre}"` : ''} con Grivyzom. Lee el documento completo antes de
+                firmar. Al confirmar, quedará registrada tu identidad (correo, fecha y dirección IP) en un certificado
+                anexado al documento, conforme a la Ley 19.799.
               </p>
 
+              {docError ? (
+                <p className="login-subtitle" role="alert">{docError}</p>
+              ) : docUrl ? (
+                <>
+                  <iframe className="firma-visor" src={docUrl} title="Documento a firmar" />
+                  <a className="login-back-link" href={docUrl} download="documento_a_firmar.pdf">
+                    ⬇ Descargar para revisar
+                  </a>
+                  <p className="firma-hash">Huella SHA-256 del documento: {info?.documento_hash}</p>
+                </>
+              ) : (
+                <p className="login-subtitle">Cargando documento…</p>
+              )}
+
               <form className="login-form" onSubmit={(e) => { e.preventDefault(); handleConfirmar(); }}>
-                <button type="submit" disabled={confirming}>
-                  {confirming ? <span className="spinner"></span> : 'Confirmar firma'}
+                <label className="login-remember">
+                  <input
+                    type="checkbox"
+                    checked={acepto}
+                    disabled={!docUrl}
+                    onChange={(e) => setAcepto(e.target.checked)}
+                  />
+                  <span>Leí el documento completo y acepto firmarlo.</span>
+                </label>
+                <button type="submit" disabled={confirming || !docUrl || !acepto}>
+                  {confirming ? <span className="spinner"></span> : 'Firmar documento'}
                 </button>
               </form>
             </>

@@ -498,17 +498,7 @@ export async function apiFirmaTokenInfo(token) {
   return request(`/contratos/firmar/${encodeURIComponent(token)}/`);
 }
 
-/**
- * Confirma la firma desde el magic-link público. A diferencia del resto de
- * la API, la respuesta exitosa es el PDF final (Blob), no JSON — para que
- * el firmante externo se lleve su copia en el momento.
- */
-export async function apiFirmaTokenConfirmar(token) {
-  const res = await fetch(`${BASE}/contratos/firmar/${encodeURIComponent(token)}/confirmar/`, {
-    method: 'POST',
-    headers: { 'X-CSRFToken': getCsrfToken() },
-    credentials: 'include',
-  });
+async function blobOError(res) {
   if (!res.ok) {
     let errMsg = `HTTP ${res.status}`;
     try {
@@ -520,6 +510,31 @@ export async function apiFirmaTokenConfirmar(token) {
     throw error;
   }
   return res.blob();
+}
+
+/**
+ * PDF del documento a firmar (magic-link público): el firmante lo lee antes
+ * de confirmar. `documentoUrl` viene de apiFirmaTokenInfo (/api/...).
+ */
+export async function apiFirmaTokenDocumento(documentoUrl) {
+  const res = await fetch(documentoUrl, { credentials: 'include' });
+  return blobOError(res);
+}
+
+/**
+ * Confirma la firma desde el magic-link público. Envía el hash del documento
+ * que el firmante revisó y su aceptación explícita: el backend rechaza la
+ * firma si el documento cambió entretanto. La respuesta exitosa es el PDF
+ * final sellado (Blob), no JSON — para que el firmante se lleve su copia.
+ */
+export async function apiFirmaTokenConfirmar(token, { documentoHash, acepto }) {
+  const res = await fetch(`${BASE}/contratos/firmar/${encodeURIComponent(token)}/confirmar/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+    credentials: 'include',
+    body: JSON.stringify({ documento_hash: documentoHash, acepto }),
+  });
+  return blobOError(res);
 }
 
 /** Obtiene el estado de sincronización externa del contrato. */
