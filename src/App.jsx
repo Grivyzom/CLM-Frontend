@@ -37,7 +37,10 @@ const Reporte        = lazy(routeChunks['/reportes']);
 const ClienteWorkspace   = lazy(() => import('./pages/ClienteWorkspace'));
 const ProductoWorkspace  = lazy(() => import('./pages/ProductoWorkspace'));
 const Usuarios           = lazy(routeChunks['/usuarios']);
+const Tenants            = lazy(routeChunks['/tenants']);
 const GuestPortal        = lazy(() => import('./pages/GuestPortal'));
+const Comunidad          = lazy(routeChunks['/comunidad']);
+const GuiaLectura        = lazy(() => import('./pages/comunidad/GuiaLectura'));
 
 function RouteFallback() {
   return <div className="route-fallback" aria-busy="true" />;
@@ -121,6 +124,12 @@ function App() {
                       <Route path="/usuarios" element={
                         <RequireAccess require={(auth) => auth.user?.isSuperadmin || auth.isModerador}><Usuarios /></RequireAccess>
                       } />
+                      <Route path="/tenants" element={
+                        <RequireAccess require={(auth) => auth.user?.isSuperadmin || auth.isModerador}><Tenants /></RequireAccess>
+                      } />
+                      <Route path="/comunidad" element={<Comunidad />} />
+                      <Route path="/comunidad/guias/:id" element={<GuiaLectura />} />
+                      <Route path="/lienzos" element={<Navigate to="/comunidad" replace />} />
                       <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                   </ProtectedRoute>

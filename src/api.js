@@ -227,6 +227,7 @@ export async function getClientes(params = {}) {
   if (params.tipo   && params.tipo   !== 'Todos') qs.set('tipo',   params.tipo);
   if (params.fecha_desde)  qs.set('fecha_desde',  params.fecha_desde);
   if (params.fecha_hasta)  qs.set('fecha_hasta',  params.fecha_hasta);
+  if (params.tenant_id)    qs.set('tenant_id',    params.tenant_id);
   if (params.ordering)     qs.set('ordering',     params.ordering);
   if (params.page)         qs.set('page',         params.page);
   if (params.page_size)    qs.set('page_size',    params.page_size);
@@ -618,13 +619,19 @@ export async function exportContratos(format, { clienteId, search, ids } = {}) {
 // ─── Catálogo: Software / SLA ─────────────────────────────────────────────────
 
 /** Lista de software del catálogo (para selects). */
-export async function getSoftwareList() {
-  return request('/catalogo/software/');
+export async function getSoftwareList(params = {}) {
+  const qs = new URLSearchParams();
+  if (params.tenant_id) qs.set('tenant_id', params.tenant_id);
+  const query = qs.toString() ? `?${qs.toString()}` : '';
+  return request(`/catalogo/software/${query}`);
 }
 
 /** Lista de SLA del catálogo (para selects y obligaciones de contrato). */
-export async function getSLAs() {
-  return request('/slas/');
+export async function getSLAs(params = {}) {
+  const qs = new URLSearchParams();
+  if (params.tenant_id) qs.set('tenant_id', params.tenant_id);
+  const query = qs.toString() ? `?${qs.toString()}` : '';
+  return request(`/slas/${query}`);
 }
 
 /**
@@ -632,15 +639,19 @@ export async function getSLAs() {
  * contratos de plantillas administrativas (NDA, memorándums, fichas de
  * requerimientos) que no tienen nivel de servicio ni facturación real.
  */
-export async function getSlaNA() {
-  return request('/slas/na/');
+export async function getSlaNA(tenantId) {
+  const qs = new URLSearchParams();
+  if (tenantId) qs.set('tenant_id', tenantId);
+  const query = qs.toString() ? `?${qs.toString()}` : '';
+  return request(`/slas/na/${query}`);
 }
 
 // ─── Generación de documentos ──────────────────────────────────────────────────
 
 /**
  * Genera el documento base de un contrato desde su plantilla activa.
- * @param {Object} data - { contrato_id, plantilla_id?, forzar?, campos? }
+ * @param {Object} data - { contrato_id, plantilla_id?, forzar?, campos?, terminos_condiciones? }
+ *   terminos_condiciones: si viene, se guarda en el contrato antes de generar.
  */
 export async function generarDocumentoContrato(data) {
   return request('/plantillas/documentos/generar/', {
@@ -787,6 +798,7 @@ export async function getPlantillas(params = {}) {
   if (params.activa !== undefined) qs.set('activa', params.activa ? 'true' : 'false');
   if (params.modo_origen)   qs.set('modo_origen',   params.modo_origen);
   if (params.codigo_prefijo) qs.set('codigo_prefijo', params.codigo_prefijo);
+  if (params.tenant_id)     qs.set('tenant_id',     params.tenant_id);
   const query = qs.toString() ? `?${qs.toString()}` : '';
   return request(`/plantillas/plantillas/${query}`);
 }
@@ -919,8 +931,10 @@ export async function getClausulas(tipo) {
  * borrador). No persiste nada ni consume correlativo. Devuelve un Blob para
  * embeber vía URL.createObjectURL. Solo plantillas HTML (422 en otros modos).
  */
-export async function previewBorradorPdf(contratoId, campos, clausulas) {
+export async function previewBorradorPdf(contratoId, campos, clausulas, terminos) {
   const body = { contrato_id: contratoId, campos: campos || {} };
+  // Términos del panel sin guardar (mismo trato en memoria que las cláusulas).
+  if (terminos !== undefined) body.terminos_condiciones = terminos;
   // Solo se envían si el editor de cláusulas está abierto: el backend las
   // aplica al contrato en memoria (sin guardar) para renderizar el borrador.
   if (clausulas !== undefined) body.clausulas = clausulas;
@@ -981,6 +995,7 @@ export async function getProductos(params = {}) {
   const qs = new URLSearchParams();
   if (params.search)    qs.set('search',    params.search);
   if (params.categoria && params.categoria !== 'Todos') qs.set('categoria', params.categoria);
+  if (params.tenant_id) qs.set('tenant_id', params.tenant_id);
   const query = qs.toString() ? `?${qs.toString()}` : '';
   return request(`/catalogo/productos/${query}`);
 }
@@ -1123,6 +1138,56 @@ export async function createComentarioIncidencia(incidenciaId, formData) {
   });
 }
 
+// ─── Comunidad ─────────────────────────────────────────────────────────────────
+
+/**
+ * Lista publicaciones de Comunidad, visible para cualquier usuario autenticado.
+ * @param {Object} params
+ * @param {string} [params.tipo] - GUIA | VIDEO | ARCHIVO | ESPACIO
+ */
+export async function getPublicacionesComunidad(params = {}) {
+  const qs = new URLSearchParams();
+  if (params.tipo) qs.set('tipo', params.tipo);
+  const query = qs.toString() ? `?${qs.toString()}` : '';
+  return request(`/comunidad/${query}`);
+}
+
+/** Detalle de una publicación (incluye contenido_html si es GUIA). */
+export async function getPublicacionComunidad(id) {
+  return request(`/comunidad/${id}/`);
+}
+
+/** Crea una publicación. Siempre FormData (soporta archivo/archivo_video). Solo staff. */
+export async function createPublicacionComunidad(formData) {
+  return request('/comunidad/', {
+    method: 'POST',
+    body: formData,
+  });
+}
+
+/** Edita una publicación. Siempre FormData. Solo staff. */
+export async function updatePublicacionComunidad(id, formData) {
+  return request(`/comunidad/${id}/`, {
+    method: 'PATCH',
+    body: formData,
+  });
+}
+
+/** Elimina una publicación. Solo staff. */
+export async function deletePublicacionComunidad(id) {
+  return request(`/comunidad/${id}/`, {
+    method: 'DELETE',
+  });
+}
+
+/** Persiste el nuevo orden de las tarjetas de Espacios tras un drag&drop. Solo staff. */
+export async function reordenarPublicacionesComunidad(ids) {
+  return request('/comunidad/reordenar/', {
+    method: 'POST',
+    body: JSON.stringify({ ids }),
+  });
+}
+
 // ─── Workspace de cliente ──────────────────────────────────────────────────────
 
 /**
@@ -1160,6 +1225,18 @@ export async function enviarCorreoCliente(id, data) {
   return request(`/clientes/${id}/enviar-correo/`, {
     method: 'POST',
     body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Crea o reenvía la invitación de cuenta de acceso para un cliente existente.
+ * @param {number|string} id - ID del cliente
+ * @param {Object} [payload] - { password? }
+ */
+export async function crearCuentaCliente(id, payload = {}) {
+  return request(`/clientes/${id}/crear-cuenta/`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
   });
 }
 

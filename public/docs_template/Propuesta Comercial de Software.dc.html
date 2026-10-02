@@ -494,151 +494,124 @@
 <x-import component-from-global-scope="doc-page" from="./doc-page.js" size="letter" margin="0.9in" hint-size="8.5in,11in">
 
   <div slot="header" style="display:flex; justify-content:space-between; align-items:baseline; border-bottom:1px solid #cfc9bd; padding-bottom:8px; font-family:'Inter',sans-serif; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; color:#8a8375;">
-    <span>Especificación de Requerimientos de Software (ERS)</span>
-    <span>{% if referencia %}REF: {{ referencia }} &nbsp;|&nbsp; {% endif %}Documento Técnico</span>
+    <span>Propuesta Comercial</span>
+    <span>Confidencial</span>
   </div>
 
   <div slot="footer" style="display:flex; justify-content:space-between; align-items:baseline; border-top:1px solid #cfc9bd; padding-top:8px; font-family:'Inter',sans-serif; font-size:9px; letter-spacing:0.04em; color:#8a8375;">
-    <span>Confidencial</span>
+    <span>Válida por [N] días desde su emisión</span>
     <span>Página</span>
   </div>
 
   <div style="font-family:'Source Serif 4', Georgia, serif; color:#221f1a; line-height:1.6;">
 
     <div style="margin:20px 0 6px; font-family:'Inter',sans-serif; font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:#5b2a2f; font-weight:600; text-align:center;">Template</div>
-    <h1 style="text-align:center; font-size:24px; font-weight:700; letter-spacing:0.01em; margin:4px 0 2px; text-transform:uppercase;">Especificación de Requerimientos<br>de Software (ERS)</h1>
-    <div style="text-align:center; font-family:'Inter',sans-serif; font-size:11px; color:#8a8375; margin-bottom:26px;">Software Requirements Specification (SRS)</div>
+    <h1 style="text-align:center; font-size:24px; font-weight:700; letter-spacing:0.01em; margin:4px 0 2px;">Propuesta de {{ proyecto_nombre|default:"[Nombre del Proyecto]" }}</h1>
+    <div style="text-align:center; font-family:'Inter',sans-serif; font-size:11px; color:#8a8375; margin-bottom:26px;">Propuesta comercial de desarrollo de software</div>
 
     <sc-raw-table style="margin-bottom:26px;">
       <sc-raw-tbody>
-        <sc-raw-tr><sc-raw-th style="width:170px;">Proyecto</sc-raw-th><sc-raw-td><span style="display:inline-block; min-width:100%; border-bottom:1px solid #221f1a; font-weight:600; color:#0a1f3d;">{{ software.nombre|default:contrato.nombre|default:"" }}</span></sc-raw-td></sc-raw-tr>
-        <sc-raw-tr><sc-raw-th>Cliente</sc-raw-th><sc-raw-td><span style="display:inline-block; min-width:100%; border-bottom:1px solid #221f1a; font-weight:600; color:#0a1f3d;">{{ cliente.nombre|default:"" }}{% if cliente.identificador %} &mdash; {{ cliente.identificador }}{% endif %}</span></sc-raw-td></sc-raw-tr>
-        <sc-raw-tr><sc-raw-th>Autor(es)</sc-raw-th><sc-raw-td><span style="display:inline-block; min-width:100%; border-bottom:1px solid #221f1a;">{{ autor|default:"" }}</span></sc-raw-td></sc-raw-tr>
-        <sc-raw-tr><sc-raw-th>Fecha</sc-raw-th><sc-raw-td><span style="display:inline-block; min-width:200px; border-bottom:1px solid #221f1a;">{{ fecha_documento|default:"" }}</span></sc-raw-td></sc-raw-tr>
-        <sc-raw-tr><sc-raw-th>Versión</sc-raw-th><sc-raw-td><span style="display:inline-block; min-width:120px; border-bottom:1px solid #221f1a; font-weight:600;">{% if contrato.version %}v{{ contrato.version }}{% endif %}</span></sc-raw-td></sc-raw-tr>
+        <sc-raw-tr><sc-raw-th style="width:170px;">Cliente</sc-raw-th><sc-raw-td><span style="display:inline-block; min-width:100%; border-bottom:1px solid #221f1a;">{{ cliente.nombre }}</span></sc-raw-td></sc-raw-tr>
+        <sc-raw-tr><sc-raw-th>Contacto</sc-raw-th><sc-raw-td><span style="display:inline-block; min-width:100%; border-bottom:1px solid #221f1a;">{{ contacto }}</span></sc-raw-td></sc-raw-tr>
+        <sc-raw-tr><sc-raw-th>Presentado por</sc-raw-th><sc-raw-td><span style="display:inline-block; min-width:100%; border-bottom:1px solid #221f1a;">{{ autor }}</span></sc-raw-td></sc-raw-tr>
+        <sc-raw-tr><sc-raw-th>Fecha de emisión</sc-raw-th><sc-raw-td><span style="display:inline-block; min-width:200px; border-bottom:1px solid #221f1a;">{{ fecha_documento }}</span></sc-raw-td></sc-raw-tr>
+        <sc-raw-tr><sc-raw-th>Validez de la propuesta</sc-raw-th><sc-raw-td><span style="display:inline-block; min-width:120px; border-bottom:1px solid #221f1a;">{{ validez_propuesta }}</span> días desde su emisión</sc-raw-td></sc-raw-tr>
       </sc-raw-tbody>
     </sc-raw-table>
 
     <div style="margin-bottom:24px; break-inside:avoid;">
-      <div style="font-family:'Inter',sans-serif; font-size:13px; font-weight:700; letter-spacing:0.04em; color:#5b2a2f; text-transform:uppercase; border-bottom:1px solid #d8d2c5; padding-bottom:6px; margin-bottom:10px;">1. Propósito y Alcance</div>
-      <p style="font-size:12.5px; margin:0 0 6px; font-family:'Inter',sans-serif; color:#5c5648;">Propósito: qué problema resuelve el sistema y para quién.</p>
-      <div style="border:1px solid #d8d2c5; min-height:60px; padding:10px; margin-bottom:14px; background:#faf9f6; font-size:12px; line-height:1.5;">{{ descripcion_proposito|default:software.descripcion|default:"" }}</div>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
-        <div>
-          <div style="font-family:'Inter',sans-serif; font-size:11px; font-weight:600; color:#5c5648; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;">Dentro del alcance</div>
-          <div style="border:1px solid #d8d2c5; min-height:80px; padding:10px; background:#faf9f6; font-size:11.5px; line-height:1.5;">{{ detalle_dentro_alcance|default:"" }}</div>
-        </div>
-        <div>
-          <div style="font-family:'Inter',sans-serif; font-size:11px; font-weight:600; color:#5c5648; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;">Fuera del alcance</div>
-          <div style="border:1px solid #d8d2c5; min-height:80px; padding:10px; background:#faf9f6; font-size:11.5px; line-height:1.5;">{{ detalle_fuera_alcance|default:"" }}</div>
-        </div>
-      </div>
+      <div style="font-family:'Inter',sans-serif; font-size:13px; font-weight:700; letter-spacing:0.04em; color:#5b2a2f; text-transform:uppercase; border-bottom:1px solid #d8d2c5; padding-bottom:6px; margin-bottom:10px;">1. Resumen Ejecutivo</div>
+      <div style="font-family:'Inter',sans-serif; font-size:11px; font-weight:600; color:#5c5648; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;">Contexto</div>
+      <div style="border:1px solid #d8d2c5; min-height:60px; padding:10px; margin-bottom:14px;">{{ detalle_contexto }}</div>
+      <div style="font-family:'Inter',sans-serif; font-size:11px; font-weight:600; color:#5c5648; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;">La Solución</div>
+      <div style="border:1px solid #d8d2c5; min-height:60px; padding:10px;">{{ detalle_solucion }}</div>
     </div>
 
     <div style="margin-bottom:24px;">
-      <div style="font-family:'Inter',sans-serif; font-size:13px; font-weight:700; letter-spacing:0.04em; color:#5b2a2f; text-transform:uppercase; border-bottom:1px solid #d8d2c5; padding-bottom:6px; margin-bottom:10px;">2. Requerimientos Funcionales</div>
-      <p style="font-size:12.5px; margin:0 0 8px; font-family:'Inter',sans-serif; color:#5c5648;">Funciones específicas que el sistema debe realizar.</p>
+      <div style="font-family:'Inter',sans-serif; font-size:13px; font-weight:700; letter-spacing:0.04em; color:#5b2a2f; text-transform:uppercase; border-bottom:1px solid #d8d2c5; padding-bottom:6px; margin-bottom:10px;">2. Alcance del Proyecto y Modelo de Servicio</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;">
+        <div>
+          <div style="font-family:'Inter',sans-serif; font-size:11px; font-weight:600; color:#5c5648; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;">Qué incluye</div>
+          <div style="border:1px solid #d8d2c5; min-height:90px; padding:10px;">{{ detalle_que_incluye }}</div>
+        </div>
+        <div>
+          <div style="font-family:'Inter',sans-serif; font-size:11px; font-weight:600; color:#5c5648; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;">Qué NO incluye</div>
+          <div style="border:1px solid #d8d2c5; min-height:90px; padding:10px;">{{ detalle_que_no_incluye }}</div>
+        </div>
+      </div>
       <sc-raw-table>
-        <sc-raw-thead><sc-raw-tr><sc-raw-th style="width:55px;">ID</sc-raw-th><sc-raw-th>Descripción</sc-raw-th><sc-raw-th style="width:85px; text-align:center;">Prioridad</sc-raw-th></sc-raw-tr></sc-raw-thead>
         <sc-raw-tbody>
-        {% if clausulas %}
-          {% for c in clausulas %}
-          <sc-raw-tr>
-            <sc-raw-td style="font-weight:600; color:#5b2a2f;">RF-{{ forloop.counter|stringformat:"02d" }}</sc-raw-td>
-            <sc-raw-td><strong>{{ c.titulo|default:"Requerimiento" }}</strong>{% if c.texto %}: {{ c.texto }}{% endif %}</sc-raw-td>
-            <sc-raw-td style="text-align:center;">{{ c.prioridad|default:"Alta" }}</sc-raw-td>
-          </sc-raw-tr>
-          {% endfor %}
-        {% else %}
-          <sc-raw-tr><sc-raw-td style="font-weight:600; color:#5b2a2f;">RF-01</sc-raw-td><sc-raw-td>{{ rf_01_descripcion|default:"" }}</sc-raw-td><sc-raw-td style="text-align:center;">{{ rf_01_prioridad|default:"" }}</sc-raw-td></sc-raw-tr>
-          <sc-raw-tr><sc-raw-td style="font-weight:600; color:#5b2a2f;">RF-02</sc-raw-td><sc-raw-td>{{ rf_02_descripcion|default:"" }}</sc-raw-td><sc-raw-td style="text-align:center;">{{ rf_02_prioridad|default:"" }}</sc-raw-td></sc-raw-tr>
-          <sc-raw-tr><sc-raw-td style="font-weight:600; color:#5b2a2f;">RF-03</sc-raw-td><sc-raw-td>{{ rf_03_descripcion|default:"" }}</sc-raw-td><sc-raw-td style="text-align:center;">{{ rf_03_prioridad|default:"" }}</sc-raw-td></sc-raw-tr>
-          <sc-raw-tr><sc-raw-td style="font-weight:600; color:#5b2a2f;">RF-04</sc-raw-td><sc-raw-td>{{ rf_04_descripcion|default:"" }}</sc-raw-td><sc-raw-td style="text-align:center;">{{ rf_04_prioridad|default:"" }}</sc-raw-td></sc-raw-tr>
-          <sc-raw-tr><sc-raw-td style="font-weight:600; color:#5b2a2f;">RF-05</sc-raw-td><sc-raw-td>{{ rf_05_descripcion|default:"" }}</sc-raw-td><sc-raw-td style="text-align:center;">{{ rf_05_prioridad|default:"" }}</sc-raw-td></sc-raw-tr>
-        {% endif %}
+          <sc-raw-tr><sc-raw-th style="width:170px;">Modalidad de entrega</sc-raw-th><sc-raw-td>{{ modalidad_entrega }}</sc-raw-td></sc-raw-tr>
         </sc-raw-tbody>
       </sc-raw-table>
     </div>
 
     <div style="margin-bottom:24px;">
-      <div style="font-family:'Inter',sans-serif; font-size:13px; font-weight:700; letter-spacing:0.04em; color:#5b2a2f; text-transform:uppercase; border-bottom:1px solid #d8d2c5; padding-bottom:6px; margin-bottom:10px;">3. Requerimientos No Funcionales</div>
-      <p style="font-size:12.5px; margin:0 0 8px; font-family:'Inter',sans-serif; color:#5c5648;">Atributos de calidad: rendimiento, seguridad, escalabilidad, usabilidad.</p>
+      <div style="font-family:'Inter',sans-serif; font-size:13px; font-weight:700; letter-spacing:0.04em; color:#5b2a2f; text-transform:uppercase; border-bottom:1px solid #d8d2c5; padding-bottom:6px; margin-bottom:10px;">3. Entregables y Cronograma</div>
+      <p style="font-size:12.5px; margin:0 0 8px; font-family:'Inter',sans-serif; color:#5c5648;">Plazos relativos, contados a partir de la aprobación de esta propuesta.</p>
       <sc-raw-table>
-        <sc-raw-thead><sc-raw-tr><sc-raw-th style="width:55px;">ID</sc-raw-th><sc-raw-th style="width:120px;">Categoría</sc-raw-th><sc-raw-th>Descripción</sc-raw-th></sc-raw-tr></sc-raw-thead>
+        <sc-raw-thead><sc-raw-tr><sc-raw-th style="width:170px;">Fase</sc-raw-th><sc-raw-th>Descripción</sc-raw-th><sc-raw-th style="width:150px;">Plazo estimado</sc-raw-th></sc-raw-tr></sc-raw-thead>
         <sc-raw-tbody>
-          <sc-raw-tr><sc-raw-td style="font-weight:600; color:#5b2a2f;">RNF-01</sc-raw-td><sc-raw-td>Rendimiento</sc-raw-td><sc-raw-td>{{ rnf_01_descripcion|default:"" }}</sc-raw-td></sc-raw-tr>
-          <sc-raw-tr><sc-raw-td style="font-weight:600; color:#5b2a2f;">RNF-02</sc-raw-td><sc-raw-td>Seguridad</sc-raw-td><sc-raw-td>{{ rnf_02_descripcion|default:"" }}</sc-raw-td></sc-raw-tr>
-          <sc-raw-tr><sc-raw-td style="font-weight:600; color:#5b2a2f;">RNF-03</sc-raw-td><sc-raw-td>Escalabilidad</sc-raw-td><sc-raw-td>{{ rnf_03_descripcion|default:"" }}</sc-raw-td></sc-raw-tr>
-          <sc-raw-tr><sc-raw-td style="font-weight:600; color:#5b2a2f;">RNF-04</sc-raw-td><sc-raw-td>Usabilidad</sc-raw-td><sc-raw-td>{{ rnf_04_descripcion|default:"" }}</sc-raw-td></sc-raw-tr>
-          <sc-raw-tr><sc-raw-td style="font-weight:600; color:#5b2a2f;">RNF-05</sc-raw-td><sc-raw-td>Disponibilidad</sc-raw-td><sc-raw-td>{{ rnf_05_descripcion|default:"" }}</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Fase 1 — Diseño</sc-raw-td><sc-raw-td>Prototipos visuales y flujos de pantalla</sc-raw-td><sc-raw-td>{{ fase_1_diseno_plazo_estimado }}</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Fase 2 — Desarrollo MVP</sc-raw-td><sc-raw-td>Entrega de primera versión funcional para validación</sc-raw-td><sc-raw-td>{{ fase_2_desarrollo_mvp_plazo_estimado }}</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Fase 3 — Pruebas y Despliegue</sc-raw-td><sc-raw-td>Ajustes de QA, correcciones y puesta en marcha</sc-raw-td><sc-raw-td>{{ fase_3_pruebas_despliegue_plazo_estimado }}</sc-raw-td></sc-raw-tr>
         </sc-raw-tbody>
       </sc-raw-table>
     </div>
 
     <div style="margin-bottom:24px; break-inside:avoid;">
-      <div style="font-family:'Inter',sans-serif; font-size:13px; font-weight:700; letter-spacing:0.04em; color:#5b2a2f; text-transform:uppercase; border-bottom:1px solid #d8d2c5; padding-bottom:6px; margin-bottom:10px;">4. Casos de Uso</div>
-      <p style="font-size:12.5px; margin:0 0 10px; font-family:'Inter',sans-serif; color:#5c5648;">Descripción paso a paso de la interacción entre el usuario y el sistema.</p>
-
-      <div style="border:1px solid #d8d2c5; padding:14px 16px; margin-bottom:14px;">
-        <div style="font-family:'Inter',sans-serif; font-size:11px; font-weight:600; color:#5b2a2f; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:10px;">Caso de Uso UC-01</div>
-        <sc-raw-table style="margin-bottom:0;">
-          <sc-raw-tbody>
-            <sc-raw-tr><sc-raw-th style="width:150px;">Nombre</sc-raw-th><sc-raw-td>{{ uc_01_nombre|default:"" }}</sc-raw-td></sc-raw-tr>
-            <sc-raw-tr><sc-raw-th>Actor(es)</sc-raw-th><sc-raw-td>{{ uc_01_actores|default:"" }}</sc-raw-td></sc-raw-tr>
-            <sc-raw-tr><sc-raw-th>Precondición</sc-raw-th><sc-raw-td>{{ uc_01_precondicion|default:"" }}</sc-raw-td></sc-raw-tr>
-            <sc-raw-tr><sc-raw-th>Flujo principal</sc-raw-th><sc-raw-td style="min-height:60px;">{% if uc_01_flujo %}{{ uc_01_flujo }}{% else %}1. <br>2. <br>3. {% endif %}</sc-raw-td></sc-raw-tr>
-            <sc-raw-tr><sc-raw-th>Flujo alternativo</sc-raw-th><sc-raw-td>{{ uc_01_flujo_alt|default:"" }}</sc-raw-td></sc-raw-tr>
-            <sc-raw-tr><sc-raw-th>Postcondición</sc-raw-th><sc-raw-td>{{ uc_01_postcondicion|default:"" }}</sc-raw-td></sc-raw-tr>
-          </sc-raw-tbody>
-        </sc-raw-table>
-      </div>
-
-      <div style="border:1px solid #d8d2c5; padding:14px 16px;">
-        <div style="font-family:'Inter',sans-serif; font-size:11px; font-weight:600; color:#5b2a2f; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:10px;">Caso de Uso UC-02</div>
-        <sc-raw-table style="margin-bottom:0;">
-          <sc-raw-tbody>
-            <sc-raw-tr><sc-raw-th style="width:150px;">Nombre</sc-raw-th><sc-raw-td>{{ uc_02_nombre|default:"" }}</sc-raw-td></sc-raw-tr>
-            <sc-raw-tr><sc-raw-th>Actor(es)</sc-raw-th><sc-raw-td>{{ uc_02_actores|default:"" }}</sc-raw-td></sc-raw-tr>
-            <sc-raw-tr><sc-raw-th>Precondición</sc-raw-th><sc-raw-td>{{ uc_02_precondicion|default:"" }}</sc-raw-td></sc-raw-tr>
-            <sc-raw-tr><sc-raw-th>Flujo principal</sc-raw-th><sc-raw-td style="min-height:60px;">{% if uc_02_flujo %}{{ uc_02_flujo }}{% else %}1. <br>2. <br>3. {% endif %}</sc-raw-td></sc-raw-tr>
-            <sc-raw-tr><sc-raw-th>Flujo alternativo</sc-raw-th><sc-raw-td>{{ uc_02_flujo_alt|default:"" }}</sc-raw-td></sc-raw-tr>
-            <sc-raw-tr><sc-raw-th>{{ uc_02_postcondicion|default:"" }}</sc-raw-td></sc-raw-tr>
-          </sc-raw-tbody>
-        </sc-raw-table>
-      </div>
-    </div>
-
-    <div style="margin-bottom:8px;">
-      <div style="font-family:'Inter',sans-serif; font-size:13px; font-weight:700; letter-spacing:0.04em; color:#5b2a2f; text-transform:uppercase; border-bottom:1px solid #d8d2c5; padding-bottom:6px; margin-bottom:10px;">5. Glosario</div>
-      <p style="font-size:12.5px; margin:0 0 8px; font-family:'Inter',sans-serif; color:#5c5648;">Definición de términos técnicos o de negocio usados en este documento.</p>
-      <sc-raw-table>
-        <sc-raw-thead><sc-raw-tr><sc-raw-th style="width:180px;">Término</sc-raw-th><sc-raw-th>Definición</sc-raw-th></sc-raw-tr></sc-raw-thead>
+      <div style="font-family:'Inter',sans-serif; font-size:13px; font-weight:700; letter-spacing:0.04em; color:#5b2a2f; text-transform:uppercase; border-bottom:1px solid #d8d2c5; padding-bottom:6px; margin-bottom:10px;">4. Inversión y Modalidad de Pago</div>
+      <sc-raw-table style="margin-bottom:14px;">
+        <sc-raw-thead><sc-raw-tr><sc-raw-th>Concepto</sc-raw-th><sc-raw-th style="width:150px;">Monto</sc-raw-th></sc-raw-tr></sc-raw-thead>
         <sc-raw-tbody>
-        {% if glosario %}
-          {% for g in glosario %}
-          <sc-raw-tr><sc-raw-td><strong>{{ g.termino }}</strong></sc-raw-td><sc-raw-td>{{ g.definicion }}</sc-raw-td></sc-raw-tr>
-          {% endfor %}
-        {% else %}
-          <sc-raw-tr><sc-raw-td></sc-raw-td><sc-raw-td></sc-raw-td></sc-raw-tr>
-          <sc-raw-tr><sc-raw-td></sc-raw-td><sc-raw-td></sc-raw-td></sc-raw-tr>
-          <sc-raw-tr><sc-raw-td></sc-raw-td><sc-raw-td></sc-raw-td></sc-raw-tr>
-          <sc-raw-tr><sc-raw-td></sc-raw-td><sc-raw-td></sc-raw-td></sc-raw-tr>
-        {% endif %}
+          <sc-raw-tr><sc-raw-td>Costo de configuración inicial (setup)</sc-raw-td><sc-raw-td>{{ costo_configuracion_inicial_monto }}</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Costo de desarrollo</sc-raw-td><sc-raw-td>{{ costo_desarrollo_monto }}</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Licenciamiento / suscripción</sc-raw-td><sc-raw-td>{{ licenciamiento_suscripcion_monto }}</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Infraestructura (servidores, bases de datos)</sc-raw-td><sc-raw-td>{{ infraestructura_monto }}</sc-raw-td></sc-raw-tr>
+        </sc-raw-tbody>
+      </sc-raw-table>
+      <div style="font-family:'Inter',sans-serif; font-size:11px; font-weight:600; color:#5c5648; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;">Condiciones de pago</div>
+      <sc-raw-table>
+        <sc-raw-thead><sc-raw-tr><sc-raw-th>Hito de facturación</sc-raw-th><sc-raw-th style="width:100px;">Porcentaje</sc-raw-th></sc-raw-tr></sc-raw-thead>
+        <sc-raw-tbody>
+          <sc-raw-tr><sc-raw-td>Al inicio del proyecto</sc-raw-td><sc-raw-td>40%</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Al aprobar el prototipo funcional</sc-raw-td><sc-raw-td>30%</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>Contra entrega final en producción</sc-raw-td><sc-raw-td>30%</sc-raw-td></sc-raw-tr>
         </sc-raw-tbody>
       </sc-raw-table>
     </div>
 
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:48px; break-inside:avoid; margin-top:36px;">
+    <div style="margin-bottom:24px; break-inside:avoid;">
+      <div style="font-family:'Inter',sans-serif; font-size:13px; font-weight:700; letter-spacing:0.04em; color:#5b2a2f; text-transform:uppercase; border-bottom:1px solid #d8d2c5; padding-bottom:6px; margin-bottom:10px;">5. Soporte, Mantenimiento y Garantías</div>
+      <sc-raw-table>
+        <sc-raw-tbody>
+          <sc-raw-tr><sc-raw-th style="width:170px;">Periodo de garantía</sc-raw-th><sc-raw-td><span style="display:inline-block; min-width:60px; border-bottom:1px solid #221f1a;">{{ periodo_garantia }}</span> días desde la puesta en marcha, sin costo adicional</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-th>Plan de soporte posterior</sc-raw-th><sc-raw-td>{{ plan_soporte_posterior }}</sc-raw-td></sc-raw-tr>
+        </sc-raw-tbody>
+      </sc-raw-table>
+    </div>
+
+    <div style="margin-bottom:8px; break-inside:avoid;">
+      <div style="font-family:'Inter',sans-serif; font-size:13px; font-weight:700; letter-spacing:0.04em; color:#5b2a2f; text-transform:uppercase; border-bottom:1px solid #d8d2c5; padding-bottom:6px; margin-bottom:10px;">6. Términos y Condiciones</div>
+      <ul style="font-size:12.5px; margin:0; padding-left:22px; font-family:'Inter',sans-serif;">
+        <li style="margin-bottom:8px;"><strong>Propiedad intelectual:</strong> El código fuente es propiedad de <span style="display:inline-block; min-width:200px; border-bottom:1px solid #221f1a;">{{ codigo_fuente_es_propiedad }}</span>. Los datos generados por el uso del sistema son propiedad del Cliente.</li>
+        <li>Gestión de cambios: cualquier funcionalidad nueva no contemplada en la sección "Alcance del Proyecto" será evaluada, cotizada y facturada de forma independiente.</li>
+      </ul>
+    </div>
+
+    <p style="font-size:12.5px; margin:26px 0 40px; font-family:'Inter',sans-serif; color:#5c5648;">La aceptación de esta propuesta, mediante firma o confirmación escrita, da inicio formal al proyecto conforme a los términos aquí descritos.</p>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:48px; break-inside:avoid;">
       <div>
         <div style="border-top:1px solid #221f1a; padding-top:10px; margin-top:56px;">
-          <div style="font-weight:600; font-size:13px; font-family:'Inter',sans-serif;">{{ autor|default:"" }}</div>
-          <div style="font-family:'Inter',sans-serif; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#8a8375; margin-top:8px;">Elaborado por</div>
+          <div style="font-weight:600; font-size:13px; font-family:'Inter',sans-serif;">&nbsp;</div>
+          <div style="font-family:'Inter',sans-serif; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#8a8375; margin-top:8px;">Desarrollador</div>
         </div>
       </div>
       <div>
         <div style="border-top:1px solid #221f1a; padding-top:10px; margin-top:56px;">
-          <div style="font-weight:600; font-size:13px; font-family:'Inter',sans-serif;">{{ cliente.nombre|default:"" }}</div>
-          <div style="font-family:'Inter',sans-serif; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#8a8375; margin-top:8px;">Aprobado por</div>
+          <div style="font-weight:600; font-size:13px; font-family:'Inter',sans-serif;">&nbsp;</div>
+          <div style="font-family:'Inter',sans-serif; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:#8a8375; margin-top:8px;">Cliente</div>
         </div>
       </div>
     </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { getTenants, createTenant } from '../api';
+import { useAuth } from '../contexts/AuthContext';
 import { fmtDate } from '../utils/formatters';
 import TopbarActions from '../components/layout/TopbarActions';
 import Svg from '../components/ui/Svg';
@@ -10,6 +11,7 @@ import './Tenants.css';
 gsap.registerPlugin(useGSAP);
 
 const CATEGORIA_META = {
+  SIN_MEMBRESIA: { label: 'Sin membresía', color: 'var(--text-muted)', bg: 'var(--bg-faint)' },
   COBRE: { label: 'Cobre', color: 'var(--orange)', bg: 'var(--orange-tint)' },
   PLATA: { label: 'Plata', color: 'var(--text-muted)', bg: 'var(--neutral-200)' },
   PLATINO: { label: 'Platino', color: 'var(--cyan-deep)', bg: 'var(--cyan-tint)' },
@@ -53,7 +55,7 @@ function SkeletonRow() {
 }
 
 function NewTenantModal({ onClose, onCreated }) {
-  const [formData, setFormData] = useState({ razon_social: '', categoria: 'COBRE', estado: 'ACTIVO' });
+  const [formData, setFormData] = useState({ razon_social: '', categoria: 'SIN_MEMBRESIA', estado: 'ACTIVO' });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -164,6 +166,9 @@ function NewTenantModal({ onClose, onCreated }) {
 }
 
 export default function Tenants() {
+  // Crear tenants es decisión comercial: solo SuperAdmin (el backend también lo exige).
+  const { user } = useAuth();
+  const canCreate = !!user?.isSuperadmin;
   const [tenants, setTenants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -226,10 +231,12 @@ export default function Tenants() {
           <h1 className="tenants-header-title">Empresas (Tenants)</h1>
         </div>
         <div className="tenants-header-actions">
-          <button className="tenants-btn-primary" onClick={() => setShowModal(true)}>
-            <Svg paths={['M12 5v14', 'M5 12h14']} color="currentColor" size={14} />
-            Nueva Empresa
-          </button>
+          {canCreate && (
+            <button className="tenants-btn-primary" onClick={() => setShowModal(true)}>
+              <Svg paths={['M12 5v14', 'M5 12h14']} color="currentColor" size={14} />
+              Nueva Empresa
+            </button>
+          )}
           <div className="tn-topbar-actions-wrap">
             <TopbarActions />
           </div>

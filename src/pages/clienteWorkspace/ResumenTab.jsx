@@ -78,19 +78,34 @@ export default function ResumenTab({ data }) {
           <div className="ct-resumen-card">
             <p className="ct-resumen-card-title">
               <Icon d={['M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2', 'M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z', 'M23 21v-2a4 4 0 0 0-3-3.87', 'M16 3.13a4 4 0 0 1 0 7.75']} color="var(--violet-bright)" w={14} />
-              Cuentas de Usuario
+              Acceso al Portal
             </p>
             <div className="ct-resumen-dates">
               {usuariosCuenta.length === 0 ? (
-                <Row label="Acceso">Sin cuentas registradas</Row>
+                <Row label="Acceso">Sin cuenta de portal creada</Row>
               ) : usuariosCuenta.map((u) => (
-                <Row key={u.id} label={u.username}>
-                  {u.last_login ? fmtDateTime(u.last_login) : 'Nunca ingresó'}{' '}
-                  <span className={`cw-pill ${u.is_active ? 'ok' : 'danger'}`}>
-                    {u.is_active ? 'Activa' : 'Desactivada'}
+                <div key={u.id} style={{ display: 'contents' }}>
+                  <Row label="Usuario">{u.username}</Row>
+                  <Row label="Estado cuenta">
+                    <span className={`cw-pill ${u.is_active ? 'ok' : 'warn'}`}>
+                      {u.is_active ? 'Activa' : 'Pendiente activación'}
+                    </span>
+                  </Row>
+                  <Row label="Último acceso">
+                    {u.last_login ? fmtDateTime(u.last_login) : 'Nunca ingresó'}
+                  </Row>
+                </div>
+              ))}
+              {perfil.cuenta_portal?.ultimo_envio && (
+                <Row label="Última invitación">
+                  <span className={`cw-pill ${perfil.cuenta_portal.ultimo_envio.estado === 'ENVIADO' ? 'ok' : 'danger'}`}>
+                    {perfil.cuenta_portal.ultimo_envio.estado === 'ENVIADO' ? '✓ Emitida' : '⚠ Falló envío'}
+                  </span>{' '}
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                    {fmtDate(perfil.cuenta_portal.ultimo_envio.fecha)}
                   </span>
                 </Row>
-              ))}
+              )}
             </div>
           </div>
         )}

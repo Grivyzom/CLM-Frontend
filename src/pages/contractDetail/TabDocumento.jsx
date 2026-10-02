@@ -4,6 +4,71 @@ import { fmtDate, fmtDateTime } from '../../utils/formatters';
 import CampoClausulaHtml from '../../components/ui/CampoClausulaHtml';
 import ClausulaBloqueRichText from '../../components/ui/ClausulaBloqueRichText';
 import Pagination from '../../components/ui/Pagination';
+import MatrizCasosPruebaEditor from '../../components/MatrizCasosPruebaEditor';
+
+function RealDocumentPreview({ previewDoc }) {
+  const [url, setUrl] = React.useState(null);
+  const [error, setError] = React.useState(null);
+
+  React.useEffect(() => {
+    let revoked = false;
+    let objectUrl = null;
+    setUrl(null);
+    setError(null);
+
+    fetch(`/api/plantillas/documentos/${previewDoc.id}/pdf/?inline=1`, { credentials: 'include' })
+      .then(async res => {
+        if (!res.ok) {
+          let msg = `HTTP ${res.status}`;
+          try { const err = await res.json(); msg = err.error || err.detail || msg; } catch (_) {}
+          throw new Error(msg);
+        }
+        return res.blob();
+      })
+      .then(blob => {
+        if (revoked) return;
+        objectUrl = URL.createObjectURL(blob);
+        setUrl(objectUrl);
+      })
+      .catch(err => {
+        if (!revoked) setError(err.message);
+      });
+
+    return () => {
+      revoked = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [previewDoc.id]);
+
+  if (error) {
+    return (
+      <div className="ct-doc-empty">
+        <Icon d={['M12 9v4', 'M12 17h.01', 'M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z']} color="var(--warning)" w={32} />
+        <p>No se pudo cargar la vista previa</p>
+        <p className="ct-doc-empty-sub">{error}</p>
+      </div>
+    );
+  }
+
+  if (!url) {
+    return (
+      <div className="ct-doc-empty">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--text-faint)" strokeWidth="1.6" strokeLinecap="round" style={{ animation: 'spin 1s linear infinite' }}>
+          <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+        </svg>
+        <p>Cargando documento…</p>
+      </div>
+    );
+  }
+
+  return (
+    <iframe
+      className="ct-doc-frame"
+      title={`Previsualización del documento v${previewDoc.plantilla_version}`}
+      src={`${url}#view=FitH`}
+    />
+  );
+}
 
 export default function TabDocumento({
   contrato, focusMode, busy, camposLoading,
@@ -15,14 +80,14 @@ export default function TabDocumento({
   bibliotecaClausulas, idsUsadosEnDocumento,
   camposPlantilla, camposValores, setCamposValores, camposSelects,
   camposPage, setCamposPage, insertarClausulaEnCampo,
-  abrirEditorClausulas, handleGenerarDocumento,
+  abrirEditorClausulas, handleGenerarDocumento, terminosPanel,
 }) {
   return (
     <div className="ct-tab-documento">
       {documentoDesactualizado && (
         <div className="ct-doc-stale-banner">
           <Icon d={['M12 22s-8-4-8-10V5l8-3 8 3v7c0 6-8 10-8 10z', 'M12 9v4m0 4v.01']} color="var(--warning)" w={18} />
-          <span>Las cláusulas cambiaron después de generar este documento — regenéralo para reflejar los últimos cambios.</span>
+          <span>Las cláusulas o los términos cambiaron después de generar este documento — regenéralo para reflejar los últimos cambios.</span>
           {clausulasEditables && (
             <button
               className="ct-btn-secondary"
@@ -99,12 +164,7 @@ export default function TabDocumento({
               </div>
               )}
               {showPreview ? (
-                <iframe
-                  key={previewDoc.id}
-                  className="ct-doc-frame"
-                  title={`Previsualización del documento v${previewDoc.plantilla_version}`}
-                  src={`/api/plantillas/documentos/${previewDoc.id}/pdf/?inline=1#view=FitH`}
-                />
+                <RealDocumentPreview previewDoc={previewDoc} />
               ) : (
                 <div className="ct-doc-preview-placeholder">
                   <Icon d={['M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z', 'M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z']} color="var(--border)" w={32} />
@@ -263,33 +323,46 @@ export default function TabDocumento({
           </div>
           <div className="ct-campos-panel-body">
             <div className="ct-campos-panel-list">
-              {camposPlantilla.slice((camposPage - 1) * 4, camposPage * 4).map(c => (
-                <CampoClausulaHtml
-                  key={c.nombre}
-                  campo={c}
-                  biblioteca={bibliotecaClausulas}
-                  seleccionId={camposSelects[c.nombre]}
-                  idsUsados={idsUsadosEnDocumento}
-                  onInsert={(clausula) => insertarClausulaEnCampo(c.nombre, clausula)}
-                >
-                  {c.multilinea ? (
-                    <div className="ct-campo-richtext">
-                      <ClausulaBloqueRichText
-                        texto={camposValores[c.nombre] ?? ''}
-                        onUpdate={({ texto }) => setCamposValores(prev => ({ ...prev, [c.nombre]: texto }))}
+              {camposPlantilla.slice((camposPage - 1) * 4, camposPage * 4).map(c => {
+                if (c.tipo === 'casos_prueba' || c.nombre === 'casos_prueba') {
+                  return (
+                    <div key={c.nombre} style={{ width: '100%', marginBottom: 12 }}>
+                      <MatrizCasosPruebaEditor
+                        value={camposValores[c.nombre]}
+                        onChange={(nuevos) => setCamposValores(prev => ({ ...prev, [c.nombre]: nuevos }))}
+                        compact={true}
                       />
                     </div>
-                  ) : (
-                    <input
-                      type="text"
-                      className="ct-campo-input"
-                      value={camposValores[c.nombre] ?? ''}
-                      onChange={e => setCamposValores(prev => ({ ...prev, [c.nombre]: e.target.value }))}
-                      placeholder={c.default}
-                    />
-                  )}
-                </CampoClausulaHtml>
-              ))}
+                  );
+                }
+                return (
+                  <CampoClausulaHtml
+                    key={c.nombre}
+                    campo={c}
+                    biblioteca={bibliotecaClausulas}
+                    seleccionId={camposSelects[c.nombre]}
+                    idsUsados={idsUsadosEnDocumento}
+                    onInsert={(clausula) => insertarClausulaEnCampo(c.nombre, clausula)}
+                  >
+                    {c.multilinea ? (
+                      <div className="ct-campo-richtext">
+                        <ClausulaBloqueRichText
+                          texto={camposValores[c.nombre] ?? ''}
+                          onUpdate={({ texto }) => setCamposValores(prev => ({ ...prev, [c.nombre]: texto }))}
+                        />
+                      </div>
+                    ) : (
+                      <input
+                        type="text"
+                        className="ct-campo-input"
+                        value={camposValores[c.nombre] ?? ''}
+                        onChange={e => setCamposValores(prev => ({ ...prev, [c.nombre]: e.target.value }))}
+                        placeholder={c.default}
+                      />
+                    )}
+                  </CampoClausulaHtml>
+                );
+              })}
             </div>
             <p className="ct-campos-panel-hint">
               Si dejas una cláusula en blanco, se eliminará por completo del documento generado.
@@ -311,6 +384,8 @@ export default function TabDocumento({
           </div>
         </aside>
       )}
+
+      {terminosPanel}
 
       <div className="ct-anexos-panel">
         <div className="ct-anexos-header">

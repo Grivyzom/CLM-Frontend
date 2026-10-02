@@ -295,19 +295,19 @@
 
     <sc-raw-table style="margin-bottom:22px;">
       <sc-raw-tbody>
-        <sc-raw-tr><sc-raw-th style="width:170px;">Proyecto</sc-raw-th><sc-raw-td><span style="display:inline-block; min-width:100%; border-bottom:1px solid #221f1a;">&nbsp;</span></sc-raw-td></sc-raw-tr>
-        <sc-raw-tr><sc-raw-th>Cliente / Empresa</sc-raw-th><sc-raw-td><span style="display:inline-block; min-width:100%; border-bottom:1px solid #221f1a;">&nbsp;</span></sc-raw-td></sc-raw-tr>
-        <sc-raw-tr><sc-raw-th>Contacto / Solicitante</sc-raw-th><sc-raw-td><span style="display:inline-block; min-width:100%; border-bottom:1px solid #221f1a;">&nbsp;</span></sc-raw-td></sc-raw-tr>
-        <sc-raw-tr><sc-raw-th>Responsable de desarrollo</sc-raw-th><sc-raw-td><span style="display:inline-block; min-width:100%; border-bottom:1px solid #221f1a;">&nbsp;</span></sc-raw-td></sc-raw-tr>
-        <sc-raw-tr><sc-raw-th>Fecha de levantamiento</sc-raw-th><sc-raw-td><span style="display:inline-block; min-width:200px; border-bottom:1px solid #221f1a;">&nbsp;</span></sc-raw-td></sc-raw-tr>
-        <sc-raw-tr><sc-raw-th>Versión del documento</sc-raw-th><sc-raw-td><span style="display:inline-block; min-width:120px; border-bottom:1px solid #221f1a;">&nbsp;</span></sc-raw-td></sc-raw-tr>
+        <sc-raw-tr><sc-raw-th style="width:170px;">Proyecto</sc-raw-th><sc-raw-td><span style="display:inline-block; min-width:100%; border-bottom:1px solid #221f1a;">{{ proyecto_nombre }}</span></sc-raw-td></sc-raw-tr>
+        <sc-raw-tr><sc-raw-th>Cliente / Empresa</sc-raw-th><sc-raw-td><span style="display:inline-block; min-width:100%; border-bottom:1px solid #221f1a;">{{ cliente.nombre }}</span></sc-raw-td></sc-raw-tr>
+        <sc-raw-tr><sc-raw-th>Contacto / Solicitante</sc-raw-th><sc-raw-td><span style="display:inline-block; min-width:100%; border-bottom:1px solid #221f1a;">{{ contacto_solicitante }}</span></sc-raw-td></sc-raw-tr>
+        <sc-raw-tr><sc-raw-th>Responsable de desarrollo</sc-raw-th><sc-raw-td><span style="display:inline-block; min-width:100%; border-bottom:1px solid #221f1a;">{{ autor }}</span></sc-raw-td></sc-raw-tr>
+        <sc-raw-tr><sc-raw-th>Fecha de levantamiento</sc-raw-th><sc-raw-td><span style="display:inline-block; min-width:200px; border-bottom:1px solid #221f1a;">{{ fecha_documento }}</span></sc-raw-td></sc-raw-tr>
+        <sc-raw-tr><sc-raw-th>Versión del documento</sc-raw-th><sc-raw-td><span style="display:inline-block; min-width:120px; border-bottom:1px solid #221f1a;">{{ version_documento }}</span></sc-raw-td></sc-raw-tr>
       </sc-raw-tbody>
     </sc-raw-table>
 
     <div style="break-inside:avoid; margin-bottom:22px;">
       <h2 style="font-size:13px; font-weight:700; color:#3f6b5c; text-transform:uppercase; letter-spacing:0.04em; border-bottom:1px solid #d3cfc2; padding-bottom:6px; margin:0 0 10px;">1. Objetivos del Proyecto</h2>
       <p style="font-size:12.5px; margin:0 0 8px; color:#5c5648;">Describir el problema a resolver y el resultado esperado del software.</p>
-      <div style="border:1px solid #d3cfc2; min-height:70px; padding:10px;"></div>
+      <div style="border:1px solid #d3cfc2; min-height:70px; padding:10px;">{{ detalle_describir_problema_resolver }}</div>
     </div>
 
     <div style="break-inside:avoid; margin-bottom:22px;">
@@ -315,11 +315,11 @@
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
         <div>
           <div style="font-size:11px; font-weight:600; color:#5c5648; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;">Dentro del alcance</div>
-          <div style="border:1px solid #d3cfc2; min-height:90px; padding:10px;"></div>
+          <div style="border:1px solid #d3cfc2; min-height:90px; padding:10px;">{{ detalle_dentro_alcance }}</div>
         </div>
         <div>
           <div style="font-size:11px; font-weight:600; color:#5c5648; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;">Fuera del alcance</div>
-          <div style="border:1px solid #d3cfc2; min-height:90px; padding:10px;"></div>
+          <div style="border:1px solid #d3cfc2; min-height:90px; padding:10px;">{{ detalle_fuera_alcance }}</div>
         </div>
       </div>
     </div>
@@ -331,11 +331,11 @@
           <sc-raw-tr><sc-raw-th style="width:36px;">N°</sc-raw-th><sc-raw-th>Requerimiento</sc-raw-th><sc-raw-th style="width:90px;">Prioridad</sc-raw-th><sc-raw-th style="width:110px;">Estado</sc-raw-th></sc-raw-tr>
         </sc-raw-thead>
         <sc-raw-tbody>
-          <sc-raw-tr><sc-raw-td>RF-01</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td></sc-raw-tr>
-          <sc-raw-tr><sc-raw-td>RF-02</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td></sc-raw-tr>
-          <sc-raw-tr><sc-raw-td>RF-03</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td></sc-raw-tr>
-          <sc-raw-tr><sc-raw-td>RF-04</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td></sc-raw-tr>
-          <sc-raw-tr><sc-raw-td>RF-05</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>RF-01</sc-raw-td><sc-raw-td>{{ rf_01_requerimiento }}</sc-raw-td><sc-raw-td>{{ rf_01_prioridad }}</sc-raw-td><sc-raw-td>{{ rf_01_estado }}</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>RF-02</sc-raw-td><sc-raw-td>{{ rf_02_requerimiento }}</sc-raw-td><sc-raw-td>{{ rf_02_prioridad }}</sc-raw-td><sc-raw-td>{{ rf_02_estado }}</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>RF-03</sc-raw-td><sc-raw-td>{{ rf_03_requerimiento }}</sc-raw-td><sc-raw-td>{{ rf_03_prioridad }}</sc-raw-td><sc-raw-td>{{ rf_03_estado }}</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>RF-04</sc-raw-td><sc-raw-td>{{ rf_04_requerimiento }}</sc-raw-td><sc-raw-td>{{ rf_04_prioridad }}</sc-raw-td><sc-raw-td>{{ rf_04_estado }}</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>RF-05</sc-raw-td><sc-raw-td>{{ rf_05_requerimiento }}</sc-raw-td><sc-raw-td>{{ rf_05_prioridad }}</sc-raw-td><sc-raw-td>{{ rf_05_estado }}</sc-raw-td></sc-raw-tr>
         </sc-raw-tbody>
       </sc-raw-table>
     </div>
@@ -347,11 +347,11 @@
           <sc-raw-tr><sc-raw-th style="width:36px;">N°</sc-raw-th><sc-raw-th style="width:150px;">Categoría</sc-raw-th><sc-raw-th>Descripción</sc-raw-th></sc-raw-tr>
         </sc-raw-thead>
         <sc-raw-tbody>
-          <sc-raw-tr><sc-raw-td>RNF-01</sc-raw-td><sc-raw-td>Rendimiento</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td></sc-raw-tr>
-          <sc-raw-tr><sc-raw-td>RNF-02</sc-raw-td><sc-raw-td>Seguridad</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td></sc-raw-tr>
-          <sc-raw-tr><sc-raw-td>RNF-03</sc-raw-td><sc-raw-td>Disponibilidad</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td></sc-raw-tr>
-          <sc-raw-tr><sc-raw-td>RNF-04</sc-raw-td><sc-raw-td>Escalabilidad</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td></sc-raw-tr>
-          <sc-raw-tr><sc-raw-td>RNF-05</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>RNF-01</sc-raw-td><sc-raw-td>Rendimiento</sc-raw-td><sc-raw-td>{{ rnf_01_descripcion }}</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>RNF-02</sc-raw-td><sc-raw-td>Seguridad</sc-raw-td><sc-raw-td>{{ rnf_02_descripcion }}</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>RNF-03</sc-raw-td><sc-raw-td>Disponibilidad</sc-raw-td><sc-raw-td>{{ rnf_03_descripcion }}</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>RNF-04</sc-raw-td><sc-raw-td>Escalabilidad</sc-raw-td><sc-raw-td>{{ rnf_04_descripcion }}</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>RNF-05</sc-raw-td><sc-raw-td>{{ rnf_05_categoria }}</sc-raw-td><sc-raw-td>{{ rnf_05_descripcion }}</sc-raw-td></sc-raw-tr>
         </sc-raw-tbody>
       </sc-raw-table>
     </div>
@@ -363,9 +363,9 @@
           <sc-raw-tr><sc-raw-th style="width:150px;">Rol</sc-raw-th><sc-raw-th>Descripción / Permisos</sc-raw-th></sc-raw-tr>
         </sc-raw-thead>
         <sc-raw-tbody>
-          <sc-raw-tr><sc-raw-td>&nbsp;</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td></sc-raw-tr>
-          <sc-raw-tr><sc-raw-td>&nbsp;</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td></sc-raw-tr>
-          <sc-raw-tr><sc-raw-td>&nbsp;</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>{{ rol }}</sc-raw-td><sc-raw-td>{{ rol_descripcion_permisos }}</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>{{ rol_2 }}</sc-raw-td><sc-raw-td>{{ rol_2_descripcion_permisos }}</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>{{ rol_3 }}</sc-raw-td><sc-raw-td>{{ rol_3_descripcion_permisos }}</sc-raw-td></sc-raw-tr>
         </sc-raw-tbody>
       </sc-raw-table>
     </div>
@@ -377,8 +377,8 @@
           <sc-raw-tr><sc-raw-th style="width:180px;">Sistema / API</sc-raw-th><sc-raw-th>Propósito de la integración</sc-raw-th><sc-raw-th style="width:110px;">Prioridad</sc-raw-th></sc-raw-tr>
         </sc-raw-thead>
         <sc-raw-tbody>
-          <sc-raw-tr><sc-raw-td>&nbsp;</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td></sc-raw-tr>
-          <sc-raw-tr><sc-raw-td>&nbsp;</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>{{ integracion_1_sistema }}</sc-raw-td><sc-raw-td>{{ integracion_1_proposito }}</sc-raw-td><sc-raw-td>{{ integracion_1_prioridad }}</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>{{ integracion_2_sistema }}</sc-raw-td><sc-raw-td>{{ integracion_2_proposito }}</sc-raw-td><sc-raw-td>{{ integracion_2_prioridad }}</sc-raw-td></sc-raw-tr>
         </sc-raw-tbody>
       </sc-raw-table>
     </div>
@@ -390,9 +390,9 @@
           <sc-raw-tr><sc-raw-th style="width:150px;">Hito / Entregable</sc-raw-th><sc-raw-th style="width:130px;">Fecha estimada</sc-raw-th><sc-raw-th>Observaciones</sc-raw-th></sc-raw-tr>
         </sc-raw-thead>
         <sc-raw-tbody>
-          <sc-raw-tr><sc-raw-td>&nbsp;</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td></sc-raw-tr>
-          <sc-raw-tr><sc-raw-td>&nbsp;</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td></sc-raw-tr>
-          <sc-raw-tr><sc-raw-td>&nbsp;</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td><sc-raw-td>&nbsp;</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>{{ hito_entregable }}</sc-raw-td><sc-raw-td>{{ hito_entregable_fecha_estimada }}</sc-raw-td><sc-raw-td>{{ hito_entregable_observaciones }}</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>{{ hito_entregable_2 }}</sc-raw-td><sc-raw-td>{{ hito_entregable_2_fecha_estimada }}</sc-raw-td><sc-raw-td>{{ hito_entregable_2_observaciones }}</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-td>{{ hito_entregable_3 }}</sc-raw-td><sc-raw-td>{{ hito_entregable_3_fecha_estimada }}</sc-raw-td><sc-raw-td>{{ hito_entregable_3_observaciones }}</sc-raw-td></sc-raw-tr>
         </sc-raw-tbody>
       </sc-raw-table>
     </div>
@@ -401,10 +401,10 @@
       <h2 style="font-size:13px; font-weight:700; color:#3f6b5c; text-transform:uppercase; letter-spacing:0.04em; border-bottom:1px solid #d3cfc2; padding-bottom:6px; margin:0 0 10px;">8. Presupuesto y Condiciones Comerciales</h2>
       <sc-raw-table>
         <sc-raw-tbody>
-          <sc-raw-tr><sc-raw-th style="width:170px;">Modalidad de cobro</sc-raw-th><sc-raw-td>&nbsp;</sc-raw-td></sc-raw-tr>
-          <sc-raw-tr><sc-raw-th>Monto estimado</sc-raw-th><sc-raw-td>&nbsp;</sc-raw-td></sc-raw-tr>
-          <sc-raw-tr><sc-raw-th>Condiciones de pago</sc-raw-th><sc-raw-td>&nbsp;</sc-raw-td></sc-raw-tr>
-          <sc-raw-tr><sc-raw-th>Vigencia de la propuesta</sc-raw-th><sc-raw-td>&nbsp;</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-th style="width:170px;">Modalidad de cobro</sc-raw-th><sc-raw-td>{{ modalidad_cobro }}</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-th>Monto estimado</sc-raw-th><sc-raw-td>{{ monto_estimado }}</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-th>Condiciones de pago</sc-raw-th><sc-raw-td>{{ condiciones_pago }}</sc-raw-td></sc-raw-tr>
+          <sc-raw-tr><sc-raw-th>Vigencia de la propuesta</sc-raw-th><sc-raw-td>{{ vigencia_propuesta }}</sc-raw-td></sc-raw-tr>
         </sc-raw-tbody>
       </sc-raw-table>
     </div>
@@ -412,7 +412,7 @@
     <div style="margin-bottom:8px; break-inside:avoid;">
       <h2 style="font-size:13px; font-weight:700; color:#3f6b5c; text-transform:uppercase; letter-spacing:0.04em; border-bottom:1px solid #d3cfc2; padding-bottom:6px; margin:0 0 10px;">9. Criterios de Aceptación</h2>
       <p style="font-size:12.5px; margin:0 0 8px; color:#5c5648;">Condiciones que deben cumplirse para considerar el proyecto entregado conforme.</p>
-      <div style="border:1px solid #d3cfc2; min-height:80px; padding:10px;"></div>
+      <div style="border:1px solid #d3cfc2; min-height:80px; padding:10px;">{{ detalle_condiciones_que_deben_cumplirse }}</div>
     </div>
 
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:48px; break-inside:avoid; margin-top:36px;">

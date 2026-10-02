@@ -45,6 +45,7 @@ const NAV = [
   { id: 'clientes', path: '/clientes', label: 'Clientes', feature: 'clientes', paths: ['M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2','M23 21v-2a4 4 0 0 0-3-3.87','M16 3.13a4 4 0 0 1 0 7.75'], circles: [{ cx: 9, cy: 7, r: 4 }] },
   { id: 'catalogo', path: '/catalogo', label: 'Catálogo', feature: 'catalogo', paths: ['M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z','M3.27 6.96 12 12.01l8.73-5.05','M12 22.08V12'] },
   { id: 'contratos', path: '/contratos', label: 'Contratos', feature: 'contratos', paths: ['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z','M14 2v6h6','M8 13h8'] },
+  { id: 'comunidad', path: '/comunidad', label: 'Comunidad', paths: ['M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20', 'M2 12h20'], circles: [{ cx: 12, cy: 12, r: 10 }] },
   { 
     id: 'gestion', 
     path: '#', 
@@ -54,6 +55,7 @@ const NAV = [
       { id: 'auditoria', path: '/auditoria', label: 'Auditoría', feature: 'legal' },
       { id: 'reportes', path: '/reportes', label: 'Reporte', feature: 'incidencias' },
       { id: 'analytics', path: '/analytics', label: 'Analytics', feature: 'analytics' },
+      { id: 'tenants', path: '/tenants', label: 'Empresas' },
       { id: 'usuarios', path: '/usuarios', label: 'Usuarios' }
     ]
   },
@@ -430,12 +432,12 @@ export default function Sidebar() {
 
     if (user && isClienteExterno) {
       // El cliente externo solo puede ver Dashboard, Contratos, Membresias, Historial, Novedades, Tarifas, Reporte y Gestión
-      if (!['dashboard', 'contratos', 'historial', 'membresias', 'novedades', 'tarifas', 'reportes', 'gestion'].includes(item.id) && item.id !== 'beneficio') return false;
+      if (!['dashboard', 'contratos', 'historial', 'membresias', 'novedades', 'tarifas', 'reportes', 'gestion', 'comunidad'].includes(item.id) && item.id !== 'beneficio') return false;
     } else if (user) {
       // Usuarios normales/internos:
       if (['historial', 'novedades', 'membresias', 'tarifas'].includes(item.id)) return false;
       if (item.id === 'clientes' && !canAccessClientes) return false;
-      if (item.id === 'tenants' && !user.isSuperadmin) return false;
+      if (item.id === 'tenants' && !(user.isSuperadmin || isModerador)) return false;
       if (item.id === 'usuarios' && !(user.isSuperadmin || isModerador)) return false;
       if (item.id !== 'clientes' && item.id !== 'tenants' && item.feature && item.feature !== 'membresias' && !hasFeature(item.feature)) return false;
     }

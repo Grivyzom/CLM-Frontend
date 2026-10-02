@@ -63,7 +63,9 @@ export default function PlantillasTab({
        archivo_docx: null,
        ruta_plantilla_html: template.ruta_plantilla_html || '',
        codigo_prefijo: template._raw?.codigo_prefijo || '',
-       requiere_sla_facturacion: template.requiere_sla_facturacion !== false
+       requiere_sla_facturacion: template.requiere_sla_facturacion !== false,
+       clausulas_seleccionadas: template._raw?.clausulas_seleccionadas || [],
+       terminos_condiciones: template._raw?.terminos_condiciones || null,
     });
     setIsNewTemplateModalOpen(true);
   }, []);
@@ -89,6 +91,7 @@ export default function PlantillasTab({
       modo_origen: rep.modo_origen,
       codigo_prefijo: familia.prefijo,
       requiere_sla_facturacion: rep.requiere_sla_facturacion !== false,
+      terminos_condiciones: rep._raw?.terminos_condiciones || null,
     });
     setEditingTemplate(null);
     setOpenFamilyKey(null);
@@ -106,6 +109,7 @@ export default function PlantillasTab({
       codigo_prefijo: template._raw?.codigo_prefijo || '',
       clausulas_seleccionadas: template._raw?.clausulas_seleccionadas || [],
       requiere_sla_facturacion: template.requiere_sla_facturacion !== false,
+      terminos_condiciones: template._raw?.terminos_condiciones || null,
     });
     setEditingTemplate(null);
     setIsNewTemplateModalOpen(true);

@@ -17,6 +17,8 @@ export const routeChunks = {
   '/novedades': () => import('./pages/Novedades'),
   '/reportes': () => import('./pages/Reporte'),
   '/usuarios': () => import('./pages/Usuarios'),
+  '/tenants': () => import('./pages/Tenants'),
+  '/comunidad': () => import('./pages/comunidad/Comunidad'),
 };
 
 const prefetched = new Set();

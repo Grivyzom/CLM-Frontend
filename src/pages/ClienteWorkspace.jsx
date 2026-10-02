@@ -4,7 +4,7 @@ import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
 import './Contratos.css';
 import './ClienteWorkspace.css';
-import { getClienteWorkspace, updateClienteStatus } from '../api';
+import { getClienteWorkspace, updateClienteStatus, crearCuentaCliente } from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import { useConfirm } from '../contexts/ConfirmContext';
 import StatusBadge from '../components/ui/StatusBadge';
@@ -123,6 +123,46 @@ export default function ClienteWorkspace() {
     }
   };
 
+  const [inviting, setInviting] = useState(false);
+
+  const handleInvitarPortal = async () => {
+    if (!perfil.email) {
+      alertModal({ title: 'Sin correo electrónico', message: 'Este cliente no tiene un email registrado para enviarle acceso.', isDangerous: true });
+      return;
+    }
+    const ok = await confirm({
+      title: perfil.cuenta_portal?.existe ? 'Reenviar invitación de acceso' : 'Enviar invitación de acceso',
+      message: `Se enviará un correo a ${perfil.email} con el enlace de activación para que el cliente configure su contraseña y acceda al portal.`,
+    });
+    if (!ok) return;
+
+    setInviting(true);
+    try {
+      const res = await crearCuentaCliente(id);
+      if (res?.correo && !res.correo.enviado) {
+        alertModal({
+          title: 'Aviso: Problema de envío',
+          message: `La cuenta fue configurada, pero el correo no pudo ser emitido por el servidor SMTP: ${res.correo.error || 'Error de conexión'}. Puedes verificar los detalles en la pestaña Comunicaciones.`,
+          isDangerous: true,
+        });
+      } else {
+        alertModal({
+          title: 'Invitación emitida',
+          message: `Se ha emitido el correo de activación a ${perfil.email} exitosamente.`,
+        });
+      }
+      fetchData();
+    } catch (err) {
+      alertModal({
+        title: 'Error al enviar invitación',
+        message: err.message || 'No se pudo generar la invitación.',
+        isDangerous: true,
+      });
+    } finally {
+      setInviting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="ct-workspace">
@@ -156,6 +196,17 @@ export default function ClienteWorkspace() {
         <div className="ct-workspace-actions">
           {canWrite && (
             <>
+              {perfil.email && (
+                <button
+                  className="ct-btn-secondary"
+                  disabled={inviting || bloqueado}
+                  onClick={handleInvitarPortal}
+                  title="Enviar enlace de activación de cuenta al cliente"
+                >
+                  <Icon d={['M3 8l7.89 5.26a2 2 0 0 0 2.22 0L21 8M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z']} color="currentColor" w={13} />
+                  {inviting ? 'Enviando…' : perfil.cuenta_portal?.existe ? 'Reenviar invitación' : 'Invitar al portal'}
+                </button>
+              )}
               <button
                 className="ct-btn-primary"
                 onClick={() => navigate(`/contratos?nuevo=1&cliente=${id}`)}
@@ -193,6 +244,94 @@ export default function ClienteWorkspace() {
                 <span className="ct-days-chip" style={{ background: planMeta.bg, color: planMeta.color, border: `1px solid ${planMeta.color}` }}>
                   {planMeta.label}
                 </span>
+              )}
+              {perfil.cuenta_portal && (
+                perfil.cuenta_portal.is_active ? (
+                  <span
+                    className="ct-days-chip"
+                    style={{
+                      background: 'rgba(16, 185, 129, 0.12)',
+                      color: '#059669',
+                      border: '1px solid rgba(16, 185, 129, 0.3)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontWeight: 500,
+                      fontSize: '11px',
+                    }}
+                    title={`Cuenta activa en portal (Usuario: ${perfil.cuenta_portal.username || 'portal'})`}
+                  >
+                    <span style={{ fontSize: '10px' }}>●</span> Portal activo
+                  </span>
+                ) : perfil.cuenta_portal.ultimo_envio?.estado === 'ENVIADO' ? (
+                  <span
+                    className="ct-days-chip"
+                    style={{
+                      background: 'rgba(59, 130, 246, 0.12)',
+                      color: '#2563eb',
+                      border: '1px solid rgba(59, 130, 246, 0.3)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontWeight: 500,
+                      fontSize: '11px',
+                    }}
+                    title={`Correo de activación emitido exitosamente a ${perfil.cuenta_portal.ultimo_envio.destinatario} el ${new Date(perfil.cuenta_portal.ultimo_envio.fecha).toLocaleString()}`}
+                  >
+                    <span style={{ fontSize: '10px' }}>✓</span> Invitación emitida
+                  </span>
+                ) : perfil.cuenta_portal.ultimo_envio?.estado === 'FALLIDO' ? (
+                  <span
+                    className="ct-days-chip"
+                    style={{
+                      background: 'rgba(239, 68, 68, 0.12)',
+                      color: '#dc2626',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontWeight: 500,
+                      fontSize: '11px',
+                    }}
+                    title={`Fallo al emitir correo: ${perfil.cuenta_portal.ultimo_envio.error || 'Error de conexión'}`}
+                  >
+                    <span style={{ fontSize: '10px' }}>⚠</span> Error envío activación
+                  </span>
+                ) : perfil.cuenta_portal.existe ? (
+                  <span
+                    className="ct-days-chip"
+                    style={{
+                      background: 'rgba(245, 158, 11, 0.12)',
+                      color: '#d97706',
+                      border: '1px solid rgba(245, 158, 11, 0.3)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontWeight: 500,
+                      fontSize: '11px',
+                    }}
+                    title="Cuenta creada, pendiente de emisión de activación"
+                  >
+                    Pendiente activación
+                  </span>
+                ) : (
+                  <span
+                    className="ct-days-chip"
+                    style={{
+                      background: 'var(--neutral-100, #f3f4f6)',
+                      color: 'var(--text-muted, #6b7280)',
+                      border: '1px solid var(--border-color, #e5e7eb)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontWeight: 500,
+                      fontSize: '11px',
+                    }}
+                    title="Sin usuario de portal creado"
+                  >
+                    Sin portal
+                  </span>
+                )
               )}
             </div>
             <h2 className="ct-workspace-name">{nombre}</h2>

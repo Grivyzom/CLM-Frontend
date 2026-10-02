@@ -1,122 +1,231 @@
 import { useState, useEffect } from 'react';
-import { createProducto, updateProducto } from '../../api';
+import { createProducto, updateProducto, getTenants } from '../../api';
+import { useAuth } from '../../contexts/AuthContext';
 import { Icon } from './ui';
-import { PRODUCTO_CATEGORIAS, PRODUCTO_VACIO } from './helpers';
+import {
+  PRODUCTO_CATEGORIAS, PRODUCTO_VACIO,
+  MONEDAS, MONEDA_POR_CODIGO, TASAS_REFERENCIA_FECHA,
+  convertirMonto, redondearAMoneda, formatMoneda, esMonedaConocida,
+} from './helpers';
+import { ICONS } from './icons';
 
 // ─── Options configuration for ChipSelector ──────────────────────────────────
 const TIPO_SOFTWARE_OPTIONS = [
-  { value: 'App Web', label: 'Web App', icon: '🌐' },
-  { value: 'App Android', label: 'Android', icon: '🤖' },
-  { value: 'App iOS', label: 'iOS', icon: '🍎' },
-  { value: 'App Multiplataforma', label: 'Híbrida', icon: '📱' },
-  { value: 'Software Nativo PC', label: 'Windows PC', icon: '💻' },
-  { value: 'Software Nativo Mac', label: 'macOS', icon: '🖥️' },
-  { value: 'Servicio Backend', label: 'Backend / API', icon: '⚙️' },
-  { value: 'Otro', label: 'Otro', icon: '🔧' }
+  { value: 'App Web', label: 'Web App', icon: ICONS.globe },
+  { value: 'App Android', label: 'Android', icon: ICONS.android },
+  { value: 'App iOS', label: 'iOS', icon: ICONS.apple },
+  { value: 'App Multiplataforma', label: 'Híbrida', icon: ICONS.layers },
+  { value: 'Software Nativo PC', label: 'Windows PC', icon: ICONS.monitor },
+  { value: 'Software Nativo Mac', label: 'macOS', icon: ICONS.laptop },
+  { value: 'Servicio Backend', label: 'Backend / API', icon: ICONS.server },
+  { value: 'Otro', label: 'Otro', icon: ICONS.tool }
 ];
 
 const MODALIDAD_ENTREGA_OPTIONS = [
-  { value: 'SaaS (Cloud)', label: 'SaaS (Nube)', icon: '☁️' },
-  { value: 'On-Premise', label: 'On-Premise', icon: '🏢' },
-  { value: 'Híbrido', label: 'Híbrido', icon: '🔄' },
-  { value: 'Instalación Local', label: 'Instalación Local', icon: '💾' }
+  { value: 'SaaS (Cloud)', label: 'SaaS (Nube)', icon: ICONS.cloud },
+  { value: 'On-Premise', label: 'On-Premise', icon: ICONS.building },
+  { value: 'Híbrido', label: 'Híbrido', icon: ICONS.refresh },
+  { value: 'Instalación Local', label: 'Instalación Local', icon: ICONS.hardDrive }
 ];
 
 const NIVEL_SOPORTE_OPTIONS = [
-  { value: 'Sin soporte incluido', label: 'Sin Soporte', icon: '🚫' },
-  { value: 'Básico (Email/Tickets)', label: 'Básico', icon: '✉️' },
-  { value: 'Estándar (Horario Laboral)', label: 'Estándar (9x5)', icon: '🕒' },
-  { value: 'Premium (SLA 24/7)', label: 'Premium (24/7)', icon: '⭐' }
+  { value: 'Sin soporte incluido', label: 'Sin Soporte', icon: ICONS.ban },
+  { value: 'Básico (Email/Tickets)', label: 'Básico', icon: ICONS.mail },
+  { value: 'Estándar (Horario Laboral)', label: 'Estándar (9x5)', icon: ICONS.clock },
+  { value: 'Premium (SLA 24/7)', label: 'Premium (24/7)', icon: ICONS.star }
 ];
 
 const PROPIEDAD_INTELECTUAL_OPTIONS = [
-  { value: 'Propiedad del Desarrollador (Licencia de uso)', label: 'Licencia de Uso', icon: '📝' },
-  { value: 'Propiedad del Cliente (Traspaso total)', label: 'Propiedad del Cliente', icon: '💼' },
-  { value: 'Código Abierto (Open Source)', label: 'Open Source', icon: '🔓' }
+  { value: 'Propiedad del Desarrollador (Licencia de uso)', label: 'Licencia de Uso', icon: ICONS.fileText },
+  { value: 'Propiedad del Cliente (Traspaso total)', label: 'Propiedad del Cliente', icon: ICONS.briefcase },
+  { value: 'Código Abierto (Open Source)', label: 'Open Source', icon: ICONS.unlock }
 ];
 
 const PUBLICACION_TIENDAS_OPTIONS = [
-  { value: 'A cargo del desarrollador', label: 'Por Desarrollador', icon: '🚀' },
-  { value: 'A cargo del cliente', label: 'Por Cliente', icon: '👤' },
-  { value: 'No aplica / Distribución interna', label: 'No aplica', icon: '🔒' }
+  { value: 'A cargo del desarrollador', label: 'Por Desarrollador', icon: ICONS.rocket },
+  { value: 'A cargo del cliente', label: 'Por Cliente', icon: ICONS.user },
+  { value: 'No aplica / Distribución interna', label: 'No aplica', icon: ICONS.lock }
 ];
 
 const MANTENIMIENTO_SO_OPTIONS = [
-  { value: 'Incluye adaptación a nuevas versiones (1 año)', label: 'Incluye (1 año)', icon: '📅' },
-  { value: 'No incluye adaptación', label: 'No Incluye', icon: '❌' },
-  { value: 'Mantenimiento continuo (Contrato SLA)', label: 'SLA Continuo', icon: '🔄' }
+  { value: 'Incluye adaptación a nuevas versiones (1 año)', label: 'Incluye (1 año)', icon: ICONS.calendar },
+  { value: 'No incluye adaptación', label: 'No Incluye', icon: ICONS.xCircle },
+  { value: 'Mantenimiento continuo (Contrato SLA)', label: 'SLA Continuo', icon: ICONS.refresh }
 ];
 
 const ALOJAMIENTO_DATOS_OPTIONS = [
-  { value: 'Nube del Desarrollador (SaaS)', label: 'Nube Desarrollador', icon: '☁️' },
-  { value: 'Nube del Cliente (On-Premise/Cloud propia)', label: 'Nube Cliente', icon: '🏠' },
-  { value: 'Tercero / PaaS', label: 'Tercero / PaaS', icon: '🏢' }
+  { value: 'Nube del Desarrollador (SaaS)', label: 'Nube Desarrollador', icon: ICONS.cloud },
+  { value: 'Nube del Cliente (On-Premise/Cloud propia)', label: 'Nube Cliente', icon: ICONS.home },
+  { value: 'Tercero / PaaS', label: 'Tercero / PaaS', icon: ICONS.building }
 ];
 
 const ACUERDOS_NIVEL_SERVICIO_SLA_OPTIONS = [
-  { value: 'Uptime 99.9% (Garantizado)', label: '99.9% SLA', icon: '💎' },
-  { value: 'Uptime 99% (Estándar)', label: '99% SLA', icon: '📈' },
-  { value: 'Mejor esfuerzo (Sin SLA estricto)', label: 'Mejor Esfuerzo', icon: '⚡' }
+  { value: 'Uptime 99.9% (Garantizado)', label: '99.9% SLA', icon: ICONS.gem },
+  { value: 'Uptime 99% (Estándar)', label: '99% SLA', icon: ICONS.trendingUp },
+  { value: 'Mejor esfuerzo (Sin SLA estricto)', label: 'Mejor Esfuerzo', icon: ICONS.zap }
 ];
 
 const LIMITE_USUARIOS_OPTIONS = [
-  { value: 'Ilimitado', label: 'Ilimitado', icon: '♾️' },
-  { value: 'Por rangos (especificado en contrato)', label: 'Por Rangos', icon: '📊' },
-  { value: 'Concurrencia limitada', label: 'Concurrencia Lim.', icon: '⚠️' }
+  { value: 'Ilimitado', label: 'Ilimitado', icon: ICONS.infinity },
+  { value: 'Por rangos (especificado en contrato)', label: 'Por Rangos', icon: ICONS.barChart },
+  { value: 'Concurrencia limitada', label: 'Concurrencia Lim.', icon: ICONS.alertTriangle }
 ];
 
 const LICENCIAMIENTO_EQUIPOS_OPTIONS = [
-  { value: 'Por dispositivo / MAC Address', label: 'Por Dispositivo', icon: '🔌' },
-  { value: 'Por usuario nominal', label: 'Por Usuario', icon: '👤' },
-  { value: 'Licencia global / Ilimitada', label: 'Global / Ilim.', icon: '🌍' }
+  { value: 'Por dispositivo / MAC Address', label: 'Por Dispositivo', icon: ICONS.plug },
+  { value: 'Por usuario nominal', label: 'Por Usuario', icon: ICONS.user },
+  { value: 'Licencia global / Ilimitada', label: 'Global / Ilim.', icon: ICONS.globe }
 ];
 
 const DISTRIBUCION_OPTIONS = [
-  { value: 'Instalador ejecutable (.exe / .dmg)', label: 'Ejecutable', icon: '📦' },
-  { value: 'Tienda oficial (MS Store / Mac App Store)', label: 'Tienda Oficial', icon: '🏪' },
-  { value: 'Despliegue corporativo (MDM / GPO)', label: 'MDM Corporativo', icon: '🏢' }
+  { value: 'Instalador ejecutable (.exe / .dmg)', label: 'Ejecutable', icon: ICONS.package },
+  { value: 'Tienda oficial (MS Store / Mac App Store)', label: 'Tienda Oficial', icon: ICONS.store },
+  { value: 'Despliegue corporativo (MDM / GPO)', label: 'MDM Corporativo', icon: ICONS.building }
 ];
 
 // Helper components for visual controls
 function ChipSelector({ options, value, onChange, disabled, hasError }) {
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+    <div className="cat-chipset" role="radiogroup">
       {options.map(opt => {
         const isSelected = opt.value === value;
         return (
           <button
             key={opt.value}
             type="button"
+            role="radio"
+            aria-checked={isSelected}
             disabled={disabled}
             onClick={() => onChange(opt.value)}
-            style={{
-              padding: '6px 10px',
-              borderRadius: 20,
-              border: isSelected 
-                ? '1px solid var(--primary)' 
-                : hasError 
-                  ? '1px solid var(--danger)' 
-                  : '1px solid var(--border)',
-              background: isSelected 
-                ? 'var(--primary-soft)' 
-                : hasError 
-                  ? 'rgba(239, 68, 68, 0.04)' 
-                  : 'var(--surface)',
-              color: isSelected ? 'var(--primary)' : 'var(--text-muted)',
-              fontSize: '10.5px',
-              fontWeight: isSelected ? 600 : 500,
-              cursor: disabled ? 'not-allowed' : 'pointer',
-              transition: 'all 0.15s ease',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4
-            }}
+            className={`cat-chip${isSelected ? ' is-selected' : ''}${hasError && !isSelected ? ' has-error' : ''}`}
           >
-            {opt.icon && <span style={{ fontSize: 12 }}>{opt.icon}</span>}
+            {opt.icon && (
+              <Icon
+                d={opt.icon}
+                w={12}
+                color={isSelected ? 'var(--primary)' : 'var(--text-faint)'}
+              />
+            )}
             {opt.label}
           </button>
         );
       })}
+    </div>
+  );
+}
+
+// Selector de divisa: monedas de primera clase + entrada libre para el resto.
+function CurrencySelector({ value, onChange, onCustomChange, disabled, hasError, custom, onCustomToggle }) {
+  return (
+    <div className="cat-currency">
+      <div className={`cat-currency-seg${hasError ? ' has-error' : ''}`} role="radiogroup" aria-label="Moneda">
+        {MONEDAS.map(m => {
+          const isSelected = !custom && m.code === value;
+          return (
+            <button
+              key={m.code}
+              type="button"
+              role="radio"
+              aria-checked={isSelected}
+              disabled={disabled}
+              title={m.label}
+              onClick={() => onChange(m.code)}
+              className={`cat-currency-opt${isSelected ? ' is-selected' : ''}`}
+            >
+              <span className="cat-currency-sym">{m.symbol}</span>
+              {m.code}
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          role="radio"
+          aria-checked={custom}
+          disabled={disabled}
+          title="Otra divisa"
+          onClick={() => onCustomToggle(true)}
+          className={`cat-currency-opt${custom ? ' is-selected' : ''}`}
+        >
+          Otra
+        </button>
+      </div>
+      {custom && (
+        <div className="cat-currency-custom">
+          <input
+            value={value}
+            onChange={e => onCustomChange(e.target.value.toUpperCase().slice(0, 8))}
+            disabled={disabled}
+            placeholder="Ej: MXN, ARS, GBP"
+            aria-label="Código de divisa personalizado"
+          />
+          {!disabled && (
+            <button type="button" onClick={() => onCustomToggle(false)} title="Volver a las monedas frecuentes">
+              <Icon d={ICONS.x} w={12} color="var(--text-muted)" />
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Resumen en vivo del precio: monto formateado en su moneda + equivalencias.
+function PricePreview({ price, currency, unit, isFree }) {
+  if (isFree) {
+    return (
+      <div className="cat-price-preview is-free">
+        <Icon d={ICONS.gift} w={13} color="var(--success-deep)" />
+        <span className="cat-price-preview-main">Gratuito / OpenSource</span>
+        <span className="cat-price-preview-note">Sin monto ni divisa asociada</span>
+      </div>
+    );
+  }
+
+  const n = Number(price);
+  const tieneMonto = price !== '' && price !== null && Number.isFinite(n);
+
+  if (!tieneMonto) {
+    return (
+      <div className="cat-price-preview is-empty">
+        <Icon d={ICONS.info} w={13} color="var(--text-faint)" />
+        <span>Ingresa un monto para ver el precio formateado y sus equivalencias.</span>
+      </div>
+    );
+  }
+
+  const equivalencias = esMonedaConocida(currency)
+    ? MONEDAS.filter(m => m.code !== String(currency).toUpperCase()).map(m => ({
+        code: m.code,
+        texto: formatMoneda(redondearAMoneda(convertirMonto(n, currency, m.code), m.code), m.code),
+      }))
+    : [];
+
+  return (
+    <div className="cat-price-preview">
+      <div className="cat-price-preview-row">
+        <span className="cat-price-preview-main">
+          {formatMoneda(n, currency)}
+          <em>{String(currency || '').toUpperCase()}</em>
+          {unit && <small>{unit}</small>}
+        </span>
+      </div>
+      {equivalencias.length > 0 ? (
+        <div className="cat-price-preview-row cat-price-preview-eq">
+          <Icon d={ICONS.arrowRightLeft} w={11} color="var(--text-faint)" />
+          {equivalencias.map(eq => (
+            <span key={eq.code} className="cat-price-eq-chip">
+              ≈ {eq.texto} <em>{eq.code}</em>
+            </span>
+          ))}
+          <span className="cat-price-preview-note" title={`Tasas de referencia al ${TASAS_REFERENCIA_FECHA}. Solo orientativas: el contrato se emite en la moneda seleccionada.`}>
+            tasas ref. {TASAS_REFERENCIA_FECHA}
+          </span>
+        </div>
+      ) : (
+        <div className="cat-price-preview-row">
+          <span className="cat-price-preview-note">Divisa sin tasa de referencia: no se calculan equivalencias.</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -148,6 +257,14 @@ export default function ProductModal({ onClose, onSaved, mode = 'create', produc
   const isView = mode === 'view';
   const isEdit = mode === 'edit';
   const isCreate = mode === 'create';
+  const { user } = useAuth();
+
+  const [tenants, setTenants] = useState([]);
+  useEffect(() => {
+    if (user?.isSuperadmin && isCreate) {
+      getTenants().then(res => setTenants(res.results || res || [])).catch(() => {});
+    }
+  }, [user?.isSuperadmin, isCreate]);
 
   const [localForm, setLocalForm] = useState(() => {
     if (product) {
@@ -155,7 +272,9 @@ export default function ProductModal({ onClose, onSaved, mode = 'create', produc
         ...PRODUCTO_VACIO,
         ...product,
         tipo_licencia: product.tipo_licencia || 'Comercial',
-        datos_adicionales: product.datos_adicionales || {}
+        datos_adicionales: product.datos_adicionales || {},
+        tenant_id: product.tenant_id || '',
+        tenant_nombre: product.tenant_nombre || '',
       };
     }
     return PRODUCTO_VACIO;
@@ -171,6 +290,16 @@ export default function ProductModal({ onClose, onSaved, mode = 'create', produc
     const predefinedUnits = ['/usuario/mes', '/usuario/año', '/mes', '/año', '/licencia', '/dispositivo', '/proyecto', '/hora', ''];
     return (product?.unit || createForm?.unit || '') && !predefinedUnits.includes(product?.unit || createForm?.unit || '');
   });
+
+  // Divisa: las monedas frecuentes van en el segmentado; cualquier otra abre
+  // la entrada libre.
+  const [showCustomCurrency, setShowCustomCurrency] = useState(() => {
+    const c = String(product?.currency || createForm?.currency || '').toUpperCase();
+    return !!c && c !== 'N/A' && !esMonedaConocida(c);
+  });
+
+  // Última conversión aplicada al cambiar de divisa, para poder deshacerla.
+  const [conversionInfo, setConversionInfo] = useState(null);
 
   useEffect(() => {
     const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -194,8 +323,40 @@ export default function ProductModal({ onClose, onSaved, mode = 'create', produc
 
   const isFreeLicense = form.tipo_licencia === 'Gratuito / OpenSource';
 
+  /**
+   * Cambiar de divisa reexpresa el monto con las tasas de referencia (si ambas
+   * monedas están tarifadas) en lugar de dejar el número anterior, que ya no
+   * significaría lo mismo. La conversión es reversible con «Deshacer».
+   */
+  const handleCurrencyChange = (code) => {
+    const anterior = String(form.currency || '').toUpperCase();
+    const nuevo = String(code || '').toUpperCase();
+    if (anterior === nuevo) return;
+
+    const convertido = form.price === '' ? null : convertirMonto(form.price, anterior, nuevo);
+    if (convertido === null) {
+      setForm(prev => ({ ...prev, currency: nuevo }));
+      setConversionInfo(null);
+      return;
+    }
+
+    const montoRedondeado = redondearAMoneda(convertido, nuevo);
+    setForm(prev => ({ ...prev, currency: nuevo, price: String(montoRedondeado) }));
+    setConversionInfo({ desde: anterior, hacia: nuevo, montoPrevio: form.price });
+  };
+
+  const deshacerConversion = () => {
+    if (!conversionInfo) return;
+    setForm(prev => ({ ...prev, currency: conversionInfo.desde, price: conversionInfo.montoPrevio }));
+    setShowCustomCurrency(!esMonedaConocida(conversionInfo.desde));
+    setConversionInfo(null);
+  };
+
   const getValidationErrors = () => {
     const errs = {};
+    if (user?.isSuperadmin && isCreate && !form.tenant_id) {
+      errs.tenant_id = 'Debes seleccionar una empresa (tenant)';
+    }
     if (!form.name || !form.name.trim()) {
       errs.name = 'El nombre es obligatorio';
     }
@@ -287,6 +448,9 @@ export default function ProductModal({ onClose, onSaved, mode = 'create', produc
         currency: isFreeLicense ? 'N/A' : form.currency,
         unit: isFreeLicense ? 'No aplica' : form.unit,
       };
+      if (user?.isSuperadmin && isCreate && form.tenant_id) {
+        payload.tenant_id = form.tenant_id;
+      }
 
       if (isCreate) {
         const nuevo = await createProducto(payload);
@@ -367,20 +531,53 @@ export default function ProductModal({ onClose, onSaved, mode = 'create', produc
           <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{modalTitle}</p>
           <button
             onClick={onClose}
+            aria-label="Cerrar"
             style={{
               width: 28, height: 28, border: 'none', background: 'none', cursor: 'pointer',
               borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'var(--text-muted)', fontSize: 18
+              color: 'var(--text-muted)'
             }}
             onMouseEnter={e => e.currentTarget.style.background = 'var(--neutral-200)'}
             onMouseLeave={e => e.currentTarget.style.background = 'none'}
-          >×</button>
+          >
+            <Icon d={ICONS.x} w={15} color="currentColor" />
+          </button>
         </div>
 
         {/* Body */}
         <div style={{ display: 'flex', minHeight: 380, maxHeight: '70vh', overflow: 'hidden' }}>
           {/* Left Column: General Data */}
           <div style={{ flex: 1, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto' }}>
+            {/* Tenant — solo Superadmin creando (no pertenece a ningún tenant propio) */}
+            {user?.isSuperadmin && isCreate && (
+              <div>
+                <label style={getLabelStyle('tenant_id')}>Empresa (tenant) *</label>
+                <select
+                  style={getInputStyle('tenant_id')}
+                  value={form.tenant_id || ''}
+                  onChange={e => setField('tenant_id', e.target.value)}
+                  disabled={isView}
+                >
+                  <option value="">-- Seleccionar empresa --</option>
+                  {tenants.map(t => (
+                    <option key={t.id} value={t.id}>{t.razon_social}</option>
+                  ))}
+                </select>
+                {renderFieldError('tenant_id')}
+              </div>
+            )}
+            {/* Tenant — Superadmin visualizando o editando */}
+            {user?.isSuperadmin && !isCreate && (form.tenant_nombre || form.tenant_id) && (
+              <div>
+                <label style={labelStyle}>Empresa (tenant)</label>
+                <input
+                  style={{ ...inputStyle, backgroundColor: 'var(--bg-page)', color: 'var(--text-muted)' }}
+                  value={form.tenant_nombre || `Tenant #${form.tenant_id}`}
+                  disabled={true}
+                />
+              </div>
+            )}
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12 }}>
               <div>
                 <label style={labelStyle}>SKU</label>
@@ -428,9 +625,11 @@ export default function ProductModal({ onClose, onSaved, mode = 'create', produc
                       ...prev,
                       tipo_licencia: type,
                       price: isFree ? '0' : prev.price === '0' ? '' : prev.price,
-                      currency: isFree ? 'N/A' : prev.currency === 'N/A' ? 'USD' : prev.currency,
+                      currency: isFree ? 'N/A' : prev.currency === 'N/A' ? 'CLP' : prev.currency,
                       unit: isFree ? 'No aplica' : prev.unit === 'No aplica' ? '' : prev.unit
                     }));
+                    setConversionInfo(null);
+                    if (isFree) setShowCustomCurrency(false);
                   }}
                   disabled={isView}
                 >
@@ -440,33 +639,64 @@ export default function ProductModal({ onClose, onSaved, mode = 'create', produc
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-              <div>
-                <label style={getLabelStyle('price')}>Monto a cobrar (Precio) *</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  style={{ ...getInputStyle('price'), backgroundColor: (isView || isFreeLicense) ? 'var(--bg-page)' : 'var(--surface)' }}
-                  value={form.price}
-                  onChange={e => setField('price', e.target.value)}
-                  disabled={isView || isFreeLicense}
-                  placeholder={isFreeLicense ? '0' : '1200'}
-                />
-                {renderFieldError('price')}
+            <div className={`cat-price-block${isFreeLicense ? ' is-free' : ''}`}>
+              <div className="cat-price-block-grid">
+                <div>
+                  <label style={getLabelStyle('price')}>Monto a cobrar (Precio) *</label>
+                  <div className={`cat-amount-field${(showValidation && validationErrors.price) ? ' has-error' : ''}${(isView || isFreeLicense) ? ' is-readonly' : ''}`}>
+                    <span className="cat-amount-symbol">
+                      {isFreeLicense ? '—' : (MONEDA_POR_CODIGO[String(form.currency || '').toUpperCase()]?.symbol || String(form.currency || '$').slice(0, 3))}
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      step={MONEDA_POR_CODIGO[String(form.currency || '').toUpperCase()]?.decimals === 0 ? '1' : '0.01'}
+                      inputMode="decimal"
+                      value={form.price}
+                      onChange={e => { setField('price', e.target.value); setConversionInfo(null); }}
+                      disabled={isView || isFreeLicense}
+                      placeholder={isFreeLicense ? '0' : '1200'}
+                    />
+                  </div>
+                  {renderFieldError('price')}
+                </div>
+                <div>
+                  <label style={getLabelStyle('currency')}>Divisa (Moneda) *</label>
+                  <CurrencySelector
+                    value={isFreeLicense ? 'N/A' : (form.currency || '')}
+                    onChange={handleCurrencyChange}
+                    onCustomChange={(code) => { setField('currency', code); setConversionInfo(null); }}
+                    disabled={isView || isFreeLicense}
+                    hasError={showValidation && !!validationErrors.currency}
+                    custom={showCustomCurrency && !isFreeLicense}
+                    onCustomToggle={(on) => {
+                      setShowCustomCurrency(on);
+                      if (!on) handleCurrencyChange('CLP');
+                      else setConversionInfo(null);
+                    }}
+                  />
+                  {renderFieldError('currency')}
+                </div>
               </div>
-              <div>
-                <label style={getLabelStyle('currency')}>Divisa (Moneda) *</label>
-                <input
-                  style={{ ...getInputStyle('currency'), backgroundColor: (isView || isFreeLicense) ? 'var(--bg-page)' : 'var(--surface)' }}
-                  value={form.currency}
-                  onChange={e => setField('currency', e.target.value.toUpperCase())}
-                  disabled={isView || isFreeLicense}
-                  placeholder={isFreeLicense ? 'N/A' : 'Ej: USD, EUR, MXN'}
-                  maxLength={8}
-                />
-                {renderFieldError('currency')}
-              </div>
+
+              {conversionInfo && !isView && (
+                <div className="cat-conversion-note">
+                  <Icon d={ICONS.arrowRightLeft} w={12} color="var(--primary)" />
+                  <span>
+                    Monto reexpresado de <strong>{formatMoneda(conversionInfo.montoPrevio, conversionInfo.desde)} {conversionInfo.desde}</strong> a{' '}
+                    <strong>{formatMoneda(form.price, conversionInfo.hacia)} {conversionInfo.hacia}</strong> con tasas de referencia.
+                  </span>
+                  <button type="button" onClick={deshacerConversion}>
+                    <Icon d={ICONS.rotateLeft} w={11} color="currentColor" />
+                    Deshacer
+                  </button>
+                </div>
+              )}
+
+              <PricePreview price={form.price} currency={form.currency} unit={form.unit} isFree={isFreeLicense} />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
               <div>
                 <label style={getLabelStyle('unit')}>Formato de cobro (Unidad) *</label>
                 {showCustomUnit ? (
@@ -802,9 +1032,9 @@ export default function ProductModal({ onClose, onSaved, mode = 'create', produc
                       <label style={getLabelStyle('tipo_agente')}>Tipo de Agente *</label>
                       <ChipSelector
                         options={[
-                          { value: 'Autónomo', label: 'Autónomo', icon: '🤖' },
-                          { value: 'Semiautónomo', label: 'Semiautónomo', icon: '👥' },
-                          { value: 'Reactivo / Reglas', label: 'Reactivo / Reglas', icon: '⚙️' }
+                          { value: 'Autónomo', label: 'Autónomo', icon: ICONS.bot },
+                          { value: 'Semiautónomo', label: 'Semiautónomo', icon: ICONS.users },
+                          { value: 'Reactivo / Reglas', label: 'Reactivo / Reglas', icon: ICONS.sliders }
                         ]}
                         value={form.datos_adicionales?.tipo_agente || ''}
                         onChange={val => setExtraField('tipo_agente', val)}
@@ -835,11 +1065,11 @@ export default function ProductModal({ onClose, onSaved, mode = 'create', produc
                       <label style={getLabelStyle('entorno_lenguaje')}>Entorno / Lenguaje *</label>
                       <ChipSelector
                         options={[
-                          { value: 'Bash/Shell', label: 'Bash/Shell', icon: '🐚' },
-                          { value: 'Python', label: 'Python', icon: '🐍' },
-                          { value: 'Node.js', label: 'Node.js', icon: '🟢' },
-                          { value: 'PowerShell', label: 'PowerShell', icon: '🟦' },
-                          { value: 'Go/CLI', label: 'Go/CLI', icon: '🐹' }
+                          { value: 'Bash/Shell', label: 'Bash/Shell', icon: ICONS.terminal },
+                          { value: 'Python', label: 'Python', icon: ICONS.code },
+                          { value: 'Node.js', label: 'Node.js', icon: ICONS.hexagon },
+                          { value: 'PowerShell', label: 'PowerShell', icon: ICONS.terminalBox },
+                          { value: 'Go/CLI', label: 'Go/CLI', icon: ICONS.chevronsRight }
                         ]}
                         value={form.datos_adicionales?.entorno_lenguaje || ''}
                         onChange={val => setExtraField('entorno_lenguaje', val)}
@@ -852,10 +1082,10 @@ export default function ProductModal({ onClose, onSaved, mode = 'create', produc
                       <label style={getLabelStyle('proposito')}>Propósito *</label>
                       <ChipSelector
                         options={[
-                          { value: 'Automatización', label: 'Automatización', icon: '⚙️' },
-                          { value: 'Datos/ETL', label: 'Datos / ETL', icon: '📊' },
-                          { value: 'DevOps', label: 'DevOps', icon: '🚀' },
-                          { value: 'Scraping', label: 'Scraping / Extracción', icon: '🕷️' }
+                          { value: 'Automatización', label: 'Automatización', icon: ICONS.settings },
+                          { value: 'Datos/ETL', label: 'Datos / ETL', icon: ICONS.database },
+                          { value: 'DevOps', label: 'DevOps', icon: ICONS.rocket },
+                          { value: 'Scraping', label: 'Scraping / Extracción', icon: ICONS.search }
                         ]}
                         value={form.datos_adicionales?.proposito || ''}
                         onChange={val => setExtraField('proposito', val)}
@@ -875,10 +1105,10 @@ export default function ProductModal({ onClose, onSaved, mode = 'create', produc
                       <label style={getLabelStyle('enfoque')}>Enfoque *</label>
                       <ChipSelector
                         options={[
-                          { value: 'Seguridad/Pentesting', label: 'Seguridad / Pentest', icon: '🛡️' },
-                          { value: 'Calidad de Código/QA', label: 'Calidad de Código / QA', icon: '🔍' },
-                          { value: 'Rendimiento', label: 'Rendimiento', icon: '⚡' },
-                          { value: 'Cumplimiento Normativo', label: 'Cumplimiento Normativo', icon: '⚖️' }
+                          { value: 'Seguridad/Pentesting', label: 'Seguridad / Pentest', icon: ICONS.shield },
+                          { value: 'Calidad de Código/QA', label: 'Calidad de Código / QA', icon: ICONS.search },
+                          { value: 'Rendimiento', label: 'Rendimiento', icon: ICONS.zap },
+                          { value: 'Cumplimiento Normativo', label: 'Cumplimiento Normativo', icon: ICONS.scale }
                         ]}
                         value={form.datos_adicionales?.enfoque || ''}
                         onChange={val => setExtraField('enfoque', val)}
@@ -898,9 +1128,9 @@ export default function ProductModal({ onClose, onSaved, mode = 'create', produc
                       <label style={getLabelStyle('modalidad')}>Modalidad *</label>
                       <ChipSelector
                         options={[
-                          { value: 'Por Hora', label: 'Por Hora', icon: '🕒' },
-                          { value: 'Por Proyecto', label: 'Por Proyecto', icon: '📁' },
-                          { value: 'Asesoría Continua', label: 'Asesoría Continua', icon: '🤝' }
+                          { value: 'Por Hora', label: 'Por Hora', icon: ICONS.clock },
+                          { value: 'Por Proyecto', label: 'Por Proyecto', icon: ICONS.folder },
+                          { value: 'Asesoría Continua', label: 'Asesoría Continua', icon: ICONS.handshake }
                         ]}
                         value={form.datos_adicionales?.modalidad || ''}
                         onChange={val => setExtraField('modalidad', val)}
@@ -934,9 +1164,13 @@ export default function ProductModal({ onClose, onSaved, mode = 'create', produc
                 background: saving ? 'var(--primary-soft)' : 'var(--primary)',
                 color: 'var(--text-on-accent)', fontSize: 12, fontWeight: 600,
                 cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
-                transition: 'background-color 0.15s ease'
+                transition: 'background-color 0.15s ease',
+                display: 'inline-flex', alignItems: 'center', gap: 6
               }}
-            >{saving ? 'Guardando…' : isCreate ? 'Crear producto ✓' : 'Guardar cambios ✓'}</button>
+            >
+              {!saving && <Icon d={['M20 6 9 17l-5-5']} w={13} color="currentColor" />}
+              {saving ? 'Guardando…' : isCreate ? 'Crear producto' : 'Guardar cambios'}
+            </button>
           )}
         </div>
       </div>

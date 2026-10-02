@@ -369,7 +369,37 @@ function DetailPanel({ clientId, onClose }) {
                 </div>
               </div>
 
-
+              {detail.cuenta_portal && (
+                <div>
+                  <p className="cl-detail-section-title">
+                    <Svg paths={['M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2', 'M8.5 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z', 'M20 8v6M23 11h-6']} color="var(--text-faint)" size={12} />
+                    Acceso Portal
+                  </p>
+                  <div className="cl-detail-rows">
+                    <DetailRow label="Usuario">{detail.cuenta_portal.username || 'Sin usuario'}</DetailRow>
+                    <DetailRow label="Estado">
+                      {detail.cuenta_portal.is_active ? (
+                        <span style={{ color: 'var(--success-deep, #059669)', fontWeight: 600 }}>Activa</span>
+                      ) : detail.cuenta_portal.existe ? (
+                        <span style={{ color: 'var(--warning, #d97706)', fontWeight: 600 }}>Pendiente de activación</span>
+                      ) : (
+                        <span style={{ color: 'var(--text-faint)' }}>Sin crear</span>
+                      )}
+                    </DetailRow>
+                    {detail.cuenta_portal.ultimo_envio && (
+                      <DetailRow label="Invitación">
+                        <span style={{
+                          color: detail.cuenta_portal.ultimo_envio.estado === 'ENVIADO' ? 'var(--success-deep, #059669)' : 'var(--danger, #dc2626)',
+                          fontWeight: 600,
+                          fontSize: 11
+                        }}>
+                          {detail.cuenta_portal.ultimo_envio.estado === 'ENVIADO' ? '✓ Emitida' : '⚠ Falló emisión'}
+                        </span>
+                      </DetailRow>
+                    )}
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <>
@@ -407,7 +437,37 @@ function DetailPanel({ clientId, onClose }) {
                 </div>
               </div>
 
-
+              {detail.cuenta_portal && (
+                <div>
+                  <p className="cl-detail-section-title">
+                    <Svg paths={['M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2', 'M8.5 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z', 'M20 8v6M23 11h-6']} color="var(--text-faint)" size={12} />
+                    Acceso Portal
+                  </p>
+                  <div className="cl-detail-rows">
+                    <DetailRow label="Usuario">{detail.cuenta_portal.username || 'Sin usuario'}</DetailRow>
+                    <DetailRow label="Estado">
+                      {detail.cuenta_portal.is_active ? (
+                        <span style={{ color: 'var(--success-deep, #059669)', fontWeight: 600 }}>Activa</span>
+                      ) : detail.cuenta_portal.existe ? (
+                        <span style={{ color: 'var(--warning, #d97706)', fontWeight: 600 }}>Pendiente de activación</span>
+                      ) : (
+                        <span style={{ color: 'var(--text-faint)' }}>Sin crear</span>
+                      )}
+                    </DetailRow>
+                    {detail.cuenta_portal.ultimo_envio && (
+                      <DetailRow label="Invitación">
+                        <span style={{
+                          color: detail.cuenta_portal.ultimo_envio.estado === 'ENVIADO' ? 'var(--success-deep, #059669)' : 'var(--danger, #dc2626)',
+                          fontWeight: 600,
+                          fontSize: 11
+                        }}>
+                          {detail.cuenta_portal.ultimo_envio.estado === 'ENVIADO' ? '✓ Emitida' : '⚠ Falló emisión'}
+                        </span>
+                      </DetailRow>
+                    )}
+                  </div>
+                </div>
+              )}
             </>
           )
         ) : detail && view === 'contratos' ? (

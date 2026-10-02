@@ -174,11 +174,11 @@ export default function Login() {
               {/* Step 1 Form */}
               <form className="login-form step-1" onSubmit={handleLogin} inert={step === 2}>
                 <div className="input-group">
-                  <label htmlFor="username">Usuario</label>
+                  <label htmlFor="username">Usuario o correo electrónico</label>
                   <input
                     type="text"
                     id="username"
-                    placeholder="admin"
+                    placeholder="admin o tu@correo.com"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     autoComplete="username"

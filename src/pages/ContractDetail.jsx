@@ -17,6 +17,9 @@ import { useConfirm } from '../contexts/ConfirmContext';
 import { Icon, EtapaBadge, StatusOpBadge, SoftwareTag, ETAPA_SIGUIENTE } from './contractDetail/shared';
 import TabResumen from './contractDetail/TabResumen';
 import TabDocumento from './contractDetail/TabDocumento';
+import TerminosContratoPanel from './contractDetail/TerminosContratoPanel';
+import { terminosParaEnviar } from './catalogo/TerminosCondicionesEditor';
+import MatrizCasosPruebaEditor, { DEFAULT_CASOS_PRUEBA } from '../components/MatrizCasosPruebaEditor';
 import TabHistorial from './contractDetail/TabHistorial';
 import TabSla from './contractDetail/TabSla';
 import TabAsistenteIA from './contractDetail/TabAsistenteIA';
@@ -118,7 +121,9 @@ export default function ContractDetail() {
         setCamposValores(prev => {
           const next = { ...prev };
           for (const c of (campos || [])) {
-            if (next[c.nombre] === undefined) next[c.nombre] = '';
+            if (next[c.nombre] === undefined) {
+              next[c.nombre] = (c.tipo === 'casos_prueba' || c.nombre === 'casos_prueba') ? DEFAULT_CASOS_PRUEBA : '';
+            }
           }
           return next;
         });
@@ -126,6 +131,17 @@ export default function ContractDetail() {
       .catch(() => setCamposPlantilla([]))
       .finally(() => setCamposLoading(false));
   }, [activeTab, contrato]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Términos de la plantilla que usará el documento (misma resolución que la
+  // generación: último documento o plantilla activa). Una vez por contrato.
+  useEffect(() => {
+    if (activeTab !== 'documento' || !contrato) return;
+    if (terminosCargadosRef.current === contrato.id) return;
+    terminosCargadosRef.current = contrato.id;
+    getCamposPlantilla({ contratoId: contrato.id })
+      .then(({ terminos_condiciones }) => setTerminosPlantilla(terminos_condiciones || null))
+      .catch(() => setTerminosPlantilla(null));
+  }, [activeTab, contrato]);
 
   const [actionError, setActionError] = useState(null);
 
@@ -161,6 +177,12 @@ export default function ContractDetail() {
   const [camposLoading, setCamposLoading] = useState(false);
   const [camposSelects, setCamposSelects] = useState({});
   const [camposPage, setCamposPage] = useState(1);
+
+  // Términos y condiciones: los de la plantilla (default) y el borrador sin
+  // guardar del panel, que también alimenta la vista previa en vivo.
+  const [terminosPlantilla, setTerminosPlantilla] = useState(null);
+  const [terminosDraft, setTerminosDraft] = useState(null);
+  const terminosCargadosRef = useRef(null);
 
   // Inserción de cláusula en un campo cuerpo_clausula_N — única para el panel
   // "Contenido del Documento" y el modal "Completar plantilla": ambos comparten
@@ -244,6 +266,7 @@ export default function ContractDetail() {
   const clausulasEnVivoJson = (showEditText && esBorradorPreview)
     ? JSON.stringify(bloquesAPayload(editBloques, bibliotecaClausulas))
     : null;
+  const terminosEnVivoJson = terminosDraft != null ? JSON.stringify(terminosParaEnviar(terminosDraft)) : null;
 
   useEffect(() => {
     if (!esBorradorPreview || activeTab !== 'documento') return;
@@ -255,7 +278,8 @@ export default function ContractDetail() {
     const timer = setTimeout(async () => {
       try {
         const clausulas = clausulasEnVivoJson != null ? JSON.parse(clausulasEnVivoJson) : undefined;
-        const blob = await previewBorradorPdf(contrato.id, camposValores, clausulas);
+        const terminos = terminosEnVivoJson != null ? JSON.parse(terminosEnVivoJson) : undefined;
+        const blob = await previewBorradorPdf(contrato.id, camposValores, clausulas, terminos);
         if (seq !== borradorSeqRef.current) return;
         borradorPrimeraRef.current = false;
         setBorradorUrl(prev => {
@@ -274,7 +298,7 @@ export default function ContractDetail() {
     return () => clearTimeout(timer);
     // borradorNonce fuerza reintento manual tras un error;
     // clausulas_actualizado_en refresca el preview tras guardar cláusulas.
-  }, [esBorradorPreview, activeTab, camposValores, clausulasEnVivoJson,
+  }, [esBorradorPreview, activeTab, camposValores, clausulasEnVivoJson, terminosEnVivoJson,
       contrato?.id, contrato?.clausulas_actualizado_en, borradorNonce]);
 
   // Libera el object URL vigente al desmontar la vista.
@@ -547,7 +571,12 @@ export default function ContractDetail() {
       if (campos && campos.length > 0) {
         setCamposPlantilla(campos);
         // Si el panel inline ya tiene valores completados, usarlos directamente.
-        const tieneValoresInline = campos.some(c => camposValores[c.nombre]?.trim());
+        const tieneValoresInline = campos.some(c => {
+          const v = camposValores[c.nombre];
+          if (Array.isArray(v)) return v.length > 0;
+          if (typeof v === 'string') return Boolean(v.trim());
+          return Boolean(v);
+        });
         if (tieneValoresInline) {
           await ejecutarGeneracion(forzar, camposValores);
           return;
@@ -556,7 +585,9 @@ export default function ContractDetail() {
         setCamposValores(prev => {
           const next = { ...prev };
           for (const c of campos) {
-            if (next[c.nombre] === undefined) next[c.nombre] = '';
+            if (next[c.nombre] === undefined) {
+              next[c.nombre] = (c.tipo === 'casos_prueba' || c.nombre === 'casos_prueba') ? DEFAULT_CASOS_PRUEBA : '';
+            }
           }
           return next;
         });
@@ -576,7 +607,12 @@ export default function ContractDetail() {
     setBusy(true);
     setActionError(null);
     try {
-      const documento = await generarDocumentoContrato({ contrato_id: contrato.id, forzar, campos });
+      // Términos editados y sin guardar en el panel: se guardan al generar.
+      const documento = await generarDocumentoContrato({
+        contrato_id: contrato.id, forzar, campos,
+        ...(terminosDraft != null ? { terminos_condiciones: terminosParaEnviar(terminosDraft) } : {}),
+      });
+      setTerminosDraft(null);
       setPreviewDocId(null); // la previsualización vuelve a la versión más reciente
       setShowCamposModal(false);
       await load();
@@ -591,6 +627,22 @@ export default function ContractDetail() {
         if (ok) return ejecutarGeneracion(true, campos);
       }
       setActionError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // `valor` null = volver a heredar los términos de la plantilla. El PATCH
+  // devuelve el detalle completo: se reemplaza sin recargar la vista.
+  async function guardarTerminos(valor) {
+    setBusy(true);
+    setActionError(null);
+    try {
+      const actualizado = await updateContrato(contrato.id, { terminos_condiciones: valor });
+      setContrato(actualizado);
+      setTerminosDraft(null);
+    } catch (err) {
+      setActionError(err.message || 'Error al guardar los términos.');
     } finally {
       setBusy(false);
     }
@@ -1027,6 +1079,17 @@ export default function ContractDetail() {
             insertarClausulaEnCampo={insertarClausulaEnCampo}
             abrirEditorClausulas={abrirEditorClausulas}
             handleGenerarDocumento={handleGenerarDocumento}
+            terminosPanel={clausulasEditables && (
+              <TerminosContratoPanel
+                contrato={contrato}
+                terminosPlantilla={terminosPlantilla}
+                draft={terminosDraft}
+                setDraft={setTerminosDraft}
+                busy={busy}
+                onGuardar={guardarTerminos}
+                onRestablecer={() => guardarTerminos(null)}
+              />
+            )}
           />
         )}
 
@@ -1091,41 +1154,59 @@ export default function ContractDetail() {
       {showCamposModal && (
         <div className="ct-modal-backdrop ct-campos-modal-backdrop"
           onClick={(e) => { if (e.target === e.currentTarget && !busy) setShowCamposModal(false); }}>
-          <form onSubmit={handleSubmitCampos} className="ct-modal ct-campos-modal" role="dialog" aria-modal="true" aria-label="Completar plantilla">
+          <form
+            onSubmit={handleSubmitCampos}
+            className={`ct-modal ct-campos-modal ${camposPlantilla.some(c => c.tipo === 'casos_prueba' || c.nombre === 'casos_prueba') ? 'ct-campos-modal-wide' : ''}`}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Completar plantilla"
+          >
             <div>
               <h3>Completar plantilla</h3>
               <p className="ct-campos-modal-sub">Estos campos son propios de la plantilla del documento. Déjalos en blanco para conservar el texto de ejemplo.</p>
             </div>
-            {camposPlantilla.map(c => (
-              <CampoClausulaHtml
-                key={c.nombre}
-                campo={c}
-                biblioteca={bibliotecaClausulas}
-                seleccionId={camposSelects[c.nombre]}
-                idsUsados={idsUsadosEnDocumento}
-                onInsert={(clausula) => insertarClausulaEnCampo(c.nombre, clausula)}
-              >
-                {c.multilinea ? (
-                  <textarea
-                    className="ct-campo-input ct-campo-textarea"
-                    value={camposValores[c.nombre] ?? ''}
-                    onChange={e => {
-                      const valor = e.target.value;
-                      setCamposValores(prev => ({ ...prev, [c.nombre]: valor }));
-                      limpiarSeleccionCampo(c.nombre);
-                    }}
-                    placeholder={c.default}
-                  />
-                ) : (
-                  <input
-                    className="ct-campo-input"
-                    value={camposValores[c.nombre] ?? ''}
-                    onChange={e => setCamposValores(prev => ({ ...prev, [c.nombre]: e.target.value }))}
-                    placeholder={c.default}
-                  />
-                )}
-              </CampoClausulaHtml>
-            ))}
+            {camposPlantilla.map(c => {
+              if (c.tipo === 'casos_prueba' || c.nombre === 'casos_prueba') {
+                return (
+                  <div key={c.nombre} style={{ width: '100%' }}>
+                    <MatrizCasosPruebaEditor
+                      value={camposValores[c.nombre]}
+                      onChange={(nuevos) => setCamposValores(prev => ({ ...prev, [c.nombre]: nuevos }))}
+                    />
+                  </div>
+                );
+              }
+              return (
+                <CampoClausulaHtml
+                  key={c.nombre}
+                  campo={c}
+                  biblioteca={bibliotecaClausulas}
+                  seleccionId={camposSelects[c.nombre]}
+                  idsUsados={idsUsadosEnDocumento}
+                  onInsert={(clausula) => insertarClausulaEnCampo(c.nombre, clausula)}
+                >
+                  {c.multilinea ? (
+                    <textarea
+                      className="ct-campo-input ct-campo-textarea"
+                      value={camposValores[c.nombre] ?? ''}
+                      onChange={e => {
+                        const valor = e.target.value;
+                        setCamposValores(prev => ({ ...prev, [c.nombre]: valor }));
+                        limpiarSeleccionCampo(c.nombre);
+                      }}
+                      placeholder={c.default}
+                    />
+                  ) : (
+                    <input
+                      className="ct-campo-input"
+                      value={camposValores[c.nombre] ?? ''}
+                      onChange={e => setCamposValores(prev => ({ ...prev, [c.nombre]: e.target.value }))}
+                      placeholder={c.default}
+                    />
+                  )}
+                </CampoClausulaHtml>
+              );
+            })}
             {actionError && (
               <p className="ct-campos-modal-error" role="alert">{actionError}</p>
             )}

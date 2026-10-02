@@ -10,6 +10,14 @@ export default function PreviewModal({ plantilla, onClose, onUse }) {
   const [focusMode, setFocusMode] = useState(false);
 
   useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, []);
+
+  useEffect(() => {
     const handleKey = (e) => {
       if (e.key !== 'Escape') return;
       // Esc sale primero del enfoque; un segundo Esc cierra el modal.
@@ -59,11 +67,13 @@ export default function PreviewModal({ plantilla, onClose, onUse }) {
   return (
     <div
       onClick={onClose}
+      onWheel={e => e.stopPropagation()}
       style={{
         position: 'fixed', inset: 0, zIndex: 1100,
         background: 'rgba(10,10,10,0.55)', backdropFilter: 'blur(4px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: focusMode ? 0 : 24
+        padding: focusMode ? 0 : 24,
+        overscrollBehavior: 'contain'
       }}
     >
       <div

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  html { -webkit-font-smoothing: antialiased; }
+  @media print { html, body { background: #fff; } }
+</style>
+</helmet>
+<x-import component-from-global-scope="doc-page" from="./doc-page.js" size="letter" margin="1in" hint-size="850px,1100px">
+  <div slot="footer" style="border-top:1px solid #d8d2c4;padding-top:8px;font-family:Calibri, 'Segoe UI', Arial, sans-serif;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+    <div style="font-size:8pt;color:#8a8a8a;line-height:1.4;max-width:75%;">
+      Documento Confidencial &mdash; Propiedad exclusiva de Grivyzom S.P.A. Prohibida su reproducción total o parcial sin autorización escrita.
+    </div>
+    <div style="font-size:8.5pt;color:#5b5b5b;white-space:nowrap;">Página 1 de 2</div>
+  </div>
+
+  <div style="font-family:Calibri, 'Segoe UI', Arial, sans-serif;color:#1a1a1a;font-size:11pt;line-height:1.15;">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:24px;border-bottom:2px solid #b8974e;padding-bottom:10px;margin-bottom:20px;">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <img src="assets/logo-grivyzom.png" alt="Logo Grivyzom S.P.A" style="height:52px;width:auto;object-fit:contain;" />
+        <div>
+          <div style="font-size:16px;font-weight:700;color:#0a1f3d;letter-spacing:0.5px;">GRIVYZOM S.P.A</div>
+          <div style="font-size:9.5px;color:#5b5b5b;line-height:1.4;">Pasaje La Paz 1, #63 &nbsp;·&nbsp; Tel. 926904593 &nbsp;·&nbsp; ff.fuentes@grivyzom.com</div>
+        </div>
+      </div>
+      <div style="text-align:right;font-size:9.5px;color:#0a1f3d;font-weight:600;letter-spacing:0.3px;white-space:nowrap;">
+        REF: {{ referencia }}
+      </div>
+    </div>
+
+    <div style="text-align:center;margin:8px 0 28px;">
+      <div style="font-size:18pt;font-weight:700;color:#0a1f3d;letter-spacing:1px;text-transform:uppercase;">REPORTE DE ESTATUS DE SOFTWARE</div>
+      <div style="font-size:11pt;color:#5b5b5b;margin-top:4px;">Plan de Transición a Producción y Marcha Blanca</div>
+      <div style="width:60px;height:3px;background:#b8974e;margin:10px auto 0;"></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:140px 1fr;row-gap:8px;column-gap:12px;font-size:10.5pt;margin-bottom:24px;">
+      <div style="font-weight:700;color:#0a1f3d;border-bottom:1px solid #f2efe6;padding-bottom:4px;">PROYECTO:</div><div style="border-bottom:1px solid #f2efe6;padding-bottom:4px;">{{ nombre_proyecto_sistema|default:"[Nombre del Proyecto / Sistema (Ej. Etapa X)]" }}</div>
+      <div style="font-weight:700;color:#0a1f3d;border-bottom:1px solid #f2efe6;padding-bottom:4px;">CLIENTE:</div><div style="border-bottom:1px solid #f2efe6;padding-bottom:4px;">{{nombre_empresa_cliente}}</div>
+      <div style="font-weight:700;color:#0a1f3d;border-bottom:1px solid #f2efe6;padding-bottom:4px;">FECHA DE EMISIÓN:</div><div style="border-bottom:1px solid #f2efe6;padding-bottom:4px;">{{fecha_emision}}</div>
+      <div style="font-weight:700;color:#0a1f3d;border-bottom:1px solid #f2efe6;padding-bottom:4px;">ELABORADO POR:</div><div style="border-bottom:1px solid #f2efe6;padding-bottom:4px;">{{nombre_desarrollador}} &ndash; Consultor TI Independiente</div>
+    </div>
+
+    <div style="height:1px;background:#d8d2c4;margin-bottom:24px;"></div>
+
+    <div style="font-size:12.5pt;font-weight:700;color:#0a1f3d;margin:0 0 10px 0;border-bottom:1px solid #b8974e;padding-bottom:4px;">1. RESUMEN EJECUTIVO</div>
+    <p style="text-align:justify;margin:0 0 16px;">[Párrafo introductorio: Describa brevemente el objetivo del documento, la fase actual del desarrollo (ej. Etapa 1) y un resumen de lo que el cliente encontrará en el reporte: módulos operativos a nivel de código, brechas para paso a producción, requerimientos de infraestructura y la propuesta comercial.]</p>
+
+    <div style="font-size:12.5pt;font-weight:700;color:#0a1f3d;margin:24px 0 10px 0;border-bottom:1px solid #b8974e;padding-bottom:4px;">2. ESTATUS ACTUAL DE DESARROLLO (Módulos 100% Funcionales)</div>
+    <p style="text-align:justify;margin:0 0 12px;">[Describa el estado general de la arquitectura y la lógica de negocio que ya ha sido completada según los requerimientos iniciales.]</p>
+    <ul style="margin:0 0 16px 24px;padding:0;">
+      <li style="margin-bottom:6px;text-align:justify;"><strong>{{ nombre_modulo_funcionalidad_1|default:"[Nombre del Módulo o Funcionalidad 1]" }}:</strong> {{ breve_descripcion_lo_que_ya_esta|default:"[Breve descripción de lo que ya está operativo]" }}.</li>
+      <li style="margin-bottom:6px;text-align:justify;"><strong>{{ nombre_modulo_funcionalidad_2|default:"[Nombre del Módulo o Funcionalidad 2]" }}:</strong> {{ breve_descripcion_lo_que_ya_esta_2|default:"[Breve descripción de lo que ya está operativo]" }}.</li>
+      <li style="margin-bottom:6px;text-align:justify;"><strong>{{ nombre_modulo_funcionalidad_3|default:"[Nombre del Módulo o Funcionalidad 3]" }}:</strong> {{ breve_descripcion_lo_que_ya_esta_3|default:"[Breve descripción de lo que ya está operativo]" }}.</li>
+      <li style="margin-bottom:6px;text-align:justify;"><strong>{{ arquitectura_base_datos|default:"[Arquitectura / Base de Datos]" }}:</strong> {{ descripcion_estado_backend_api_entorno|default:"[Descripción del estado del backend, API y/o entorno de despliegue]" }}.</li>
+    </ul>
+
+    <div style="break-before:page;"></div>
+
+    <div style="font-size:12.5pt;font-weight:700;color:#0a1f3d;margin:24px 0 10px 0;border-bottom:1px solid #b8974e;padding-bottom:4px;">3. BRECHA DE MARCHA BLANCA (Pendientes para Paso a Producción)</div>
+    <p style="text-align:justify;margin:0 0 12px;">Para que el software sea utilizado en el día a día por los operarios de <strong>{{nombre_empresa_cliente}}</strong>, es necesario ejecutar las siguientes tareas finales enfocadas en usabilidad y adaptación al entorno real:</p>
+    <ul style="margin:0 0 16px 24px;padding:0;">
+      <li style="margin-bottom:6px;text-align:justify;"><strong>{{ nombre_tarea_ajuste_1|default:"[Nombre de Tarea/Ajuste 1]" }}:</strong> {{ descripcion_accion_ej_validacion_flujos|default:"[Descripción de la acción, ej. Validación de flujos en terreno o área productiva]" }}.</li>
+      <li style="margin-bottom:6px;text-align:justify;"><strong>{{ nombre_tarea_ajuste_2|default:"[Nombre de Tarea/Ajuste 2]" }}:</strong> [Descripción de la acción, ej. Optimización de interfaces para pantallas específicas].</li>
+      <li style="margin-bottom:6px;text-align:justify;"><strong>{{ nombre_tarea_ajuste_3|default:"[Nombre de Tarea/Ajuste 3]" }}:</strong> {{ descripcion_accion_ej_ajustes_reportes|default:"[Descripción de la acción, ej. Ajustes de reportes o filtros para administración]" }}.</li>
+      <li style="margin-bottom:6px;text-align:justify;"><strong>{{ despliegue_tecnico|default:"[Despliegue Técnico]" }}:</strong> [Descripción de la acción final, ej. Conexión de ejecutables o contenedores en los servidores].</li>
+    </ul>
+
+    <div style="font-size:12.5pt;font-weight:700;color:#0a1f3d;margin:24px 0 10px 0;border-bottom:1px solid #b8974e;padding-bottom:4px;">4. REQUERIMIENTOS DE INFRAESTRUCTURA (A cargo del Cliente)</div>
+    <p style="text-align:justify;margin:0 0 12px;">Para garantizar la viabilidad de la Marcha Blanca y operación continua, el cliente deberá asegurar los siguientes puntos antes del despliegue:</p>
+    <ul style="margin:0 0 16px 24px;padding:0;">
+      <li style="margin-bottom:6px;text-align:justify;"><strong>{{ requerimiento_1_hardware|default:"[Requerimiento 1 - Hardware]" }}:</strong> {{ especificacion_tecnica_ej_adquisicion|default:"[Especificación técnica, ej. Adquisición de tablets, resolución de pantallas]" }}.</li>
+      <li style="margin-bottom:6px;text-align:justify;"><strong>{{ requerimiento_2_conectividad|default:"[Requerimiento 2 - Conectividad]" }}:</strong> {{ especificacion_red_ej_cobertura_wi_fi|default:"[Especificación de red, ej. Cobertura Wi-Fi, puertos abiertos, VPN]" }}.</li>
+      <li style="margin-bottom:6px;text-align:justify;"><strong>{{ requerimiento_3_seguridad_fisica|default:"[Requerimiento 3 - Seguridad Física]" }}:</strong> {{ medidas_entorno_ej_carcasas_industriales|default:"[Medidas en el entorno, ej. Carcasas industriales, UPS]" }}.</li>
+    </ul>
+
+    <div style="font-size:12.5pt;font-weight:700;color:#0a1f3d;margin:24px 0 10px 0;border-bottom:1px solid #b8974e;padding-bottom:4px;">5. PROPUESTA COMERCIAL Y METODOLOGÍA DE TRABAJO</div>
+    <p style="text-align:justify;margin:0 0 16px;">[Párrafo introductorio: Describa cómo se propone dividir los servicios de cierre y post-venta para finalizar el proceso de manera estructurada.]</p>
+
+    <div style="background:#fcfbf9;border:1px solid #d8d2c4;border-left:4px solid #0a1f3d;padding:14px 18px;margin-bottom:16px;">
+      <div style="font-weight:700;font-size:11pt;color:#0a1f3d;margin-bottom:8px;">A. Paquete Cerrado: Cierre {{ etapa_x|default:"[Etapa X]" }} y Marcha Blanca</div>
+      <div style="margin-bottom:6px;font-size:10.5pt;text-align:justify;"><strong>Descripción:</strong> [Descripción de las tareas incluidas: ejecución de brechas, despliegue en servidor, pruebas en terreno y capacitación].</div>
+      <div style="margin-bottom:6px;font-size:10.5pt;text-align:justify;"><strong>Valor del Paquete:</strong> <span style="font-weight:700;color:#0a1f3d;">{{valor_proyecto_cierre}} {{ moneda_clp|default:"[Moneda / CLP]" }}</span> <em>(Pago único contra entrega y firma de recepción conforme).</em></div>
+    </div>
+
+    <div style="background:#fcfbf9;border:1px solid #d8d2c4;border-left:4px solid #0a1f3d;padding:14px 18px;margin-bottom:16px;">
+      <div style="font-weight:700;font-size:11pt;color:#0a1f3d;margin-bottom:8px;">B. Servicio de Consultoría Continua y Soporte (Post-Marcha Blanca)</div>
+      <div style="margin-bottom:6px;font-size:10.5pt;text-align:justify;"><strong>Descripción:</strong> [Descripción de los servicios de soporte: incidencias, control de gestión, caídas de servidor y nuevas funcionalidades].</div>
+      <div style="margin-bottom:6px;font-size:10.5pt;text-align:justify;"><strong>Modalidad:</strong> Cobro por horas efectivas trabajadas, consolidadas a fin de mes.</div>
+      <div style="margin-bottom:6px;font-size:10.5pt;text-align:justify;"><strong>Tarifa Hora Consultoría Estándar:</strong> <span style="font-weight:700;color:#0a1f3d;">{{valor_hora_normal}} {{ moneda_clp_2|default:"[Moneda / CLP]" }}</span> <em>(Horario hábil).</em></div>
+      <div style="margin-bottom:6px;font-size:10.5pt;text-align:justify;"><strong>Tarifa Hora Soporte Emergencia:</strong> <span style="font-weight:700;color:#0a1f3d;">{{valor_hora_emergencia}} {{ moneda_clp_3|default:"[Moneda / CLP]" }}</span> <em>(Horario inhábil/crítico).</em></div>
+      <div style="margin-bottom:6px;font-size:10.5pt;text-align:justify;"><strong>Condición:</strong> Fraccionamiento mínimo de [X] hora(s) por requerimiento o reunión técnica.</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:60px;margin-top:40px;">
+      <div style="border-top:1px solid #1a1a1a;padding-top:6px;font-size:10.5pt;">
+        <div style="font-weight:700;">Aprobado por Cliente</div>
+        <div style="color:#5b5b5b;">Representante {{nombre_empresa_cliente}}</div>
+      </div>
+      <div style="border-top:1px solid #1a1a1a;padding-top:6px;font-size:10.5pt;">
+        <div style="font-weight:700;">Entregado por</div>
+        <div style="color:#5b5b5b;">{{nombre_desarrollador}}</div>
+        <div style="color:#5b5b5b;">Consultor TI / Grivyzom S.P.A.</div>
+      </div>
+    </div>
+
+  </div>
+</x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:900,&quot;height&quot;:1150}}"></script>
+</body>
+</html>

@@ -15,15 +15,25 @@ export default function PlantillaVersionsModal({
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose, escapePaused]);
 
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, []);
+
   if (!familia) return null;
 
   return (
     <div
       onClick={onClose}
+      onWheel={e => e.stopPropagation()}
       style={{
         position: 'fixed', inset: 0, zIndex: 1090,
         background: 'rgba(10,10,10,0.55)', backdropFilter: 'blur(4px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+        overscrollBehavior: 'contain'
       }}
     >
       <div

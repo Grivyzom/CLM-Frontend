@@ -1245,7 +1245,7 @@ export default function ProductoWorkspace() {
   const editIsFreeLicense = editForm?.tipo_licencia === 'Gratuito / OpenSource';
 
   // Helper: format money using existing formatPrecio
-  const precioDisplay = isFreeLicense ? 'Gratuito' : formatPrecio(producto.price);
+  const precioDisplay = isFreeLicense ? 'Gratuito' : formatPrecio(producto.price, producto.currency);
 
   return (
     <div className="pw-workspace">
@@ -1396,7 +1396,7 @@ export default function ProductoWorkspace() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <div className="pw-price-block">
                     <span className="pw-price-currency">{producto.currency}</span>
-                    <span className="pw-price-main">{formatPrecio(producto.price)}</span>
+                    <span className="pw-price-main">{formatPrecio(producto.price, producto.currency)}</span>
                   </div>
                   <span className="pw-price-unit">{producto.unit || 'Sin unidad definida'}</span>
                 </div>

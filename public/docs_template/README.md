@@ -42,6 +42,7 @@ seleccionado más las globales.
 - El texto "Página 1 de 1" se reemplaza por numeración real (Página N de M).
 - Fuente `Calibri` → `Carlito` (sustituto métrico idéntico; el servidor
   necesita el paquete `fonts-crosextra-carlito`).
+- **Convierte en variables los huecos de llenado a mano** (ver más abajo).
 
 ## Variables
 
@@ -53,8 +54,53 @@ Puedes usar sintaxis de template Django dentro del HTML:
 <div>{{ monto|default:"____________" }}</div>
 ```
 
-Los placeholders entre corchetes (`[Nombre del destinatario]`) quedan tal cual
-en el PDF — sirven para documentos que se completan a mano.
+Todo `{{ nombre }}` que no sea una variable del contrato se convierte en un
+campo del formulario que el usuario llena antes de generar el documento.
+
+### Auto-variabilización
+
+Una plantilla diseñada para **imprimir y llenar a mano** produce un PDF que el
+CLM no puede rellenar. Para evitarlo, el motor detecta los huecos de llenado y
+los convierte en variables por su cuenta:
+
+| Hueco en el diseño | Se convierte en |
+|---|---|
+| `<span style="border-bottom">&nbsp;</span>` | campo de una línea |
+| `<div style="border; min-height:70px"></div>` | campo multilínea (textarea) |
+| `<td>&nbsp;</td>` en una tabla | campo, nombrado por su fila y columna |
+| `[Nombre del Proyecto]` | campo, con el corchete como valor por defecto |
+
+El nombre sale de la etiqueta vecina en el documento (el `<th>` de la fila, el
+texto anterior, o el encabezado de la sección). Si esa etiqueta corresponde a un
+dato que el CLM ya conoce — Cliente, Fecha, Proyecto, RUT, Responsable — el
+campo se engancha al contrato y **sale relleno solo**, sin pedírselo al usuario.
+
+Los corchetes siguen imprimiéndose igual que antes cuando nadie llena el campo:
+pasan a ser el valor por defecto de la variable, no desaparecen.
+
+**Nada de esto toca los archivos**: la conversión ocurre en memoria al leer la
+plantilla. Un `.dc.html` se puede re-exportar desde Claude Design y reemplazar
+sin perder trabajo.
+
+### Cuando NO quieras que el motor intervenga
+
+```html
+<x-import size="letter" data-no-autovar>   <!-- desactiva el archivo entero -->
+<div data-fijo>…</div>                     <!-- protege un hueco concreto -->
+```
+
+Úsalo para lo que debe imprimirse en blanco de verdad: firmas manuscritas,
+timbres, o un corchete que sea texto literal del documento.
+
+### Comprobar una plantilla nueva
+
+```bash
+python manage.py auditar_plantillas_html --detalle
+```
+
+Lista, por plantilla, qué variables se rellenan solas y cuáles se le piden al
+usuario. Termina con error si alguna no expone ninguna variable — el caso que
+hay que evitar. El catálogo muestra el mismo conteo al elegir el archivo.
 
 ## Assets (logos, imágenes)
 

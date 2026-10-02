@@ -17,10 +17,13 @@ const ROLE_LABELS = {
 // El gating visual (módulos por plan, acciones por rol) sale de acá; el
 // backend revalida todo en cada petición — esto es solo UX.
 export function buildUserFromApi(data) {
-  // rawRole: rol de tenant (TENANT_ADMIN/OPERADOR/AUDITOR) o de plataforma
+  // rawRole: rol de tenant (TENANT_ADMIN/OPERADOR/AUDITOR/CLIENTE) o de plataforma
   // (MODERADOR/TRABAJADOR) — son planos distintos pero nunca coexisten
   // (platform_role solo viene poblado cuando tenant es null).
   const rawRole = data.role || data.platform_role || null;
+  const isCliente = !!data.is_cliente || rawRole === 'CLIENTE';
+  const isAdmin = !!data.is_admin || !!data.is_superadmin || rawRole === 'TENANT_ADMIN' || rawRole === 'MODERADOR';
+
   return {
     id: data.id,
     name: data.username,
@@ -29,7 +32,12 @@ export function buildUserFromApi(data) {
     role: data.is_superadmin ? 'Superadmin' : (ROLE_LABELS[rawRole] || 'Usuario'),
     rawRole,
     isSuperadmin: !!data.is_superadmin,
+    isCliente,
+    isAdmin,
+    categoriaRol: data.categoria_rol || (isCliente ? 'CLIENTE' : (isAdmin ? 'ADMIN' : 'STAFF')),
+    tipoRol: data.tipo_rol || rawRole,
     clienteId: data.cliente_id || null,
+    cliente: data.cliente || null,
     tenant: data.tenant || null,
     plan: data.plan || null,
     features: data.plan?.features || [],
@@ -128,11 +136,12 @@ export function AuthProvider({ children }) {
     (!isPlatformStaff && user.rawRole !== 'AUDITOR' && user.rawRole !== 'CLIENTE' && user.tenant?.estado !== 'SUSPENDIDO')
   );
 
-  const isTenantAdmin = !!user && (user.isSuperadmin || user.rawRole === 'TENANT_ADMIN');
+  const isTenantAdmin = !!user && (user.isSuperadmin || user.isAdmin || user.rawRole === 'TENANT_ADMIN');
+  const isAdmin = !!user && (user.isAdmin || user.isSuperadmin || isModerador || user.rawRole === 'TENANT_ADMIN');
 
   return (
     <AuthContext.Provider value={{
-      user, checking, login, logout, hasFeature, canWrite, isTenantAdmin,
+      user, checking, login, logout, hasFeature, canWrite, isTenantAdmin, isAdmin,
       isModerador, isTrabajador, isPlatformStaff, canAccessClientes, isClienteExterno,
     }}>
       {children}

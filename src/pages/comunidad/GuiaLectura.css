@@ -1,0 +1,70 @@
+.gl-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--bg-page);
+}
+
+.gl-topbar {
+  padding: 20px 32px;
+  background-color: var(--bg-topbar);
+  border-bottom: 1px solid var(--border);
+}
+
+.gl-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.gl-back:hover { color: var(--text-primary); }
+
+.gl-content {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 40px 24px;
+}
+
+.gl-status {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.gl-error { color: var(--danger); }
+
+.gl-article {
+  max-width: 720px;
+  width: 100%;
+}
+
+.gl-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+}
+
+.gl-subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 0 0 28px 0;
+}
+
+.gl-body {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-primary);
+}
+
+.gl-body p { margin: 0 0 14px 0; }
+.gl-body h2 { font-size: 19px; font-weight: 700; margin: 24px 0 12px; }
+.gl-body h3 { font-size: 16px; font-weight: 700; margin: 20px 0 10px; }
+.gl-body ul, .gl-body ol { margin: 0 0 14px 0; padding-left: 22px; }
+.gl-body a { color: var(--primary); }
+.gl-body img { max-width: 100%; border-radius: 8px; }
+.gl-body code { background: var(--bg-faint); padding: 2px 5px; border-radius: 4px; font-size: 13px; }

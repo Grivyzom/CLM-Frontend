@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { getClausulas, createPlantilla, updatePlantilla, getAvailableHtmlTemplates } from '../../api';
+import { getClausulas, createPlantilla, updatePlantilla, getAvailableHtmlTemplates, getTenants } from '../../api';
 import { Icon } from './ui';
 import { TEMPLATE_VACIO } from './helpers';
+import TerminosCondicionesEditor, { terminosParaEnviar } from './TerminosCondicionesEditor';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Palabras que no aportan a la sigla de la familia (ej: "Contrato de Prestación
 // de Servicios" → CPS, no CDPDS).
@@ -28,6 +30,16 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
   const [error, setError] = useState(null);
   const isEdit = !!editingTemplate;
   const { confirm } = useConfirm();
+  const { user } = useAuth();
+
+  // El Superadmin no pertenece a ningún tenant: debe indicar a cuál se asigna
+  // la plantilla nueva (el backend lo exige explícito, ver resolve_tenant_for_write).
+  const [tenants, setTenants] = useState([]);
+  useEffect(() => {
+    if (user?.isSuperadmin && !isEdit) {
+      getTenants().then(res => setTenants(res.results || res)).catch(() => {});
+    }
+  }, [user?.isSuperadmin, isEdit]);
 
   // Familias (codigo_prefijo) ya existentes en el catálogo, para sugerir al
   // escribir y para avisar cuántas versiones tiene ya la familia elegida.
@@ -61,9 +73,24 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose, saving]);
 
+  // Bloquear el scroll del body del CLM mientras el modal esté abierto
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, []);
+
   const [searchSoft, setSearchSoft] = useState('');
   const [showSoft, setShowSoft] = useState(false);
-  const filteredSoft = (softwareList || []).filter(s => (s.name || s.nombre || '').toLowerCase().includes(searchSoft.toLowerCase()));
+  const currentTenantId = user?.isSuperadmin ? createForm.tenant_id : (user?.tenant_id || user?.tenant?.id);
+  const filteredSoft = (softwareList || []).filter(s => {
+    if (currentTenantId && s.tenant_id && String(s.tenant_id) !== String(currentTenantId)) {
+      return false;
+    }
+    return (s.name || s.nombre || '').toLowerCase().includes(searchSoft.toLowerCase());
+  });
 
   const [clausulasOpciones, setClausulasOpciones] = useState([]);
   const [htmlTemplatesOpciones, setHtmlTemplatesOpciones] = useState([]);
@@ -71,19 +98,14 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
     getClausulas().then(setClausulasOpciones).catch(() => {});
   }, []);
 
-  // Plantillas HTML filtradas por el tipo de contrato elegido (nomenclatura
-  // TIPO__Nombre.dc.html en docs_template/); las globales aparecen siempre.
+  // Carga todas las plantillas HTML disponibles de docs_template/
   useEffect(() => {
-    getAvailableHtmlTemplates(createForm.tipo_contrato)
+    getAvailableHtmlTemplates()
       .then(opciones => {
-        setHtmlTemplatesOpciones(opciones);
-        // Si la ruta elegida ya no es válida para el nuevo tipo, se descarta.
-        if (createForm.ruta_plantilla_html && !opciones.some(o => o.ruta === createForm.ruta_plantilla_html)) {
-          setCreateForm(prev => ({ ...prev, ruta_plantilla_html: '' }));
-        }
+        setHtmlTemplatesOpciones(opciones || []);
       })
       .catch(() => setHtmlTemplatesOpciones([]));
-  }, [createForm.tipo_contrato]);
+  }, []);
 
   const setField = (field, value) => setCreateForm(prev => ({ ...prev, [field]: value }));
 
@@ -102,15 +124,32 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
     if (version !== createForm.version_codigo) setField('version_codigo', version);
   }, [createForm.codigo_prefijo, familias, autoOverride.version]);
 
-  // En modo HTML el nombre de la plantilla se toma del archivo HTML elegido.
+  // Plantilla HTML elegida y cuántas variables expone: el backend las cuenta
+  // ya con la auto-variabilización aplicada, así que este número es el que el
+  // usuario verá realmente en el formulario al generar el documento.
+  const plantillaHtmlElegida = htmlTemplatesOpciones.find(
+    o => o.ruta === createForm.ruta_plantilla_html
+  );
+  const camposDetectados = plantillaHtmlElegida
+    ? (plantillaHtmlElegida.campos_contrato ?? 0) + (plantillaHtmlElegida.campos_manuales ?? 0)
+    : 0;
+
+  // En modo HTML el nombre de la plantilla se toma del archivo HTML elegido
+  // y se sincroniza automáticamente el tipo de contrato si la plantilla lo define.
   const handleHtmlTemplateChange = (ruta) => {
     const opcion = htmlTemplatesOpciones.find(o => o.ruta === ruta);
-    setCreateForm(prev => ({ ...prev, ruta_plantilla_html: ruta, ...(opcion?.nombre ? { nombre: opcion.nombre } : {}) }));
+    setCreateForm(prev => ({
+      ...prev,
+      ruta_plantilla_html: ruta,
+      ...(opcion?.nombre ? { nombre: opcion.nombre } : {}),
+      ...(opcion?.tipo ? { tipo_contrato: opcion.tipo } : {}),
+      ...(opcion?.tipo === 'ERS' || opcion?.tipo === 'REQUERIMIENTO' ? { requiere_sla_facturacion: false } : {}),
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!createForm.nombre || !createForm.tipo_contrato || !createForm.version_codigo || !createForm.software_id || !createForm.codigo_prefijo?.trim()) {
+    if (!createForm.nombre || !createForm.tipo_contrato || !createForm.version_codigo || !createForm.codigo_prefijo?.trim()) {
       setError('Por favor, completa todos los campos obligatorios.');
       return;
     }
@@ -122,21 +161,31 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
       setError('Debes seleccionar una plantilla HTML del listado.');
       return;
     }
+    if (user?.isSuperadmin && !isEdit && !createForm.tenant_id) {
+      setError('Como Superadmin debes indicar a qué empresa (tenant) pertenece esta plantilla.');
+      return;
+    }
 
     const fd = new FormData();
     fd.append('nombre', createForm.nombre);
     fd.append('tipo_contrato', createForm.tipo_contrato);
     fd.append('version_codigo', createForm.version_codigo);
-    fd.append('software', createForm.software_id);
+    if (createForm.software_id) {
+      fd.append('software', createForm.software_id);
+    }
     fd.append('modo_origen', createForm.modo_origen);
     fd.append('codigo_prefijo', createForm.codigo_prefijo.trim().toUpperCase());
     fd.append('requiere_sla_facturacion', createForm.requiere_sla_facturacion !== false ? 'true' : 'false');
+    fd.append('terminos_condiciones', JSON.stringify(terminosParaEnviar(createForm.terminos_condiciones)));
     if (createForm.archivo_docx) fd.append('archivo_docx', createForm.archivo_docx);
     if (createForm.modo_origen === 'clausulas') {
       fd.append('clausulas_seleccionadas', JSON.stringify(createForm.clausulas_seleccionadas || []));
     }
     if (createForm.modo_origen === 'html') {
       fd.append('ruta_plantilla_html', createForm.ruta_plantilla_html || '');
+    }
+    if (user?.isSuperadmin && !isEdit) {
+      fd.append('tenant_id', createForm.tenant_id);
     }
     if (!isEdit) {
       // Las plantillas nuevas nacen como borrador: revisables y eliminables, y sin
@@ -192,10 +241,12 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
   return (
     <div
       onClick={onClose}
+      onWheel={e => e.stopPropagation()}
       style={{
         position: 'fixed', inset: 0, zIndex: 1100,
         background: 'rgba(10,10,10,0.55)', backdropFilter: 'blur(4px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+        overscrollBehavior: 'contain'
       }}
     >
       <form
@@ -206,8 +257,9 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
         onSubmit={handleSubmit}
         style={{
           background: 'var(--surface)', borderRadius: 10, boxShadow: '0 24px 80px rgba(0,0,0,.3)',
-          width: '100%', maxWidth: 520, display: 'flex', flexDirection: 'column',
-          overflow: 'hidden', animation: 'previewIn 0.2s ease-out'
+          width: '100%', maxWidth: 520, maxHeight: 'calc(100vh - 48px)', display: 'flex', flexDirection: 'column',
+          overflow: 'hidden', animation: 'previewIn 0.2s ease-out',
+          overscrollBehavior: 'contain'
         }}
       >
         {/* Header */}
@@ -232,7 +284,7 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
         </div>
 
         {/* Body */}
-        <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto', minHeight: 0, overscrollBehavior: 'contain' }}>
 
           {/* Modo origen — primera decisión: define qué se pide después */}
           <div>
@@ -271,16 +323,48 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
             </div>
           </div>
 
+          {/* Tenant — solo Superadmin creando (no pertenece a ningún tenant propio) */}
+          {user?.isSuperadmin && !isEdit && (
+            <div>
+              <label style={labelStyle}>Empresa (tenant) *</label>
+              <select
+                style={inputStyle}
+                value={createForm.tenant_id || ''}
+                onChange={e => {
+                  const newTenantId = e.target.value;
+                  setField('tenant_id', newTenantId);
+                  if (createForm.software_id) {
+                    const selSoft = (softwareList || []).find(s => s.id == createForm.software_id);
+                    if (selSoft && selSoft.tenant_id && String(selSoft.tenant_id) !== String(newTenantId)) {
+                      setField('software_id', '');
+                    }
+                  }
+                }}
+                required
+              >
+                <option value="">-- Seleccionar empresa --</option>
+                {tenants.map(t => (
+                  <option key={t.id} value={t.id}>{t.razon_social}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Software + Tipo */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div style={{ position: 'relative' }}>
-              <label style={labelStyle}>Software / Producto *</label>
+              <label style={labelStyle}>Software / Producto</label>
               <div
                 onClick={() => setShowSoft(!showSoft)}
                 style={{ ...inputStyle, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
               >
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {createForm.software_id ? ((softwareList || []).find(s => s.id == createForm.software_id)?.name || (softwareList || []).find(s => s.id == createForm.software_id)?.nombre) : 'Buscar producto...'}
+                  {createForm.software_id ? (
+                    ((softwareList || []).find(s => s.id == createForm.software_id)?.name ||
+                     (softwareList || []).find(s => s.id == createForm.software_id)?.nombre)
+                  ) : (
+                    <span style={{ color: 'var(--text-muted)' }}>Ninguno (Plantilla transversal / global)</span>
+                  )}
                 </span>
                 <Icon d="M6 9l6 6 6-6" w={12} color="var(--text-muted)"/>
               </div>
@@ -288,23 +372,51 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
                 <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 5, marginTop: 4, zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
                   <input
                     autoFocus
-                    placeholder="Buscar..."
+                    placeholder="Buscar producto…"
                     value={searchSoft}
                     onChange={e => setSearchSoft(e.target.value)}
                     style={{ width: '100%', padding: '8px 10px', border: 'none', borderBottom: '1px solid var(--neutral-200)', boxSizing: 'border-box', outline: 'none', fontSize: 12, fontFamily: 'inherit', color: 'var(--text-primary)' }}
                   />
-                  <div style={{ maxHeight: 150, overflowY: 'auto' }}>
-                    {filteredSoft.length > 0 ? filteredSoft.map(s => (
-                      <div
-                        key={s.id}
-                        onClick={() => { setField('software_id', s.id); setShowSoft(false); setSearchSoft(''); }}
-                        style={{ padding: '8px 10px', fontSize: 12, cursor: 'pointer', color: 'var(--text-primary)' }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-inset)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                      >
-                        {s.name || s.nombre}
+                  <div style={{ maxHeight: 160, overflowY: 'auto', overscrollBehavior: 'contain' }}>
+                    <div
+                      onClick={() => {
+                        setField('software_id', '');
+                        setShowSoft(false);
+                        setSearchSoft('');
+                      }}
+                      style={{ padding: '8px 10px', fontSize: 12, cursor: 'pointer', color: 'var(--text-muted)', borderBottom: '1px solid var(--neutral-200)', fontStyle: 'italic' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-inset)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      Ninguno (Plantilla transversal / global)
+                    </div>
+                    {filteredSoft.length > 0 ? (
+                      filteredSoft.map(s => (
+                        <div
+                          key={s.id}
+                          onClick={() => {
+                            setField('software_id', s.id);
+                            if (user?.isSuperadmin && s.tenant_id && !createForm.tenant_id) {
+                              setField('tenant_id', s.tenant_id);
+                            }
+                            setShowSoft(false);
+                            setSearchSoft('');
+                          }}
+                          style={{ padding: '8px 10px', fontSize: 12, cursor: 'pointer', color: 'var(--text-primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-inset)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <span>{s.name || s.nombre}</span>
+                          {user?.isSuperadmin && s.tenant_nombre && (
+                            <span style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 6 }}>({s.tenant_nombre})</span>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <div style={{ padding: '8px 10px', fontSize: 12, color: 'var(--text-muted)' }}>
+                        {currentTenantId ? 'No hay productos para esta empresa' : 'No hay resultados'}
                       </div>
-                    )) : <div style={{ padding: '8px 10px', fontSize: 12, color: 'var(--text-muted)' }}>No hay resultados</div>}
+                    )}
                   </div>
                 </div>
               )}
@@ -321,6 +433,8 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
                 <option value="PERPETUO">Perpetuo</option>
                 <option value="PRO_BONO">Pro Bono</option>
                 <option value="INTERNO">Interno / Propio</option>
+                <option value="REQUERIMIENTO">Ficha de Requerimiento</option>
+                <option value="ERS">Especificación de Requerimientos (ERS)</option>
               </select>
             </div>
           </div>
@@ -404,18 +518,27 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
                 <option value="">-- Seleccionar archivo HTML --</option>
                 {htmlTemplatesOpciones.map(t => (
                   <option key={t.ruta} value={t.ruta}>
-                    {t.nombre}{t.tipo ? ` — ${t.tipo}` : ' — Global'}
+                    {t.nombre}{t.tipo ? ` [${t.tipo}]` : ' [Global]'}
                   </option>
                 ))}
               </select>
+              {plantillaHtmlElegida && (
+                <p style={{
+                  margin: 0,
+                  fontSize: 10,
+                  color: camposDetectados === 0 ? 'var(--danger)' : 'var(--text-muted)',
+                }}>
+                  {camposDetectados === 0
+                    ? 'Esta plantilla no expone ninguna variable: el sistema podrá generar su PDF, pero no rellenarlo. Añade placeholders {{ }} al archivo o quita data-no-autovar.'
+                    : `${camposDetectados} campos detectados — ${plantillaHtmlElegida.campos_contrato ?? 0} se rellenan solos desde el contrato y ${plantillaHtmlElegida.campos_manuales ?? 0} se piden al generar el documento.`}
+                </p>
+              )}
               <p style={{ margin: 0, fontSize: 10, color: 'var(--text-muted)' }}>
-                Solo se listan plantillas del tipo seleccionado y las globales.
-                Nomenclatura de archivo: <code>TIPO__Nombre.dc.html</code> (ej: <code>INTERNO__Memorandum.dc.html</code>).
+                Al seleccionar una plantilla, se auto-completan el nombre y el tipo de contrato correspondiente.
               </p>
               <p style={{ margin: 0, fontSize: 10, color: 'var(--text-muted)' }}>
-                El sistema arma el código de "Referencia" del documento como <code>PREFIJO-AÑO-NNN</code> (ej: <code>NDA-2026-004</code>)
-                usando la <strong>Familia de Documento</strong> generada abajo — se asigna solo al generar el documento,
-                nunca se pide al usuario.
+                El sistema arma el código de "Referencia" del documento como <code>PREFIJO-AÑO-NNN</code> (ej: <code>API-2026-001</code>)
+                usando la <strong>Familia de Documento</strong> generada abajo.
               </p>
             </div>
           )}
@@ -492,6 +615,14 @@ export default function NewTemplateModal({ onClose, onSuccess, createForm, setCr
               </div>
             </label>
           </div>
+
+          {/* Recuadro final del documento: alcance contemplado / no contemplado */}
+          <TerminosCondicionesEditor
+            value={createForm.terminos_condiciones}
+            onChange={v => setField('terminos_condiciones', v)}
+            inputStyle={inputStyle}
+            labelStyle={labelStyle}
+          />
 
           {error && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--danger)', fontSize: 12 }}>

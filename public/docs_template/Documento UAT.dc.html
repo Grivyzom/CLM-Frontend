@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  html { -webkit-font-smoothing: antialiased; }
+  @media print { html, body { background: #fff; } }
+  .uat-table { width: 100%; border-collapse: collapse; margin: 10px 0 16px; font-size: 9.5pt; }
+  .uat-table th, .uat-table td { border: 1px solid #d8d2c4; padding: 6px 9px; vertical-align: top; }
+  .uat-table th { background: #0a1f3d; color: #ffffff; font-weight: 600; text-align: left; }
+  .uat-table-striped tr:nth-child(even) { background: #f9f9f9; }
+  .badge-pass { background: #e6f4ea; color: #137333; font-weight: 700; padding: 2px 6px; border-radius: 4px; display: inline-block; font-size: 8pt; }
+  .badge-obs { background: #fef7e0; color: #b06000; font-weight: 700; padding: 2px 6px; border-radius: 4px; display: inline-block; font-size: 8pt; }
+  .badge-fail { background: #fce8e6; color: #c5221f; font-weight: 700; padding: 2px 6px; border-radius: 4px; display: inline-block; font-size: 8pt; }
+  .badge-pending { background: #f1f3f4; color: #5f6368; font-weight: 700; padding: 2px 6px; border-radius: 4px; display: inline-block; font-size: 8pt; }
+  .badge-block { background: #f3e8fd; color: #7b1fa2; font-weight: 700; padding: 2px 6px; border-radius: 4px; display: inline-block; font-size: 8pt; }
+  .section-title { font-size: 11.5pt; font-weight: 700; color: #0a1f3d; margin: 18px 0 6px; border-left: 3px solid #b8974e; padding-left: 8px; }
+  .subsection-title { font-size: 10pt; font-weight: 700; color: #0a1f3d; margin: 10px 0 4px; }
+</style>
+</helmet>
+<x-import component-from-global-scope="doc-page" from="./doc-page.js" size="letter" margin="0.6in" hint-size="850px,1100px">
+  <div slot="footer" style="border-top:1px solid #d8d2c4;padding-top:8px;font-family:Calibri, 'Segoe UI', Arial, sans-serif;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+    <div style="font-size:8pt;color:#8a8a8a;line-height:1.4;max-width:75%;">
+      Documento Confidencial de Pruebas de Aceptación (UAT) &mdash; {{ cliente.nombre|default:"Cliente" }} / {{ software.proveedor|default:"Grivyzom S.P.A." }}
+    </div>
+    <div style="font-size:8.5pt;color:#5b5b5b;white-space:nowrap;">Página 1 de 1</div>
+  </div>
+
+  <div style="font-family:Calibri, 'Segoe UI', Arial, sans-serif;color:#1a1a1a;font-size:10pt;line-height:1.25;">
+
+    <!-- Encabezado / Branding -->
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:20px;border-bottom:2px solid #b8974e;padding-bottom:10px;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:40px;height:40px;background:#0a1f3d;color:#b8974e;border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:20px;">G</div>
+        <div>
+          <div style="font-size:15px;font-weight:700;color:#0a1f3d;letter-spacing:0.5px;">GRIVYZOM S.P.A</div>
+          <div style="font-size:9px;color:#5b5b5b;line-height:1.3;">Gestión de Calidad y Ciclo de Vida de Software &nbsp;·&nbsp; ff.fuentes@grivyzom.com</div>
+        </div>
+      </div>
+      <div style="text-align:right;font-size:9.5px;color:#0a1f3d;font-weight:600;letter-spacing:0.3px;white-space:nowrap;">
+        REF: {{ referencia|default:"UAT-2026-001" }}
+      </div>
+    </div>
+
+    <!-- Título del Documento -->
+    <div style="text-align:center;margin:6px 0 16px;">
+      <div style="font-size:17pt;font-weight:700;color:#0a1f3d;letter-spacing:1px;">DOCUMENTO DE PRUEBAS DE ACEPTACIÓN DE USUARIO (UAT)</div>
+      <div style="font-size:9.5pt;color:#5b5b5b;margin-top:2px;">Plan de Validación Operativa y Certificación de Software</div>
+      <div style="width:50px;height:2px;background:#b8974e;margin:6px auto 0;"></div>
+    </div>
+
+    <!-- 1. Información General -->
+    <div class="section-title">1. Información General y Control del Documento</div>
+    <table class="uat-table">
+      <tr style="background:#f4f6f8;">
+        <td style="width:30%;font-weight:700;color:#0a1f3d;">Nombre del Proyecto:</td>
+        <td style="width:70%;">{{ proyecto_nombre|default:"[Nombre del Software o Plataforma]" }}</td>
+      </tr>
+      <tr>
+        <td style="font-weight:700;color:#0a1f3d;">Versión del Software:</td>
+        <td>{{ version_software|default:"v1.0.0-RC2" }}</td>
+      </tr>
+      <tr style="background:#f4f6f8;">
+        <td style="font-weight:700;color:#0a1f3d;">Proveedor / Desarrollador:</td>
+        <td>{{ proveedor_empresa|default:"Grivyzom S.P.A." }}</td>
+      </tr>
+      <tr>
+        <td style="font-weight:700;color:#0a1f3d;">Cliente / Organización:</td>
+        <td>{{ cliente.nombre|default:"[Nombre de la Empresa Cliente]" }}</td>
+      </tr>
+      <tr style="background:#f4f6f8;">
+        <td style="font-weight:700;color:#0a1f3d;">Responsable de Pruebas (Cliente):</td>
+        <td>{{ responsable_pruebas_cliente|default:"[Nombre y Cargo del Tester/Líder del Cliente]" }}</td>
+      </tr>
+      <tr>
+        <td style="font-weight:700;color:#0a1f3d;">Fecha de Inicio de Pruebas:</td>
+        <td>{{ fecha_inicio_pruebas|default:"DD/MM/AAAA" }}</td>
+      </tr>
+      <tr style="background:#f4f6f8;">
+        <td style="font-weight:700;color:#0a1f3d;">Fecha Límite de Recepción:</td>
+        <td>{{ fecha_limite_recepcion|default:"DD/MM/AAAA" }}</td>
+      </tr>
+    </table>
+
+    <!-- 2. Alcance y Entorno -->
+    <div class="section-title">2. Alcance y Entorno de Pruebas</div>
+    
+    <div class="subsection-title">2.1. Objetivo</div>
+    <p style="text-align:justify;margin:0 0 10px;font-size:9.5pt;">
+      {{ objetivo_uat|default:"El presente proceso tiene como fin validar que los flujos de negocio, funcionalidades e integraciones desarrolladas operen de acuerdo con las especificaciones acordadas en el contrato y documento de requerimientos." }}
+    </p>
+
+    <div class="subsection-title">2.2. Enlaces y Accesos al Entorno</div>
+    <ul style="margin:4px 0 10px 18px;padding:0;font-size:9.5pt;">
+      <li><strong>URL de Pruebas (Staging / QA):</strong> {{ url_pruebas_staging|default:"https://qa.tuproyecto.com" }}</li>
+      <li><strong>Credenciales de prueba:</strong> {{ detalle_credenciales|default:"Proporcionadas vía canal seguro (Roles: Administrador, Operador, Consulta)." }}</li>
+      <li><strong>Navegadores homologados:</strong> {{ navegadores_homologados|default:"Google Chrome (versión reciente), Mozilla Firefox, Safari / Edge." }}</li>
+    </ul>
+
+    <div class="subsection-title">2.3. Criterios de Aprobación (Definición de Éxito)</div>
+    <div style="background:#f4f6f8;border-left:3px solid #0a1f3d;padding:8px 12px;font-size:9pt;margin-bottom:12px;">
+      <div style="margin-bottom:4px;">&bull; <strong>100%</strong> de los casos de prueba marcados como "Críticos" deben estar en estado Aprobado.</div>
+      <div style="margin-bottom:4px;">&bull; <strong>0 incidencias bloqueantes</strong> o de severidad alta abiertas.</div>
+      <div>&bull; Las observaciones menores o cosméticas podrán atenderse en la fase de garantía o siguiente iteración sin impedir la aceptación general.</div>
+    </div>
+
+    <!-- Salto de página para matriz y acta -->
+    <div style="break-before:page;"></div>
+
+    <!-- 3. Matriz de Casos de Prueba -->
+    <div class="section-title">3. Matriz de Casos de Prueba (UAT)</div>
+    <p style="font-size:9pt;color:#5b5b5b;margin:0 0 6px;">
+      Cada escenario debe ser evaluado por el cliente según los siguientes estados: Aprobado (Pass), Aprobado con Obs., Rechazado (Fail) o Bloqueado (Blocked).
+    </p>
+
+    <!-- Variable para el extractor de campos del CLM: {{ casos_prueba }} -->
+    <table class="uat-table uat-table-striped" style="font-size:8.5pt;">
+      <thead>
+        <tr>
+          <th style="width:7%;">ID</th>
+          <th style="width:15%;">Módulo / Función</th>
+          <th style="width:21%;">Escenario de Negocio</th>
+          <th style="width:18%;">Precondiciones y Pasos</th>
+          <th style="width:17%;">Resultado Esperado</th>
+          <th style="width:14%;">Resultado Obtenido</th>
+          <th style="width:8%;text-align:center;">Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if casos_prueba %}
+          {% for cp in casos_prueba %}
+          <tr>
+            <td style="font-weight:700;">{{ cp.id|default:forloop.counter }}</td>
+            <td>
+              <strong>{{ cp.modulo }}</strong>
+              {% if cp.caso_uso %}
+                <div style="font-size:7.5pt;color:#5b5b5b;margin-top:2px;">Ref: {{ cp.caso_uso }}</div>
+              {% endif %}
+            </td>
+            <td>{{ cp.escenario }}</td>
+            <td>{{ cp.pasos|linebreaksbr }}</td>
+            <td>{{ cp.resultado_esperado|linebreaksbr }}</td>
+            <td>{{ cp.resultado_obtenido|default:"Pendiente de ejecución"|linebreaksbr }}</td>
+            <td style="text-align:center;">
+              <span class="badge-{{ cp.estado_badge|default:'pending' }}">{{ cp.estado|default:'Pendiente' }}</span>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td style="font-weight:700;">CP-01</td>
+            <td><strong>Autenticación</strong><div style="font-size:7.5pt;color:#5b5b5b;margin-top:2px;">Ref: CU-01</div></td>
+            <td>Inicio de sesión con usuario estándar</td>
+            <td>Usuario activo.<br>1. Ir a /login.<br>2. Ingresar usuario y clave.<br>3. Clic "Ingresar".</td>
+            <td>Acceso al panel principal mostrando el nombre del usuario.</td>
+            <td>Funciona según lo esperado.</td>
+            <td style="text-align:center;"><span class="badge-pass">Aprobado</span></td>
+          </tr>
+          <tr>
+            <td style="font-weight:700;">CP-02</td>
+            <td><strong>Facturación</strong><div style="font-size:7.5pt;color:#5b5b5b;margin-top:2px;">Ref: CU-02</div></td>
+            <td>Creación y emisión de factura con IVA</td>
+            <td>Catálogo configurado.<br>1. Nueva Venta.<br>2. Agregar 2 ítems.<br>3. Clic "Emitir".</td>
+            <td>Factura con cálculo de IVA correcto y estado "Emitida".</td>
+            <td>Cálculo correcto, tarda 15s en renderizar.</td>
+            <td style="text-align:center;"><span class="badge-obs">Aprobado con Obs.</span></td>
+          </tr>
+          <tr>
+            <td style="font-weight:700;">CP-03</td>
+            <td><strong>Reportes</strong><div style="font-size:7.5pt;color:#5b5b5b;margin-top:2px;">Ref: CU-03</div></td>
+            <td>Exportación de reporte mensual a Excel</td>
+            <td>Ventas en mes actual.<br>1. Reportes.<br>2. Rango mensual.<br>3. "Exportar XLS".</td>
+            <td>Descarga automática de archivo .xlsx con datos completos.</td>
+            <td>Error 500 al filtrar más de 500 registros.</td>
+            <td style="text-align:center;"><span class="badge-fail">Rechazado</span></td>
+          </tr>
+          <tr>
+            <td style="font-weight:700;">CP-04</td>
+            <td><strong>Usuarios</strong><div style="font-size:7.5pt;color:#5b5b5b;margin-top:2px;">Ref: CU-04</div></td>
+            <td>Desactivación de cuenta de empleado</td>
+            <td>Rol Operador.<br>1. Config > Usuarios.<br>2. Elegir usuario.<br>3. Switch "Inactivo".</td>
+            <td>El usuario ya no puede iniciar sesión en la plataforma.</td>
+            <td>Pendiente de ejecución.</td>
+            <td style="text-align:center;"><span class="badge-pending">Pendiente</span></td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+
+    <!-- 4. Registro y Clasificación de Incidencias -->
+    <div class="section-title">4. Registro y Clasificación de Incidencias</div>
+    <table class="uat-table" style="font-size:9pt;">
+      <thead>
+        <tr>
+          <th style="width:25%;">Nivel de Severidad</th>
+          <th style="width:55%;">Criterio de Impacto</th>
+          <th style="width:20%;text-align:center;">Impacto en Salida</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="font-weight:700;color:#c5221f;">Bloqueante (Severidad 1)</td>
+          <td>El sistema se cae, produce pérdida de datos o bloquea por completo el flujo de venta/operación sin alternativa manual.</td>
+          <td style="text-align:center;font-weight:700;color:#c5221f;">Impide Producción</td>
+        </tr>
+        <tr>
+          <td style="font-weight:700;color:#e37400;">Alta (Severidad 2)</td>
+          <td>Falla funcional importante de una regla de negocio clave, pero existen alternativas temporales de operación.</td>
+          <td style="text-align:center;font-weight:700;color:#e37400;">Impide Producción</td>
+        </tr>
+        <tr>
+          <td style="font-weight:700;color:#f9ab00;">Media (Severidad 3)</td>
+          <td>Error menor en interfaz, problemas de ordenamiento, filtros o validaciones no críticas.</td>
+          <td style="text-align:center;color:#5b5b5b;">Garantía / Parche</td>
+        </tr>
+        <tr>
+          <td style="font-weight:700;color:#188038;">Baja / Mejora (Severidad 4)</td>
+          <td>Ajustes de diseño visual, textos, cambios de color o sugerencias que no formaban parte del alcance original.</td>
+          <td style="text-align:center;color:#5b5b5b;">Backlog Futuro</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Salto de página para el acta legal y firmas -->
+    <div style="break-before:page;"></div>
+
+    <!-- 5. Acta de Conformidad y Cierre de UAT -->
+    <div class="section-title">5. Acta de Conformidad y Cierre de UAT</div>
+    
+    <div style="border:1px solid #d8d2c4;background:#fcfbf9;padding:16px 20px;border-radius:4px;margin-bottom:16px;">
+      <div style="text-align:center;font-weight:700;font-size:12pt;color:#0a1f3d;margin-bottom:10px;">
+        ACTA DE CONFORMIDAD Y ACEPTACIÓN DE SOFTWARE
+      </div>
+      <p style="text-align:justify;margin:0 0 10px;font-size:9.5pt;">
+        En la ciudad de {{ ciudad|default:"Santiago" }}, a los {{ dia|default:"____" }} días del mes de {{ mes|default:"________" }} de {{ anio|default:"2026" }}, se reúnen por una parte <strong>{{ proveedor_empresa|default:"Grivyzom S.P.A." }}</strong>, en adelante el "Proveedor", y por la otra <strong>{{ cliente.nombre|default:"[Nombre de la Empresa Cliente]" }}</strong>, representada por <strong>{{ responsable_pruebas_cliente|default:"[Nombre del Responsable del Cliente]" }}</strong>, en adelante el "Cliente", para dejar constancia de lo siguiente:
+      </p>
+      <p style="text-align:justify;margin:0 0 6px;font-size:9.5pt;">
+        <strong>1.</strong> Que el Cliente ha llevado a cabo el período de pruebas de aceptación de usuario (UAT) sobre la plataforma <strong>{{ proyecto_nombre|default:"[Nombre del Software]" }}</strong>, versión <strong>{{ version_software|default:"v1.0" }}</strong>, entre las fechas {{ fecha_inicio_pruebas|default:"DD/MM/AAAA" }} y {{ fecha_limite_recepcion|default:"DD/MM/AAAA" }}.
+      </p>
+      <p style="text-align:justify;margin:0 0 10px;font-size:9.5pt;">
+        <strong>2.</strong> Que los casos de prueba contenidos en el presente documento fueron ejecutados en su totalidad.
+      </p>
+      <p style="margin:0 0 12px;font-size:9.5pt;">
+        <strong>3.</strong> Que el Cliente manifiesta su resolución técnica y comercial:
+      </p>
+
+      <div style="background:#ffffff;border:1px solid #d8d2c4;padding:10px 14px;border-radius:4px;font-size:9pt;margin-bottom:16px;">
+        <div style="margin-bottom:8px;">
+          <strong data-fijo>[ &nbsp; ] Aceptación Total y Definitiva:</strong> El sistema cumple con todos los requerimientos y estándares acordados, autorizando su paso al entorno productivo.
+        </div>
+        <div style="margin-bottom:8px;">
+          <strong data-fijo>[ &nbsp; ] Aceptación Condicional:</strong> El sistema se aprueba para despliegue productivo, sujeto a la corrección de las incidencias menores detalladas en el anexo de observaciones dentro de un plazo de {{ dias_garantia|default:"15" }} días hábiles bajo el período de garantía.
+        </div>
+        <div>
+          <strong data-fijo>[ &nbsp; ] No Aceptación:</strong> Se registran incidencias bloqueantes que requieren resolución por parte del Proveedor previo a una nueva ventana de pruebas UAT.
+        </div>
+      </div>
+    </div>
+
+    <!-- Firmas -->
+    <div style="font-weight:700;color:#0a1f3d;font-size:10.5pt;margin-bottom:12px;">Firmas de Conformidad</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:20px;">
+      <div style="border-top:1px solid #1a1a1a;padding-top:6px;font-size:9.5pt;">
+        <div style="font-weight:700;">Por el Proveedor</div>
+        <div style="color:#5b5b5b;">{{ proveedor_empresa|default:"Grivyzom S.P.A." }}</div>
+        <div style="margin-top:6px;">Firma: ___________________________</div>
+        <div style="color:#1a1a1a;margin-top:4px;">Nombre: {{ firma_proveedor_nombre|default:"[Tu Nombre / Representante]" }}</div>
+        <div style="color:#5b5b5b;">Cargo: {{ firma_proveedor_cargo|default:"Líder de Proyecto / Director" }}</div>
+        <div style="color:#5b5b5b;">Fecha: {{ fecha_firma_proveedor|default:"DD/MM/AAAA" }}</div>
+      </div>
+      <div style="border-top:1px solid #1a1a1a;padding-top:6px;font-size:9.5pt;">
+        <div style="font-weight:700;">Por el Cliente</div>
+        <div style="color:#5b5b5b;">{{ cliente.nombre|default:"[Nombre del Cliente]" }}</div>
+        <div style="margin-top:6px;">Firma: ___________________________</div>
+        <div style="color:#1a1a1a;margin-top:4px;">Nombre: {{ firma_cliente_nombre|default:"[Nombre del Representante Cliente]" }}</div>
+        <div style="color:#5b5b5b;">Cargo: {{ firma_cliente_cargo|default:"Product Owner / Gerente del Área" }}</div>
+        <div style="color:#5b5b5b;">Fecha: {{ fecha_firma_cliente|default:"DD/MM/AAAA" }}</div>
+      </div>
+    </div>
+
+  </div>
+</x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:900,&quot;height&quot;:1150}}"></script>
+</body>
+</html>

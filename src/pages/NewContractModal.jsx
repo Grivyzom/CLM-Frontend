@@ -9,10 +9,12 @@ import './Contratos.css';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TIPO_CONTRATO_OPTIONS = [
-  { value: 'RECURRENTE', label: 'Recurrente' },
-  { value: 'PERPETUO',   label: 'Perpetuo' },
-  { value: 'PRO_BONO',   label: 'Pro Bono' },
-  { value: 'INTERNO',    label: 'Interno / Propio' },
+  { value: 'RECURRENTE',    label: 'Recurrente' },
+  { value: 'PERPETUO',      label: 'Perpetuo' },
+  { value: 'PRO_BONO',      label: 'Pro Bono' },
+  { value: 'INTERNO',       label: 'Interno / Propio' },
+  { value: 'REQUERIMIENTO', label: 'Ficha de Requerimiento' },
+  { value: 'ERS',           label: 'Especificación de Requerimientos (ERS)' },
 ];
 const FRECUENCIA_OPTIONS = [
   { value: 'MENSUAL', label: 'Mensual' },
