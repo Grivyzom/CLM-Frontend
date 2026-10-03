@@ -5,6 +5,7 @@ import { apiLogin } from '../api';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import SEO from '../components/SEO';
+import FlowFieldBackground from '../components/ui/FlowFieldBackground';
 import '../styles/Login.css';
 
 function todayLabel() {
@@ -130,7 +131,7 @@ export default function Login() {
       <SEO title="Iniciar Sesión" description="Accede a tu cuenta de KyoCLM para gestionar tus contratos." />
 
       <div className="login-body">
-        {/* Fondo SVG: mismo lenguaje que el hero de la landing (grid + paths + pulsos) */}
+        {/* Fondo: retícula de la landing + arte algorítmico (campo de flujo) */}
         <svg
           className="login-bg"
           viewBox="0 0 1440 900"
@@ -143,12 +144,8 @@ export default function Login() {
             </pattern>
           </defs>
           <rect width="1440" height="900" fill="url(#lg-grid)" />
-          <path className="lg-bg-draw" d="M -40 700 C 240 640, 420 760, 720 680 S 1220 560, 1490 640" fill="none" stroke="var(--primary)" strokeOpacity="0.14" strokeWidth="2" strokeDasharray="900" />
-          <path className="lg-bg-dash" d="M -40 770 C 300 710, 520 810, 840 740 S 1260 650, 1490 710" fill="none" stroke="currentColor" strokeOpacity="0.08" strokeWidth="1.5" strokeDasharray="6 8" />
-          <circle className="lg-bg-pulse" cx="240" cy="140" r="3.5" fill="var(--primary)" fillOpacity="0.35" />
-          <circle className="lg-bg-pulse d2" cx="1180" cy="180" r="3" fill="var(--success)" fillOpacity="0.4" />
-          <circle className="lg-bg-pulse d3" cx="1330" cy="420" r="2.5" fill="var(--warning)" fillOpacity="0.35" />
         </svg>
+        <FlowFieldBackground className="login-flow" />
         <div className="login-card">
           <div className="login-card-icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
