@@ -72,6 +72,22 @@
   color: var(--text-primary);
 }
 
+/* Arte algorítmico: campo de flujo en canvas (FlowFieldBackground).
+   La máscara atenúa los trazos detrás de la card para no competir con el form. */
+.login-flow {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  -webkit-mask-image: radial-gradient(ellipse 42% 48% at 50% 50%, rgba(0, 0, 0, 0.25) 0%, #000 100%);
+  mask-image: radial-gradient(ellipse 42% 48% at 50% 50%, rgba(0, 0, 0, 0.25) 0%, #000 100%);
+  animation: lg-flowIn 1.6s ease-out both;
+}
+
+@keyframes lg-flowIn { from { opacity: 0; } to { opacity: 1; } }
+
 @keyframes lg-drawPath { from { stroke-dashoffset: 900; } to { stroke-dashoffset: 0; } }
 @keyframes lg-dashFlow { to { stroke-dashoffset: -28; } }
 @keyframes lg-pulseDot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.8); } }
@@ -474,6 +490,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .login-flow,
   .lg-bg-draw,
   .lg-bg-dash,
   .lg-bg-pulse,
