@@ -16,7 +16,12 @@ export function TourProvider({ children }) {
   const [steps, setSteps] = useState([]);
 
   const startTour = useCallback((newSteps) => {
-    setSteps(newSteps);
+    const sanitized = (newSteps || []).map(s => ({
+      ...s,
+      skipBeacon: true,
+      disableBeacon: true,
+    }));
+    setSteps(sanitized);
     setRun(true);
   }, []);
 
@@ -40,6 +45,7 @@ export function TourProvider({ children }) {
         scrollToFirstStep={true}
         showProgress={true}
         showSkipButton={true}
+        skipBeacon={true}
         steps={steps}
         styles={{
           options: {
