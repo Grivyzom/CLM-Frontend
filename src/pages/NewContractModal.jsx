@@ -9,12 +9,10 @@ import './Contratos.css';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TIPO_CONTRATO_OPTIONS = [
-  { value: 'RECURRENTE',    label: 'Recurrente' },
-  { value: 'PERPETUO',      label: 'Perpetuo' },
-  { value: 'PRO_BONO',      label: 'Pro Bono' },
-  { value: 'INTERNO',       label: 'Interno / Propio' },
-  { value: 'REQUERIMIENTO', label: 'Ficha de Requerimiento' },
-  { value: 'ERS',           label: 'Especificación de Requerimientos (ERS)' },
+  { value: 'RECURRENTE', label: 'Recurrente' },
+  { value: 'PERPETUO',   label: 'Perpetuo' },
+  { value: 'PRO_BONO',   label: 'Pro Bono' },
+  { value: 'INTERNO',    label: 'Interno / Propio' },
 ];
 const FRECUENCIA_OPTIONS = [
   { value: 'MENSUAL', label: 'Mensual' },
@@ -89,17 +87,139 @@ function TF({ label, req, glossaryKey, name, type = 'text', value, onChange, err
     </div>
   );
 }
-function SF({ label, req, glossaryKey, name, value, onChange, error, options, placeholder }) {
+
+function CustomSelect({
+  label, req, glossaryKey, name, value, onChange, error, options = [], placeholder, hint, disabled
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(-1);
+  const [openUpward, setOpenUpward] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onDown = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setIsOpen(false);
+        setActiveIdx(-1);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [isOpen]);
+
+  const handleToggle = () => {
+    if (disabled) return;
+    if (!isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      setOpenUpward(spaceBelow < 220 && rect.top > 220);
+    }
+    setIsOpen(prev => !prev);
+  };
+
+  const handleKeyDown = (e) => {
+    if (disabled) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!isOpen) {
+        setIsOpen(true);
+        setActiveIdx(0);
+      } else {
+        setActiveIdx(i => (i + 1) % options.length);
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!isOpen) {
+        setIsOpen(true);
+        setActiveIdx(options.length - 1);
+      } else {
+        setActiveIdx(i => (i <= 0 ? options.length - 1 : i - 1));
+      }
+    } else if (e.key === 'Enter') {
+      if (isOpen) {
+        e.preventDefault();
+        e.stopPropagation();
+        const item = options[activeIdx >= 0 ? activeIdx : 0];
+        if (item) {
+          onChange({ target: { name, value: item.value } });
+          setIsOpen(false);
+        }
+      }
+    } else if (e.key === 'Escape') {
+      if (isOpen) {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsOpen(false);
+      }
+    }
+  };
+
+  const selectedOpt = options.find(o => String(o.value) === String(value));
+
   return (
-    <div className="ctm-field">
-      <FL req={req} glossaryKey={glossaryKey}>{label}</FL>
-      <select name={name} value={value} onChange={onChange} className={`ctm-control${error ? ' error' : ''}`}>
-        <option value="">{placeholder || 'Seleccionar…'}</option>
-        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
+    <div className="ctm-field ctm-rel" ref={containerRef} onKeyDown={handleKeyDown}>
+      {label && <FL req={req} glossaryKey={glossaryKey}>{label}</FL>}
+      <div className="ctm-rel">
+        <button
+          type="button"
+          role="combobox"
+          aria-expanded={isOpen}
+          aria-haspopup="listbox"
+          disabled={disabled}
+          onClick={handleToggle}
+          className={`ctm-control ctm-select-trigger${error ? ' error' : ''}${isOpen ? ' open' : ''}`}
+        >
+          <span className={`ctm-select-value${!selectedOpt ? ' placeholder' : ''}`}>
+            {selectedOpt ? selectedOpt.label : (placeholder || 'Seleccionar…')}
+          </span>
+          <span className="ctm-select-arrow">
+            <Svg d="m6 9 6 6 6-6" size={13} color="currentColor" sw={2} />
+          </span>
+        </button>
+      </div>
+
+      {isOpen && (
+        <div
+          className={`ctm-dropdown${openUpward ? ' ctm-dropdown--up' : ''}`}
+          role="listbox"
+        >
+          {options.length === 0 ? (
+            <div className="ctm-dropdown-note">Sin opciones disponibles</div>
+          ) : (
+            options.map((opt, idx) => {
+              const isSelected = String(opt.value) === String(value);
+              const isActive = idx === activeIdx;
+              return (
+                <div
+                  key={opt.value}
+                  className={`ctm-dropdown-item${isActive ? ' active' : ''}${isSelected ? ' selected' : ''}`}
+                  role="option"
+                  aria-selected={isSelected}
+                  title={opt.label}
+                  onMouseEnter={() => setActiveIdx(idx)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChange({ target: { name, value: opt.value } });
+                    setIsOpen(false);
+                  }}
+                >
+                  <div className="ctm-dropdown-item-name">{opt.label}</div>
+                  {opt.meta && <div className="ctm-dropdown-item-meta">{opt.meta}</div>}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+      {hint && <p className="ctm-hint">{hint}</p>}
       <FieldError>{error}</FieldError>
     </div>
   );
+}
+
+function SF(props) {
+  return <CustomSelect {...props} />;
 }
 
 // ─── Step indicator ───────────────────────────────────────────────────────────
@@ -185,8 +305,8 @@ export default function NewContractModal({ onClose, onSuccess, initialClienteId 
   }, []);
 
   // ── Form state ────────────────────────────────────────────────────────────
-  const [clienteSelected, setClienteSelected] = useState(() => draft.clienteSelected || null);
-  const [clienteQuery, setClienteQuery] = useState(() => draft.clienteQuery || '');
+  const [clienteSelected, setClienteSelected] = useState(null);
+  const [clienteQuery, setClienteQuery] = useState('');
   const [clientesList, setClientesList] = useState([]);
   const [clienteOpen, setClienteOpen] = useState(false);
   const [loadingClientes, setLoadingClientes] = useState(false);
@@ -386,21 +506,13 @@ export default function NewContractModal({ onClose, onSuccess, initialClienteId 
     }, 0);
   };
 
-  // ── Cierre seguro: guarda borrador al cerrar modal ──
+  // ── Cierre seguro: limpia borrador para que no quede cliente fijo en futuros accesos ──
   const attemptClose = useCallback(() => {
     if (loading) return;
     if (createdRef.current) {
       onSuccess?.(createdRef.current);
-      clearDraft();
-    } else {
-      if (!ignoreSaveRef.current) {
-        try {
-          localStorage.setItem('clm_new_contract_draft', JSON.stringify(stateRef.current));
-        } catch (e) {
-          console.error('Error saving draft on close', e);
-        }
-      }
     }
+    clearDraft();
     onClose();
   }, [loading, onClose, onSuccess]);
 
@@ -777,7 +889,7 @@ export default function NewContractModal({ onClose, onSuccess, initialClienteId 
         <StepBar current={step} />
 
         {/* Body */}
-        <div className="ctm-body">
+        <div className={`ctm-body${step === 1 ? ' ctm-body--free' : ''}`}>
 
           {/* ── STEP 1 ─────────────────────────────────────────────────────── */}
           {step === 1 && (
@@ -902,15 +1014,17 @@ export default function NewContractModal({ onClose, onSuccess, initialClienteId 
                   </div>
                 ) : (
                   <>
-                    <select name="plantilla_id" value={form.plantilla_id} onChange={handleChange}
-                      className={`ctm-control${errors.plantilla_id ? ' error' : ''}`}>
-                      <option value="">Seleccionar plantilla…</option>
-                      {plantillas.map(p => (
-                        <option key={p.id} value={p.id}>
-                          {p.nombre} · {p.version_codigo}{!p.software_id ? ' (global)' : ''}{!p.activa ? ' (inactiva)' : ''}
-                        </option>
-                      ))}
-                    </select>
+                    <CustomSelect
+                      name="plantilla_id"
+                      value={form.plantilla_id}
+                      onChange={handleChange}
+                      error={errors.plantilla_id}
+                      placeholder="Seleccionar plantilla…"
+                      options={plantillas.map(p => ({
+                        value: p.id,
+                        label: `${p.nombre} · ${p.version_codigo}${!p.software_id ? ' (global)' : ''}${!p.activa ? ' (inactiva)' : ''}`,
+                      }))}
+                    />
                     <p className="ctm-hint">El documento se genera automáticamente al crear el contrato.</p>
                   </>
                 )}

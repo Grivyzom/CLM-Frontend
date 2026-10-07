@@ -1382,3 +1382,14 @@ export async function deleteComentario(comentarioId) {
     method: 'DELETE',
   });
 }
+
+// ─── Integraciones / MCP ───────────────────────────────────────────────────
+export async function getMcpToken() {
+  return request('/integraciones/mcp-token/');
+}
+
+export async function regenerateMcpToken() {
+  return request('/integraciones/mcp-token/', {
+    method: 'POST',
+  });
+}

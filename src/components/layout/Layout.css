@@ -11,6 +11,10 @@
   transition: var(--transition);
 }
 
+body.sb-is-resizing .main-wrapper {
+  transition: none !important;
+}
+
 .main-content {
   flex: 1;
   display: flex;

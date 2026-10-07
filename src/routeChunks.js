@@ -18,6 +18,7 @@ export const routeChunks = {
   '/reportes': () => import('./pages/Reporte'),
   '/usuarios': () => import('./pages/Usuarios'),
   '/tenants': () => import('./pages/Tenants'),
+  '/integraciones': () => import('./pages/Integraciones'),
   '/comunidad': () => import('./pages/comunidad/Comunidad'),
 };
 

@@ -21,31 +21,17 @@ const GLOBAL_VIEW_LABEL = 'Administración Global';
 // El sidebar oculta los módulos que el plan del tenant no incluye; el
 // backend igual rechaza el acceso directo por URL (gating real).
 const SYSTEM_NOTIFICATIONS = [
-  { id: 1, type: 'info', text: 'Actualización v2.0 disponible', paths: ['M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'] },
-  { id: 2, type: 'success', text: 'Sistemas operativos al 100%', paths: ['M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'] },
-  { id: 3, type: 'warning', text: 'Próximo mantenimiento en 2d', paths: ['M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z'] }
+  { id: 1, type: 'info', tag: 'SISTEMA', text: 'Actualización v2.0 disponible', paths: ['M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'] },
+  { id: 2, type: 'success', tag: 'ESTADO', text: 'Sistemas operativos al 100%', paths: ['M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'] },
+  { id: 3, type: 'warning', tag: 'AVISO', text: 'Próximo mantenimiento en 2d', paths: ['M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z'] }
 ];
 
-const NAV = [
+const NAV_STAFF = [
   { id: 'inicio', path: '/inicio', label: 'Inicio', paths: ['M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', 'M9 22V12h6v10'] },
   { id: 'dashboard', path: '/', label: 'Dashboard', feature: 'contratos', paths: ['M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z'] },
-  { id: 'historial', path: '/historial', label: 'Historial', feature: 'contratos', paths: ['M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'] },
-  { 
-    id: 'membresias', 
-    path: '/membresias', 
-    label: 'Membresías', 
-    feature: 'membresias', 
-    paths: ['M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'],
-    subItems: [
-      { id: 'beneficio', path: '/membresias/beneficio', label: 'Beneficio' }
-    ]
-  },
-  { id: 'novedades', path: '/novedades', label: 'Novedades', feature: 'contratos', paths: ['M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4', 'M14 2v4a2 2 0 0 0 2 2h4', 'M3 15h6', 'M3 19h6'] },
-  { id: 'tarifas', path: '/tarifas', label: 'Tarifas', feature: 'membresias', paths: ['M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z', 'M5 12h14', 'M12 5v14'] },
+  { id: 'contratos', path: '/contratos', label: 'Contratos', feature: 'contratos', paths: ['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z','M14 2v6h6','M8 13h8'] },
   { id: 'clientes', path: '/clientes', label: 'Clientes', feature: 'clientes', paths: ['M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2','M23 21v-2a4 4 0 0 0-3-3.87','M16 3.13a4 4 0 0 1 0 7.75'], circles: [{ cx: 9, cy: 7, r: 4 }] },
   { id: 'catalogo', path: '/catalogo', label: 'Catálogo', feature: 'catalogo', paths: ['M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z','M3.27 6.96 12 12.01l8.73-5.05','M12 22.08V12'] },
-  { id: 'contratos', path: '/contratos', label: 'Contratos', feature: 'contratos', paths: ['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z','M14 2v6h6','M8 13h8'] },
-  { id: 'comunidad', path: '/comunidad', label: 'Comunidad', paths: ['M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20', 'M2 12h20'], circles: [{ cx: 12, cy: 12, r: 10 }] },
   { 
     id: 'gestion', 
     path: '#', 
@@ -59,6 +45,33 @@ const NAV = [
       { id: 'usuarios', path: '/usuarios', label: 'Usuarios' }
     ]
   },
+  { id: 'integraciones', path: '/integraciones', label: 'Integraciones', paths: ['M12 22v-5', 'M9 8V2', 'M15 8V2', 'M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z'] },
+];
+
+const NAV_CLIENTE = [
+  { id: 'dashboard', path: '/', label: 'Dashboard', paths: ['M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z'] },
+  { id: 'contratos', path: '/contratos', label: 'Mis Contratos', paths: ['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z','M14 2v6h6','M8 13h8'] },
+  { 
+    id: 'reportes', 
+    path: '/reportes', 
+    label: 'Soporte e Incidencias', 
+    paths: ['M3 18v-6a9 9 0 0 1 18 0v6', 'M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3z', 'M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z'] 
+  },
+  { 
+    id: 'membresias', 
+    path: '/membresias', 
+    label: 'Membresía y Plan', 
+    paths: ['M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'],
+    subItems: [
+      { id: 'membresia_plan', path: '/membresias', label: 'Mi Plan y Facturación' },
+      { id: 'beneficio', path: '/membresias/beneficio', label: 'Beneficios' },
+      { id: 'tarifas', path: '/tarifas', label: 'Tarifas y Servicios' }
+    ]
+  },
+  { id: 'historial', path: '/historial', label: 'Historial', paths: ['M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'], circles: [{ cx: 12, cy: 12, r: 10 }] },
+  { id: 'novedades', path: '/novedades', label: 'Novedades', paths: ['M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4', 'M14 2v4a2 2 0 0 0 2 2h4', 'M3 15h6', 'M3 19h6'] },
+  { id: 'integraciones', path: '/integraciones', label: 'Integraciones', paths: ['M12 22v-5', 'M9 8V2', 'M15 8V2', 'M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z'] },
+  { id: 'faq', path: '/faq', label: 'Centro de Ayuda', paths: ['M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3', 'M12 17h.01'], circles: [{ cx: 12, cy: 12, r: 10 }] },
 ];
 
 const Icon = ({ paths = [], circles = [], className = '' }) => (
@@ -127,18 +140,23 @@ export default function Sidebar() {
     return false;
   });
 
+  const [isDismissing, setIsDismissing] = useState(false);
+
   useEffect(() => {
     if (isHoveringNotif) return;
     const interval = setInterval(() => {
       setCurrentNotifIndex((prev) => (prev + 1) % SYSTEM_NOTIFICATIONS.length);
-    }, 4500);
+    }, 5000);
     return () => clearInterval(interval);
-  }, [isHoveringNotif]);
+  }, [isHoveringNotif, currentNotifIndex]);
 
   const dismissNotif = (e) => {
     e.stopPropagation();
-    setIsNotifVisible(false);
-    localStorage.setItem('clm_notif_hidden_date', Date.now().toString());
+    setIsDismissing(true);
+    setTimeout(() => {
+      setIsNotifVisible(false);
+      localStorage.setItem('clm_notif_hidden_date', Date.now().toString());
+    }, 220);
   };
 
   const [contratosBadge, setContratosBadge] = useState(() => {
@@ -184,8 +202,148 @@ export default function Sidebar() {
   const userMenuRef = useRef(null);
   const sidebarRef = useRef(null);
 
+  // Ancho ajustable del sidebar (máximo 240px, mínimo 68px)
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const saved = localStorage.getItem('clm_sidebar_width');
+    if (saved !== null) {
+      const val = parseInt(saved, 10);
+      if (!isNaN(val) && val >= 68 && val <= 240) return val;
+    }
+    return 240;
+  });
+  const [isResizing, setIsResizing] = useState(false);
+  const isResizingRef = useRef(false);
+
   const isExpanded = isPinned || isHovered || mobileOpen;
   const collapsed = !isExpanded;
+  const isCompact = isExpanded && !mobileOpen && sidebarWidth < 120;
+
+  const handleResizeStart = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!isPinned && window.innerWidth >= 1024) {
+      setIsPinned(true);
+      localStorage.setItem('clm_sidebar_preference', JSON.stringify(true));
+    }
+
+    setIsResizing(true);
+    isResizingRef.current = true;
+
+    const startX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
+    const startW = sidebarWidth;
+    let animationFrameId = null;
+    let latestWidth = startW;
+
+    const onPointerMove = (moveEvt) => {
+      if (!isResizingRef.current) return;
+      const currentX = moveEvt.type.startsWith('touch') ? moveEvt.touches[0].clientX : moveEvt.clientX;
+      const delta = currentX - startX;
+      let nextW = Math.round(startW + delta);
+
+      // Smart snapping at edges
+      if (nextW > 225) nextW = 240;
+      else if (nextW < 80) nextW = 68;
+
+      latestWidth = nextW;
+
+      // Actualización directa al compositor para máxima fluidez sin esperar re-render
+      if (sidebarRef.current) {
+        sidebarRef.current.style.setProperty('--current-sidebar-width', `${nextW}px`);
+        if (nextW < 120) {
+          sidebarRef.current.classList.add('is-compact');
+        } else {
+          sidebarRef.current.classList.remove('is-compact');
+        }
+      }
+
+      if (animationFrameId === null) {
+        animationFrameId = requestAnimationFrame(() => {
+          animationFrameId = null;
+          setSidebarWidth(latestWidth);
+        });
+      }
+    };
+
+    const onPointerUp = () => {
+      if (animationFrameId !== null) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
+      isResizingRef.current = false;
+      setIsResizing(false);
+      setSidebarWidth(latestWidth);
+      localStorage.setItem('clm_sidebar_width', latestWidth.toString());
+
+      window.removeEventListener('mousemove', onPointerMove);
+      window.removeEventListener('mouseup', onPointerUp);
+      window.removeEventListener('touchmove', onPointerMove);
+      window.removeEventListener('touchend', onPointerUp);
+
+      document.body.classList.remove('sb-is-resizing');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.classList.add('sb-is-resizing');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    window.addEventListener('mousemove', onPointerMove);
+    window.addEventListener('mouseup', onPointerUp);
+    window.addEventListener('touchmove', onPointerMove, { passive: false });
+    window.addEventListener('touchend', onPointerUp);
+  };
+
+  const handleResizeReset = (e) => {
+    e.stopPropagation();
+    setSidebarWidth(240);
+    localStorage.setItem('clm_sidebar_width', '240');
+    if (sidebarRef.current) {
+      sidebarRef.current.style.setProperty('--current-sidebar-width', '240px');
+      sidebarRef.current.classList.remove('is-compact');
+    }
+  };
+
+  const handleResizeKeyDown = (e) => {
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      setSidebarWidth((prev) => {
+        const next = Math.max(68, prev - 12);
+        localStorage.setItem('clm_sidebar_width', next.toString());
+        return next;
+      });
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      setSidebarWidth((prev) => {
+        const next = Math.min(240, prev + 12);
+        localStorage.setItem('clm_sidebar_width', next.toString());
+        return next;
+      });
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      setSidebarWidth(68);
+      localStorage.setItem('clm_sidebar_width', '68');
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      setSidebarWidth(240);
+      localStorage.setItem('clm_sidebar_width', '240');
+    }
+  };
+
+  useEffect(() => {
+    if (!isResizing) {
+      localStorage.setItem('clm_sidebar_width', sidebarWidth.toString());
+    }
+  }, [sidebarWidth, isResizing]);
+
+  useEffect(() => {
+    return () => {
+      document.body.classList.remove('sb-is-resizing');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, []);
 
   // El botón hamburguesa del topbar (TopbarActions) emite este evento global
   useEffect(() => {
@@ -345,15 +503,15 @@ export default function Sidebar() {
     );
   }, { scope: sidebarRef });
 
-  // Al expandir: los textos entran con un leve desplazamiento en cascada
+  // Al expandir o salir de modo compacto: los textos entran con un leve desplazamiento en cascada
   useGSAP(() => {
-    if (!isExpanded || prefersReducedMotion()) return;
+    if (!isExpanded || isCompact || prefersReducedMotion()) return;
     gsap.fromTo(
       '.sb-logo-text, .sb-context-info, .sb-nav-label, .sb-user-info, .sb-section-title',
       { autoAlpha: 0, x: -8 },
       { autoAlpha: 1, x: 0, duration: 0.3, stagger: 0.02, ease: 'power2.out', clearProps: 'all' }
     );
-  }, { dependencies: [isExpanded], scope: sidebarRef, revertOnUpdate: true });
+  }, { dependencies: [isExpanded, isCompact], scope: sidebarRef, revertOnUpdate: true });
 
   // Apertura del selector de contexto
   useGSAP(() => {
@@ -410,36 +568,35 @@ export default function Sidebar() {
 
   useEffect(() => {
     // Si navegamos y algún item con submenu está activo, lo abrimos automáticamente.
-    const activeItem = NAV.find(item => item.path === location.pathname || (item.path !== '/' && location.pathname.startsWith(item.path)));
+    const activeNav = isClienteExterno ? NAV_CLIENTE : NAV_STAFF;
+    const activeItem = activeNav.find(item => item.path === location.pathname || (item.path !== '/' && item.path !== '#' && location.pathname.startsWith(item.path)));
     if (activeItem && activeItem.subItems) {
       setOpenSubmenus(prev => ({ ...prev, [activeItem.id]: true }));
     } else {
       // Check in subItems too
-      NAV.forEach(item => {
+      activeNav.forEach(item => {
         if (item.subItems) {
-          const activeSub = item.subItems.find(sub => sub.path === location.pathname || location.pathname.startsWith(sub.path));
+          const activeSub = item.subItems.find(sub => sub.path === location.pathname || (sub.path !== '/' && location.pathname.startsWith(sub.path)));
           if (activeSub) {
             setOpenSubmenus(prev => ({ ...prev, [item.id]: true }));
           }
         }
       });
     }
-  }, [location.pathname]);
+  }, [location.pathname, isClienteExterno]);
 
   const checkVisibility = (item) => {
     if (!user && item.id !== 'inicio') return false;
     if (user && item.id === 'inicio') return false;
 
     if (user && isClienteExterno) {
-      // El cliente externo solo puede ver Dashboard, Contratos, Membresias, Historial, Novedades, Tarifas, Reporte y Gestión
-      if (!['dashboard', 'contratos', 'historial', 'membresias', 'novedades', 'tarifas', 'reportes', 'gestion', 'comunidad'].includes(item.id) && item.id !== 'beneficio') return false;
+      return true;
     } else if (user) {
       // Usuarios normales/internos:
-      if (['historial', 'novedades', 'membresias', 'tarifas'].includes(item.id)) return false;
       if (item.id === 'clientes' && !canAccessClientes) return false;
       if (item.id === 'tenants' && !(user.isSuperadmin || isModerador)) return false;
       if (item.id === 'usuarios' && !(user.isSuperadmin || isModerador)) return false;
-      if (item.id !== 'clientes' && item.id !== 'tenants' && item.feature && item.feature !== 'membresias' && !hasFeature(item.feature)) return false;
+      if (item.id !== 'clientes' && item.id !== 'tenants' && item.feature && !hasFeature(item.feature)) return false;
     }
     return true;
   };
@@ -512,15 +669,33 @@ export default function Sidebar() {
       )}
       <div
         ref={sidebarRef}
-        className={`sidebar-proto ${collapsed ? 'collapsed' : 'expanded'} ${mobileOpen ? 'mobile-open' : ''}`}
+        className={`sidebar-proto ${collapsed ? 'collapsed' : 'expanded'} ${isCompact ? 'is-compact' : ''} ${mobileOpen ? 'mobile-open' : ''} ${isResizing ? 'is-resizing' : ''}`}
+        style={{
+          '--current-sidebar-width': `${sidebarWidth}px`,
+          width: isExpanded && !mobileOpen ? `${sidebarWidth}px` : undefined,
+          minWidth: isExpanded && !mobileOpen ? `${sidebarWidth}px` : undefined,
+        }}
         onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        onMouseLeave={() => {
+          if (!isResizingRef.current) setIsHovered(false);
+        }}
         onClick={handleSidebarClick}
       >
       {/* Header / Selector de Contexto */}
       <div className="sb-header">
         <div className="sb-logo-section">
-          <div className="sb-logo-icon">
+          <div 
+            className="sb-logo-icon"
+            onClick={(e) => {
+              if (isCompact) {
+                e.stopPropagation();
+                setSidebarWidth(240);
+                localStorage.setItem('clm_sidebar_width', '240');
+              }
+            }}
+            title={isCompact ? "Clic para expandir a 240px" : undefined}
+            style={isCompact ? { cursor: 'pointer' } : undefined}
+          >
             <img src="/android-chrome-192x192.png" alt="Enfoque Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '4px' }} />
           </div>
           <div className="sb-logo-text">
@@ -623,11 +798,11 @@ export default function Sidebar() {
       </div>
 
       <div className="sb-section-title">
-        <span>Módulos</span>
+        <span>{isClienteExterno ? 'Portal Cliente' : 'Módulos'}</span>
       </div>
 
       <nav className="sb-nav-container" aria-label="Menú principal">
-        {NAV.map((item) => {
+        {(isClienteExterno ? NAV_CLIENTE : NAV_STAFF).map((item) => {
           if (!checkVisibility(item)) return null;
 
           let visibleSubItems = [];
@@ -636,7 +811,7 @@ export default function Sidebar() {
             if (visibleSubItems.length === 0 && item.id === 'gestion') return null;
           }
 
-          const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path)) || (visibleSubItems.some(sub => location.pathname.startsWith(sub.path)));
+          const isActive = location.pathname === item.path || (item.path !== '/' && item.path !== '#' && location.pathname.startsWith(item.path)) || (visibleSubItems.some(sub => location.pathname === sub.path || (sub.path !== '/' && sub.path !== '/membresias' && location.pathname.startsWith(sub.path))));
           const hasSub = visibleSubItems.length > 0;
           const isSubOpen = openSubmenus[item.id];
 
@@ -648,6 +823,8 @@ export default function Sidebar() {
             if (sum > 0) {
               currentBadge = { n: sum, type: 'warning' };
             }
+          } else if (item.id === 'reportes' && incidenciasBadge > 0) {
+            currentBadge = { n: incidenciasBadge, type: 'warning' };
           } else if (item.id === 'clientes' && clientesBadge > 0) {
             currentBadge = { n: clientesBadge, type: 'info' };
           } else if (item.id === 'catalogo' && catalogoBadge > 0) {
@@ -659,8 +836,15 @@ export default function Sidebar() {
               {hasSub ? (
                 <div
                   className={`sb-nav-item ${isActive ? 'active' : ''}`}
+                  title={collapsed || isCompact ? item.label : undefined}
                   onClick={() => {
-                    setOpenSubmenus(prev => ({ ...prev, [item.id]: !prev[item.id] }));
+                    if (isCompact) {
+                      setSidebarWidth(240);
+                      localStorage.setItem('clm_sidebar_width', '240');
+                      setOpenSubmenus(prev => ({ ...prev, [item.id]: true }));
+                    } else {
+                      setOpenSubmenus(prev => ({ ...prev, [item.id]: !prev[item.id] }));
+                    }
                     if (collapsed) {
                       handleSidebarClick();
                     }
@@ -680,13 +864,13 @@ export default function Sidebar() {
                     {item.label}
                   </span>
 
-                  {!collapsed && (
+                  {!collapsed && !isCompact && (
                     <svg className="sb-chevron" style={{ transform: isSubOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', width: 14, opacity: 0.5 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M6 9l6 6 6-6"/>
                     </svg>
                   )}
 
-                  {collapsed && (
+                  {(collapsed || isCompact) && (
                     <div className="sb-tooltip">
                       {item.label}
                       {currentBadge && (
@@ -701,6 +885,7 @@ export default function Sidebar() {
                 <Link
                   to={item.path}
                   className={`sb-nav-item ${isActive ? 'active' : ''}`}
+                  title={collapsed || isCompact ? item.label : undefined}
                   aria-current={isActive ? 'page' : undefined}
                   onMouseEnter={() => prefetchRoute(item.path)}
                   onFocus={() => prefetchRoute(item.path)}
@@ -724,7 +909,7 @@ export default function Sidebar() {
                     </span>
                   )}
 
-                  {collapsed && (
+                  {(collapsed || isCompact) && (
                     <div className="sb-tooltip">
                       {item.label}
                       {currentBadge && (
@@ -738,10 +923,10 @@ export default function Sidebar() {
               )}
 
               {/* Renderizar Submenús */}
-              {hasSub && isSubOpen && !collapsed && (
+              {hasSub && isSubOpen && !collapsed && !isCompact && (
                 <div className="sb-submenu-container" style={{ paddingLeft: '32px', marginTop: '4px', marginBottom: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   {visibleSubItems.map(sub => {
-                    const isSubActive = location.pathname === sub.path || location.pathname.startsWith(sub.path);
+                    const isSubActive = location.pathname === sub.path || (sub.path !== '/' && sub.path !== '/membresias' && location.pathname.startsWith(sub.path));
                     return (
                       <Link 
                         key={sub.id}
@@ -779,33 +964,92 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Slider de Notificaciones */}
+      {/* Toast Notificaciones fijo sobre el card de perfil */}
       {user && isNotifVisible && (
         <div 
-          className="sb-notification-zone" 
-          title={collapsed ? SYSTEM_NOTIFICATIONS[currentNotifIndex].text : ''}
+          className={`sb-notification-zone ${isDismissing ? 'dismissing' : ''}`} 
           onMouseEnter={() => setIsHoveringNotif(true)}
           onMouseLeave={() => setIsHoveringNotif(false)}
+          onFocus={() => setIsHoveringNotif(true)}
+          onBlur={() => setIsHoveringNotif(false)}
         >
-          <div className="sb-notification-slider" key={SYSTEM_NOTIFICATIONS[currentNotifIndex].id}>
-            <div className={`sb-notif-content sb-notif-${SYSTEM_NOTIFICATIONS[currentNotifIndex].type}`}>
-              <div className="sb-notif-icon-wrapper">
+          {isCompact ? (
+            <div 
+              className={`sb-toast-compact sb-toast-${SYSTEM_NOTIFICATIONS[currentNotifIndex].type}`}
+              onClick={() => setCurrentNotifIndex((prev) => (prev + 1) % SYSTEM_NOTIFICATIONS.length)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setCurrentNotifIndex((prev) => (prev + 1) % SYSTEM_NOTIFICATIONS.length);
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              title={`${SYSTEM_NOTIFICATIONS[currentNotifIndex].tag}: ${SYSTEM_NOTIFICATIONS[currentNotifIndex].text}`}
+              aria-label={SYSTEM_NOTIFICATIONS[currentNotifIndex].text}
+            >
+              <div className="sb-toast-icon-wrap">
                 <Icon paths={SYSTEM_NOTIFICATIONS[currentNotifIndex].paths} />
               </div>
-              <IntelligentMarquee 
-                text={SYSTEM_NOTIFICATIONS[currentNotifIndex].text} 
-                collapsed={collapsed} 
-              />
-              <div className="sb-notif-progress" />
+              <span className="sb-toast-pulse-dot" />
+              <div className="sb-tooltip">
+                <div style={{ fontWeight: 700, fontSize: '9px', marginBottom: '2px', textTransform: 'uppercase', opacity: 0.8, letterSpacing: '0.05em' }}>
+                  {SYSTEM_NOTIFICATIONS[currentNotifIndex].tag}
+                </div>
+                {SYSTEM_NOTIFICATIONS[currentNotifIndex].text}
+              </div>
             </div>
-          </div>
-          {!collapsed && (
-            <button className="sb-notif-close" onClick={dismissNotif} aria-label="Cerrar notificación" title="Cerrar (se reabrirá en 12h)">
-              <svg className="sb-notif-close-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
+          ) : (
+            <div className={`sb-toast-card sb-toast-${SYSTEM_NOTIFICATIONS[currentNotifIndex].type}`}>
+              <div className="sb-toast-header">
+                <div className="sb-toast-tag-badge">
+                  <span className="sb-toast-dot" />
+                  <span className="sb-toast-tag">{SYSTEM_NOTIFICATIONS[currentNotifIndex].tag}</span>
+                </div>
+
+                <div className="sb-toast-dots" aria-label="Selector de avisos">
+                  {SYSTEM_NOTIFICATIONS.map((n, i) => (
+                    <button
+                      key={n.id}
+                      type="button"
+                      className={`sb-toast-dot-indicator ${i === currentNotifIndex ? 'active' : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentNotifIndex(i);
+                      }}
+                      title={`Aviso ${i + 1}: ${n.text}`}
+                      aria-label={`Ver aviso ${i + 1}`}
+                    />
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  className="sb-toast-close"
+                  onClick={dismissNotif}
+                  aria-label="Cerrar notificación"
+                  title="Ocultar (se reabrirá en 12h)"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
+
+              <div className="sb-toast-body" key={SYSTEM_NOTIFICATIONS[currentNotifIndex].id}>
+                <div className="sb-toast-icon-wrap">
+                  <Icon paths={SYSTEM_NOTIFICATIONS[currentNotifIndex].paths} />
+                </div>
+                <div className="sb-toast-text-wrap" title={SYSTEM_NOTIFICATIONS[currentNotifIndex].text}>
+                  <span className="sb-toast-text">{SYSTEM_NOTIFICATIONS[currentNotifIndex].text}</span>
+                </div>
+              </div>
+
+              <div className="sb-toast-progress-track">
+                <div key={currentNotifIndex} className="sb-toast-progress-bar" />
+              </div>
+            </div>
           )}
         </div>
       )}
@@ -853,6 +1097,18 @@ export default function Sidebar() {
                 </button>
                 <button
                   className="sb-dropdown-item"
+                  onClick={() => { setUserMenuOpen(false); navigate('/integraciones'); }}
+                >
+                  <svg className="sb-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, marginRight: 8, opacity: 0.7 }}>
+                    <path d="M12 22v-5"></path>
+                    <path d="M9 8V2"></path>
+                    <path d="M15 8V2"></path>
+                    <path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z"></path>
+                  </svg>
+                  {collapsed ? 'I' : 'Integraciones'}
+                </button>
+                <button
+                  className="sb-dropdown-item"
                   onClick={() => { setUserMenuOpen(false); navigate('/faq'); }}
                 >
                   <svg className="sb-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, marginRight: 8, opacity: 0.7 }}>
@@ -889,6 +1145,27 @@ export default function Sidebar() {
           </button>
         )}
       </div>
+
+      {/* Drag Resize Handle (borde exterior derecho) */}
+      {isExpanded && !mobileOpen && (
+        <div
+          className={`sb-resize-handle ${isResizing ? 'resizing' : ''}`}
+          onMouseDown={handleResizeStart}
+          onTouchStart={handleResizeStart}
+          onDoubleClick={handleResizeReset}
+          onKeyDown={handleResizeKeyDown}
+          tabIndex={0}
+          title="Arrastrar para redimensionar (doble clic o Tecla End para 240px, Home para 68px, flechas ←/→)"
+          role="separator"
+          aria-orientation="vertical"
+          aria-valuenow={sidebarWidth}
+          aria-valuemin={68}
+          aria-valuemax={240}
+          aria-label="Ajustar ancho del sidebar"
+        >
+          <div className="sb-resize-handle-line" />
+        </div>
+      )}
     </div>
     </>
   );
