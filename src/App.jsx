@@ -38,6 +38,7 @@ const ClienteWorkspace   = lazy(() => import('./pages/ClienteWorkspace'));
 const ProductoWorkspace  = lazy(() => import('./pages/ProductoWorkspace'));
 const Usuarios           = lazy(routeChunks['/usuarios']);
 const Tenants            = lazy(routeChunks['/tenants']);
+const Integraciones      = lazy(routeChunks['/integraciones']);
 const GuestPortal        = lazy(() => import('./pages/GuestPortal'));
 const Comunidad          = lazy(routeChunks['/comunidad']);
 const GuiaLectura        = lazy(() => import('./pages/comunidad/GuiaLectura'));
@@ -71,7 +72,7 @@ function App() {
                   <ProtectedRoute>
                     <Routes>
                       <Route path="/" element={
-                        <RequireAccess require={(auth) => auth.hasFeature('contratos')}><Dashboard /></RequireAccess>
+                        <RequireAccess require={(auth) => auth.isClienteExterno || auth.hasFeature('contratos')}><Dashboard /></RequireAccess>
                       } />
                       <Route path="/clientes" element={
                         <RequireAccess require={(auth) => auth.canAccessClientes}><Clientes /></RequireAccess>
@@ -91,13 +92,13 @@ function App() {
                         <RequireAccess require={(auth) => auth.hasFeature('legal')}><AuditoriaLegal /></RequireAccess>
                       } />
                       <Route path="/contratos" element={
-                        <RequireAccess require={(auth) => auth.hasFeature('contratos')}><Contratos /></RequireAccess>
+                        <RequireAccess require={(auth) => auth.isClienteExterno || auth.hasFeature('contratos')}><Contratos /></RequireAccess>
                       } />
                       <Route path="/contratos/new" element={
                         <RequireAccess require={(auth) => auth.hasFeature('contratos')}><ContractEditor /></RequireAccess>
                       } />
                       <Route path="/contratos/:id" element={
-                        <RequireAccess require={(auth) => auth.hasFeature('contratos')}><ContractDetail /></RequireAccess>
+                        <RequireAccess require={(auth) => auth.isClienteExterno || auth.hasFeature('contratos')}><ContractDetail /></RequireAccess>
                       } />
                       <Route path="/analytics" element={
                         <RequireAccess require={(auth) => auth.hasFeature('analytics')}><Analytics /></RequireAccess>
@@ -127,6 +128,7 @@ function App() {
                       <Route path="/tenants" element={
                         <RequireAccess require={(auth) => auth.user?.isSuperadmin || auth.isModerador}><Tenants /></RequireAccess>
                       } />
+                      <Route path="/integraciones" element={<Integraciones />} />
                       <Route path="/comunidad" element={<Comunidad />} />
                       <Route path="/comunidad/guias/:id" element={<GuiaLectura />} />
                       <Route path="/lienzos" element={<Navigate to="/comunidad" replace />} />
